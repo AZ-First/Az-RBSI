@@ -9,8 +9,9 @@ Arizona's Reference Build and Software Implementation for FRC Robots (read: "A-Z
 
 ## Installation
 
-Installation instructions are found in the [INSTALL.md](INSTALL.md) file.
-
+Installation instructions are found in the [INSTALL.md](INSTALL.md) file.  See
+the [Releases Page](https://github.com/AZ-First/Az-RBSI/releases) for details
+on the latest release, including restrictions and cautions.  
 
 
 ## Purpose
