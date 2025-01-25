@@ -381,10 +381,10 @@ public final class Constants {
 
     @Getter
     public enum AprilTagLayoutType {
-      OFFICIAL("2024-official"),
-      SPEAKERS_ONLY("2024-speakers"),
-      AMPS_ONLY("2024-amps"),
-      WPI("2024-wpi");
+      OFFICIAL("2025-official");
+      // SPEAKERS_ONLY("2024-speakers"),
+      // AMPS_ONLY("2024-amps"),
+      // WPI("2024-wpi");
 
       private AprilTagLayoutType(String name) {
         if (Constants.disableHAL) {
