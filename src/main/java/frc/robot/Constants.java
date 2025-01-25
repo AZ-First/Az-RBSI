@@ -368,8 +368,7 @@ public final class Constants {
   }
 
   /** AprilTag Field Layout ************************************************ */
-  /* SEASON SPECIFIC! -- This section is for 2024 (Crescendo) */
-  // NOTE: This section will be updated to 2025 "Reefscape" following kickoff
+  /* SEASON SPECIFIC! -- This section is for 2025 (Reefscape) */
   public static class AprilTagConstants {
 
     public static final double aprilTagWidth = Units.inchesToMeters(6.50);
