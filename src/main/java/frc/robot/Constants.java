@@ -41,7 +41,6 @@ import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIEnum.MotorIdleMode;
-import frc.robot.util.RBSIEnum.RobotType;
 import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
@@ -76,6 +75,13 @@ public final class Constants {
   private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.PATHPLANNER; // PATHPLANNER, CHOREO
   private static VisionType visionType = VisionType.NONE; // PHOTON, LIMELIGHT, NONE
+
+  /** Enumerate the robot types (name your robots here) */
+  public static enum RobotType {
+    DEVBOT, // Development / Alpha / Practice Bot
+    COMPBOT, // Competition robot
+    SIMBOT // Simulated robot
+  }
 
   /** Checks whether the correct robot is selected when deploying. */
   public static void main(String... args) {
@@ -368,8 +374,7 @@ public final class Constants {
   }
 
   /** AprilTag Field Layout ************************************************ */
-  /* SEASON SPECIFIC! -- This section is for 2024 (Crescendo) */
-  // NOTE: This section will be updated to 2025 "Reefscape" following kickoff
+  /* SEASON SPECIFIC! -- This section is for 2025 (Reefscape) */
   public static class AprilTagConstants {
 
     public static final double aprilTagWidth = Units.inchesToMeters(6.50);
@@ -381,10 +386,11 @@ public final class Constants {
 
     @Getter
     public enum AprilTagLayoutType {
-      OFFICIAL("2024-official"),
-      SPEAKERS_ONLY("2024-speakers"),
-      AMPS_ONLY("2024-amps"),
-      WPI("2024-wpi");
+      OFFICIAL("2025-official");
+
+      // SPEAKERS_ONLY("2024-speakers"),
+      // AMPS_ONLY("2024-amps"),
+      // WPI("2024-wpi");
 
       private AprilTagLayoutType(String name) {
         if (Constants.disableHAL) {
