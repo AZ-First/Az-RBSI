@@ -1,0 +1,27 @@
+name: On Repository Creation
+
+on: create
+
+jobs:
+  setup-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Perform initial setup
+        run: |
+          echo "Repository created! Performing initial setup..."
+          # Add your setup commands here, e.g.,
+          # npm install
+          # generate-config-files.sh
+          # git add .
+          # git commit -m "Initial setup complete"
+          # git push
+      - name: Write a file
+        uses: DamianReeves/write-file-action@v1.0.0
+        with:
+          path: rbsi_last_incorporated_commit.txt
+          contents: |
+            This is the content of my file.
+            It can span multiple lines.
+          write-mode: overwrite # or append, preserve
