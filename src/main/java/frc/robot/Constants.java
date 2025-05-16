@@ -381,9 +381,15 @@ public final class Constants {
     public static final String aprilTagFamily = "36h11";
     public static final AprilTagLayoutType defaultAprilTagType = AprilTagLayoutType.OFFICIAL;
 
-    public static final AprilTagFieldLayout aprilTagLayout =
+    public static final AprilTagFieldLayout kAprilTagLayout =
         AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+    public static final double kFieldWidthMeters =
+        kAprilTagLayout.getFieldWidth(); // distance between field walls,
+    // 8.211m
+    public static final double kFieldLengthMeters =
+        kAprilTagLayout.getFieldLength(); // distance between driver station
 
+    // walls, 16.541m
     @Getter
     public enum AprilTagLayoutType {
       OFFICIAL("2025-official");
