@@ -31,6 +31,11 @@ public class FiducialObservation implements StructSerializable {
     }
 
     @Override
+    public String getTypeName() {
+      return "FiducialObservation";
+    }
+
+    @Override
     public String getTypeString() {
       return "struct:FiducialObservation";
     }

@@ -103,12 +103,6 @@ public class VisionSubsystem extends SubsystemBase {
       if (!alreadyProcessedTimestamp && cameraSeesTarget) {
         if (!isTurretCamera && !Util.epsilonEquals(state.getElevatorHeight(), 0.0, 0.05)) return;
         Optional<VisionFieldPoseEstimate> pinholeEstimate = Optional.empty(); //
-        processPinholeVisionEstimate(
-            pinholeObservations,
-            //
-            updateTimestamp,
-            //
-            isTurretCamera);
 
         Optional<VisionFieldPoseEstimate> megatagEstimate =
             processMegatagPoseEstimate(cameraMegatagPoseEstimate, isTurretCamera);
