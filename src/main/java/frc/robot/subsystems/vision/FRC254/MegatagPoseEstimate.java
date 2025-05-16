@@ -33,6 +33,11 @@ public class MegatagPoseEstimate implements StructSerializable {
     }
 
     @Override
+    public String getTypeName() {
+      return "MegatagPoseEstimate";
+    }
+
+    @Override
     public String getTypeString() {
       return "struct:MegatagPoseEstimate";
     }

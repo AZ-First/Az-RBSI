@@ -13,17 +13,15 @@
 
 package frc.robot.subsystems.vision.FRC254;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
 import frc.robot.util.MathHelpers;
@@ -287,7 +285,7 @@ public class RobotState {
 
   public Optional<Double> getMaxAbsDriveYawAngularVelocityInRange(double minTime, double maxTime) {
     // Gyro yaw rate not set in sim.
-    if (Robot.isReal()) return getMaxAbsValueInRange(driveYawAngularVelocity, minTime, maxTime);
+    if (RobotBase.isReal()) return getMaxAbsValueInRange(driveYawAngularVelocity, minTime, maxTime);
     return Optional.of(measuredRobotRelativeChassisSpeeds.get().omegaRadiansPerSecond);
   }
 
@@ -363,35 +361,4 @@ public class RobotState {
   Pose3d hoodPose3d = new Pose3d();
   Pose3d shooterPose3d = new Pose3d();
   Pose3d turretPose3d = new Pose3d();
-
-  public void updateViz() {
-    if (getLatestRobotToTurret().getValue() != null) {
-      shooterPose3d =
-          new Pose3d(
-              new Translation3d(),
-              new Rotation3d(0, 0, getLatestRobotToTurret().getValue().getRadians()));
-      hoodPose3d =
-          new Pose3d(
-              new Translation3d(),
-              new Rotation3d(0, 0, getLatestRobotToTurret().getValue().getRadians()));
-    }
-    ampPose3d = new Pose3d(new Translation3d(0.0, 0.0, this.elevatorHeightM), new Rotation3d());
-    var climberRot =
-        MathUtil.interpolate(
-            0.0,
-            -Math.PI / 2.0,
-            this.climberRotations
-                / (Constants.ClimberConstants.kForwardMaxPositionRotations
-                    * Constants.kClimberConfig.unitToRotorRatio));
-    climberPose3d =
-        new Pose3d(new Translation3d(0, 0.0, 0.15), new Rotation3d(0.0, (double) climberRot, 0.0));
-    // model_0 is elevator
-    // model_1 is climber
-    // model_2 is hood plates
-    // model_3 is shooter
-    // model_4 is turret
-    Logger.recordOutput(
-        "ComponentsPoseArray",
-        new Pose3d[] {ampPose3d, climberPose3d, hoodPose3d, shooterPose3d, turretPose3d});
-  }
 }
