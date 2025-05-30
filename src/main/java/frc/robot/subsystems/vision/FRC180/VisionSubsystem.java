@@ -44,8 +44,8 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Robot;
-import frc.robot.RobotContainer;
-import frc.robot.subsystems.vision.VisionIO.VisionIOInputs;
+import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.vision.FRC180.VisionIO.VisionIOInputs;
 import frc.robot.util.LimelightHelpers.PoseEstimate;
 import frc.robot.util.LimelightHelpers.RawFiducial;
 import java.util.ArrayList;
@@ -54,9 +54,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 @Logged
 public class VisionSubsystem extends SubsystemBase {
+  private final VisionConsumer consumer;
+  private final Supplier<Pose2d> poseSupplier;
+  private final Drive m_drivebase;
 
   /**
    * The source of a pose estimate, used to determine the standard deviation of the pose estimate
@@ -216,7 +220,12 @@ public class VisionSubsystem extends SubsystemBase {
   public final Trigger hasPoseEstimates = new Trigger(() -> poseEstimate != null).debounce(0.5);
 
   @SuppressWarnings("unused")
-  public VisionSubsystem() {
+  public VisionSubsystem(
+      VisionConsumer consumer, Supplier<Pose2d> poseSupplier, Drive m_drivebase) {
+    this.consumer = consumer;
+    this.poseSupplier = poseSupplier;
+    this.m_drivebase = m_drivebase;
+
     try {
       aprilTagFieldLayout =
           AprilTagFieldLayout.loadFromResource(AprilTagFields.k2025ReefscapeWelded.m_resourceFile);
@@ -335,14 +344,14 @@ public class VisionSubsystem extends SubsystemBase {
 
     Pose2d robotPose = null;
     if (poseEstimate != null) {
-      RobotContainer.instance.drivetrain.addVisionMeasurement(
+      consumer.accept(
           poseEstimate.pose,
           Utils.fpgaToCurrentTime(poseEstimate.timestampSeconds),
           poseEstimateSource.stdDev);
       // Calculate the difference between the updated robot pose and the scoring pose estimate, to
       // get an idea
       // of how closely we are tracking the robot's actual position
-      robotPose = RobotContainer.instance.drivetrain.getPose();
+      robotPose = poseSupplier.get();
       // Note - the goal of this if statement is to stop "bad" data from non-scoring cameras from
       // allowing
       // a coral to be scored. Unknown if this is working as intended
@@ -361,17 +370,17 @@ public class VisionSubsystem extends SubsystemBase {
       poseEstimateSource = PoseEstimateSource.NONE;
     }
 
-    if (robotPose == null) robotPose = RobotContainer.instance.drivetrain.getPose();
+    if (robotPose == null) robotPose = poseSupplier.get();
 
     // calculate scoring camera in 3D space, for previewing in AdvantageScope
     if (Robot.isSimulation()) {
-      Pose3d robotPose3d = new Pose3d(RobotContainer.instance.drivetrain.getSimPose());
+      Pose3d robotPose3d = new Pose3d(poseSupplier.get());
       scoringCameraPosition = robotPose3d.transformBy(ROBOT_TO_SCORING_CAMERA);
       frontCameraPosition = robotPose3d.transformBy(ROBOT_TO_FRONT_CAMERA);
       backCameraPosition = robotPose3d.transformBy(ROBOT_TO_INTAKE_CAMERA);
     }
 
-    ChassisSpeeds speeds = RobotContainer.instance.drivetrain.getCachedState().Speeds;
+    ChassisSpeeds speeds = m_drivebase.getChassisSpeeds();
     futureRobotPose =
         robotPose.plus(
             new Transform2d(
@@ -392,8 +401,7 @@ public class VisionSubsystem extends SubsystemBase {
 
     Pose2d latencyCompensatedRobotPose;
     if (Robot.isReal()) {
-      latencyCompensatedRobotPose =
-          RobotContainer.instance.drivetrain.getBufferPose(inputs.backTimestamp);
+      latencyCompensatedRobotPose = m_drivebase.getBufferPose(inputs.backTimestamp);
     } else {
       latencyCompensatedRobotPose = robotPose;
     }
@@ -560,7 +568,7 @@ public class VisionSubsystem extends SubsystemBase {
   private static final double BARGE_RED_X = FlippingUtil.fieldSizeX - BARGE_BLUE_X;
 
   public Pose2d getBargePose() {
-    Pose2d robotPose = RobotContainer.instance.drivetrain.getPose();
+    Pose2d robotPose = poseSupplier.get();
 
     return new Pose2d(
         Robot.isBlue() ? BARGE_BLUE_X : BARGE_RED_X,
@@ -609,9 +617,9 @@ public class VisionSubsystem extends SubsystemBase {
   @NotLogged
   public Pose2d getCoralPickupPose() {
     if (coralPickupPose == null && coralPoseValid) {
-      Translation2d robotPosition = RobotContainer.instance.drivetrain.getPose().getTranslation();
+      Translation2d robotPosition = poseSupplier.get().getTranslation();
       Translation2d coralPosition = coralPose.getTranslation();
-      double pickupOffset = RobotContainer.instance.coralIntakeReady.getAsBoolean() ? 0.6 : 0.9;
+      double pickupOffset = true ? 0.6 : 0.9;
       double centerDistance = robotPosition.getDistance(coralPosition);
       double pickupDistance = centerDistance - pickupOffset;
 
@@ -688,5 +696,14 @@ public class VisionSubsystem extends SubsystemBase {
     } else {
       alert.set(false);
     }
+  }
+
+  /** Vision Consumer */
+  @FunctionalInterface
+  public static interface VisionConsumer {
+    public void accept(
+        Pose2d visionRobotPoseMeters,
+        double timestampSeconds,
+        Matrix<N3, N1> visionMeasurementStdDevs);
   }
 }

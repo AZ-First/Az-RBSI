@@ -20,6 +20,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.units.measure.Distance;
+import frc.robot.Constants.AprilTagConstants;
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -55,7 +56,7 @@ public abstract class Field {
 
   public static Pose3d[] getReefAlgaePoses() {
     if (reefAlgaePoses == null) {
-      AprilTagFieldLayout layout = RobotContainer.instance.vision.aprilTagFieldLayout;
+      AprilTagFieldLayout layout = AprilTagConstants.kAprilTagLayout;
       reefAlgaePoses = new Pose3d[CURRENT_ALGAE_HEIGHTS.size()];
       int index = 0;
       for (var entry : CURRENT_ALGAE_HEIGHTS.entrySet()) {

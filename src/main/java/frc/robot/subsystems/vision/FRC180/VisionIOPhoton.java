@@ -13,7 +13,6 @@
 
 package frc.robot.subsystems.vision.FRC180;
 
-import com.spamrobotics.vision.SimCamera;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 
 public class VisionIOPhoton implements VisionIO {

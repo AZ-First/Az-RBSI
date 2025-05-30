@@ -21,7 +21,6 @@ import edu.wpi.first.math.geometry.Translation2d;
 import frc.robot.Robot;
 import frc.robot.RobotContainer;
 import frc.robot.util.LimelightHelpers.RawDetection;
-import frc.robot.util.simulation.SimLogic;
 import org.ironmaple.simulation.SimulatedArena;
 
 /**
