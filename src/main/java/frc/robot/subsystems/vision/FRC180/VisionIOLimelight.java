@@ -13,7 +13,6 @@
 
 package frc.robot.subsystems.vision.FRC180;
 
-import com.spamrobotics.vision.LimelightStatus;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Timer;
@@ -108,7 +107,7 @@ public class VisionIOLimelight implements VisionIO {
     // to stop the odometry from diverging from the real robot position if we're using a physics
     // simulation (like MapleSim).
     // To simulate realistic vision input using Apriltags, use {@link VisionIOPhoton} instead.
-    simPoseEstimate.pose = RobotContainer.instance.drivetrain.getSimPose();
+    // simPoseEstimate.pose = RobotContainer.instance.drivetrain.getSimPose();
     simPoseEstimate.timestampSeconds = Timer.getFPGATimestamp();
     simPoseEstimate.tagCount = 1;
     simPoseEstimate.avgTagDist = 2;

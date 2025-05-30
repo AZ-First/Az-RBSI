@@ -252,7 +252,7 @@ public class Constants {
 
   // April Tag Layout
   public static final AprilTagFieldLayout kAprilTagLayout =
-      AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
+      AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
   public static final double kFieldWidthMeters =
       kAprilTagLayout.getFieldWidth(); // distance between field walls,

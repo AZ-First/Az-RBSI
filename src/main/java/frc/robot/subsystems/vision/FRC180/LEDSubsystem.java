@@ -32,7 +32,7 @@ import com.ctre.phoenix.led.TwinkleOffAnimation;
 import com.ctre.phoenix.led.TwinkleOffAnimation.TwinkleOffPercent;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants;
+import frc.robot.Constants.CANandPowerPorts;
 
 public class LEDSubsystem extends SubsystemBase {
 
@@ -78,7 +78,7 @@ public class LEDSubsystem extends SubsystemBase {
     config.v5Enabled = true;
     config.stripType = LEDStripType.GRB;
     config.vBatOutputMode = VBatOutputMode.Off;
-    candle = new CANdle(Constants.CANDLE, Constants.CANIVORE);
+    candle = new CANdle(CANandPowerPorts.LED.getDeviceNumber(), CANandPowerPorts.LED.getBus());
     candle.configAllSettings(config);
 
     rainbow = new RainbowAnimation(1, 1, NUM_LEDS, false, STRIP_OFFSET);
