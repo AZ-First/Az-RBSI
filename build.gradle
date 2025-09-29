@@ -2,8 +2,8 @@ plugins {
     id "java"
     id "edu.wpi.first.GradleRIO" version "2025.3.2"
     id "com.peterabeles.gversion" version "1.10.3"
-    id "com.diffplug.spotless" version "7.2.+"
-    id "io.freefair.lombok" version "8.14.+"
+    id "com.diffplug.spotless" version "8.0.+"
+    id "io.freefair.lombok" version "9.0.+"
     id "com.google.protobuf" version "0.9.5"
 }
 
