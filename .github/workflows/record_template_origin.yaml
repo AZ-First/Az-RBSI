@@ -1,0 +1,81 @@
+name: Record Template Origin
+
+on:
+  push:
+    # Run only once, right after the repo is created from the template
+    branches:
+      - '**'
+
+permissions:
+  contents: write
+
+jobs:
+  record-origin:
+    runs-on: ubuntu-latest
+    if: github.run_number == 1  # Only run on first push
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install GitHub CLI and jq
+        run: sudo apt-get install -y gh jq
+
+      - name: Detect this repository's default branch
+        id: branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          default_branch=$(gh repo view "${{ github.repository }}" --json defaultBranchRef --jq '.defaultBranchRef.name')
+          echo "Default branch detected: $default_branch"
+          echo "default_branch=$default_branch" >> $GITHUB_OUTPUT
+
+      - name: Get template repository info (via API)
+        id: template
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "🔍 Querying repository metadata for template source..."
+          data=$(gh api "repos/$REPO" --jq '.template_repository | {full_name: .full_name, default_branch: .default_branch}')
+
+          if [ "$data" = "null" ] || [ -z "$data" ]; then
+            echo "⚠️  No template repository detected for this repo."
+            template_repo="none"
+            template_branch="none"
+            template_commit="none"
+          else
+            template_repo=$(echo "$data" | jq -r '.full_name')
+            template_branch=$(echo "$data" | jq -r '.default_branch')
+
+            # Get latest commit from template repo
+            template_commit=$(gh api "repos/$template_repo/commits/$template_branch" --jq '.sha')
+          fi
+
+          echo "Template repository: $template_repo"
+          echo "Template branch: $template_branch"
+          echo "Template commit: $template_commit"
+
+          echo "template_repo=$template_repo" >> $GITHUB_OUTPUT
+          echo "template_branch=$template_branch" >> $GITHUB_OUTPUT
+          echo "template_commit=$template_commit" >> $GITHUB_OUTPUT
+
+      - name: Record template origin file
+        run: |
+          echo "Template: ${{ steps.template.outputs.template_repo }}" > TEMPLATE_ORIGIN.txt
+          echo "Template Branch: ${{ steps.template.outputs.template_branch }}" >> TEMPLATE_ORIGIN.txt
+          echo "Template Commit: ${{ steps.template.outputs.template_commit }}" >> TEMPLATE_ORIGIN.txt
+          echo "Recorded template origin:"
+          cat TEMPLATE_ORIGIN.txt
+
+      - name: Commit and push template origin record
+        env:
+          BRANCH_NAME: ${{ steps.branch.outputs.default_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add TEMPLATE_ORIGIN.txt
+          git commit -m "Record template origin commit" || echo "No changes to commit"
+          git push origin "HEAD:$BRANCH_NAME"

@@ -1,0 +1,95 @@
+name: Sync Template Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-template:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Read template origin
+        id: template
+        run: |
+          if [ ! -f TEMPLATE_ORIGIN.txt ]; then
+            echo "TEMPLATE_ORIGIN.txt not found. Skipping sync."
+            echo "skip_sync=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          template_repo=$(sed -n 's/^Template: //p' TEMPLATE_ORIGIN.txt)
+          template_branch=$(sed -n 's/^Template Branch: //p' TEMPLATE_ORIGIN.txt)
+          template_commit=$(sed -n 's/^Template Commit: //p' TEMPLATE_ORIGIN.txt)
+
+          echo "Template repo: $template_repo"
+          echo "Template branch: $template_branch"
+          echo "Template commit: $template_commit"
+
+          # Skip if placeholder values
+          if [ "$template_repo" = "none" ] || [ "$template_branch" = "none" ] || [ "$template_commit" = "none" ]; then
+            echo "Repository was not created from a template. Skipping sync."
+            echo "skip_sync=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "skip_sync=false" >> $GITHUB_OUTPUT
+          echo "template_repo=$template_repo" >> $GITHUB_OUTPUT
+          echo "template_branch=$template_branch" >> $GITHUB_OUTPUT
+          echo "template_commit=$template_commit" >> $GITHUB_OUTPUT
+
+      - name: Install GitHub CLI
+        if: steps.template.outputs.skip_sync == 'false'
+        run: sudo apt-get install -y gh jq
+
+      - name: Fetch commits from template since last sync
+        if: steps.template.outputs.skip_sync == 'false'
+        id: commits
+        run: |
+          # Get the list of commits from template repo that are not yet in this repo
+          commits=$(gh api repos/${{ steps.template.outputs.template_repo }}/commits --jq '.[] | .sha' | tac)
+          echo "$commits" > template_commits.txt
+          echo "Commits to consider:"
+          cat template_commits.txt
+          echo "commits=$(cat template_commits.txt)" >> $GITHUB_OUTPUT
+
+      - name: Cherry-pick commits and create PR
+        if: steps.template.outputs.skip_sync == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          branch_name="template-sync-$(date +%Y%m%d%H%M%S)"
+          git checkout -b "$branch_name"
+
+          pr_message="Template Sync Commit Summary:\n\n"
+
+          while read commit_sha; do
+            # Skip empty lines
+            [ -z "$commit_sha" ] && continue
+            echo "Cherry-picking $commit_sha"
+            git cherry-pick "$commit_sha" || git cherry-pick --abort
+            pr_message="$pr_message- $commit_sha\n"
+          done < template_commits.txt
+
+          git push origin "$branch_name"
+
+          # Create PR
+          gh pr create \
+            --title "Sync Template Updates" \
+            --body "$pr_message" \
+            --base main \
+            --head "$branch_name" \
+            --label "template-sync"

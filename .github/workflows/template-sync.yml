@@ -3,8 +3,8 @@ name: "Sync with Az-RBSI Template"
 
 on:
   # cronjob trigger
-  schedule:
-  - cron: "30 04 * * 1"
+  # schedule:
+  # - cron: "30 04 * * 1"
   # manual trigger
   workflow_dispatch:
 jobs:
