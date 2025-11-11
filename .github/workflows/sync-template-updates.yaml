@@ -3,6 +3,7 @@ name: "Sync with Az-RBSI Template"
 on:
   # cronjob trigger
   schedule:
+    # Every Monday at 4:30AM
     - cron: "30 04 * * 1"
   # manual trigger
   workflow_dispatch:
@@ -124,6 +125,7 @@ jobs:
           branch_name="template-sync"
           target_branch=$(gh repo view $GITHUB_REPOSITORY --json defaultBranchRef --jq '.defaultBranchRef.name')
           sync_date=$(date -u +"%Y-%m-%d")
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           # Ensure branch exists or create new
           if git ls-remote --exit-code --heads origin "$branch_name"; then
@@ -162,9 +164,14 @@ jobs:
           # Squash all cherry-picked commits into a single commit
           git commit -m "Template Sync Updates"$'\n\n'"$commit_summary"
 
-          # Update TEMPLATE_ORIGIN.txt
+          # Update TEMPLATE_ORIGIN.txt (with new Recorded At)
           if [ -n "$newest_commit" ]; then
-            echo -e "Template: ${{ steps.template.outputs.template_repo }}\nTemplate Branch: ${{ steps.template.outputs.template_branch }}\nTemplate Commit: $newest_commit" > TEMPLATE_ORIGIN.txt
+            {
+              echo "Template: ${{ steps.template.outputs.template_repo }}"
+              echo "Template Branch: ${{ steps.template.outputs.template_branch }}"
+              echo "Template Commit: $newest_commit"
+              echo "Recorded At (UTC): $timestamp"
+            } > TEMPLATE_ORIGIN.txt
             git add TEMPLATE_ORIGIN.txt
             git commit --amend --no-edit
           fi
@@ -185,12 +192,13 @@ jobs:
           pr_title="Sync Template Updates ($pr_count commit$plural, $sync_date)"
 
           # Build PR body with summary + source info
-          pr_body=$(printf "Template Sync Commit Summary:\n\n%s\n_Synced from:_ [%s](https://github.com/%s/tree/%s) at commit \`%s\`" \
+          pr_body=$(printf "Template Sync Commit Summary:\n\n%s\n_Synced from:_ [%s](https://github.com/%s/tree/%s) at commit \`%s\`\n\n_Last recorded at (UTC): %s_" \
             "$commit_summary" \
             "${{ steps.template.outputs.template_repo }}" \
             "${{ steps.template.outputs.template_repo }}" \
             "${{ steps.template.outputs.template_branch }}" \
-            "$newest_commit")
+            "$newest_commit" \
+            "$timestamp")
 
           existing_pr=$(gh pr list --head "$branch_name" --state open --json number --jq '.[0].number')
 
