@@ -56,14 +56,18 @@ jobs:
           fi
 
       # ------------------------------------------------------------
-      # Periodically rebase admin onto default
+      # Periodically rebase admin onto default (true rebase)
       # ------------------------------------------------------------
       - name: Rebase admin onto default
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           git fetch origin
           git checkout admin
-          git reset --hard origin/${{ steps.default.outputs.branch }}
+
+          # Rebase admin commits on top of default branch
+          git rebase origin/${{ steps.default.outputs.branch }}
+
+          # Push updated admin branch
           git push --force-with-lease origin admin
 
       # ------------------------------------------------------------
