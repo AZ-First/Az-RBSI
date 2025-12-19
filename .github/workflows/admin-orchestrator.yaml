@@ -81,7 +81,9 @@ jobs:
       # Auto-merge Dependabot PRs
       # ------------------------------------------------------------
       - name: Auto-merge Dependabot PR
-        if: github.actor == 'dependabot[bot]'
+        if: |
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'dependabot[bot]'
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           merge-method: squash
