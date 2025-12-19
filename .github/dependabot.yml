@@ -10,6 +10,7 @@ updates:
   - package-ecosystem: "github-actions"
     # Workflow files stored in the default location of `.github/workflows`. (You don't need to specify `/.github/workflows` for `directory`. You can use `directory: "/"`.)
     directory: "/"
+    target-branch: "admin"
     labels:
       - "github_actions"
     schedule:
@@ -19,6 +20,7 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/" # Location of package manifests
     registries: "*"
+    target-branch: "admin"
     labels:
       - "gradle dependencies"
     schedule:
