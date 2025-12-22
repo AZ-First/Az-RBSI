@@ -1,4 +1,4 @@
-// Copyright (c) 2024 FRC 254
+// Copyright (c) 2024-2025 FRC 254
 // https://github.com/team254
 //
 // This program is free software; you can redistribute it and/or
@@ -14,18 +14,14 @@
 package frc.robot.subsystems.vision.FRC254;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.Timer;
+import frc.robot.Robot;
 import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
+import frc.robot.util.FieldConstants;
 import frc.robot.util.MathHelpers;
-import frc.robot.util.RobotTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,6 +31,7 @@ import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import org.littletonrobotics.junction.Logger;
 
+/** Tracks robot state including pose, velocities, and mechanism positions. */
 public class RobotState {
 
   public static final double LOOKBACK_TIME = 1.0;
@@ -43,31 +40,32 @@ public class RobotState {
 
   public RobotState(Consumer<VisionFieldPoseEstimate> visionEstimateConsumer) {
     this.visionEstimateConsumer = visionEstimateConsumer;
-    // Make sure to add one sample to these methods to protect callers against null.
     fieldToRobot.addSample(0.0, MathHelpers.kPose2dZero);
-    robotToTurret.addSample(0.0, MathHelpers.kRotation2dZero);
-    turretAngularVelocity.addSample(0.0, 0.0);
     driveYawAngularVelocity.addSample(0.0, 0.0);
-    turretPositionRadians.addSample(0.0, 0.0);
+
+    // Initialize mechanism positions
+    elevatorHeightMeters.set(0.0);
+    wristRadians.set(0.0);
+    intakeRollerRotations.set(0.0);
+    clawRollerRotations.set(0.0);
   }
 
   // State of robot.
 
   // Kinematic Frames
+  // Robot's pose in field coordinates over time
   private final ConcurrentTimeInterpolatableBuffer<Pose2d> fieldToRobot =
       ConcurrentTimeInterpolatableBuffer.createBuffer(LOOKBACK_TIME);
-  private final ConcurrentTimeInterpolatableBuffer<Rotation2d> robotToTurret =
-      ConcurrentTimeInterpolatableBuffer.createBuffer(LOOKBACK_TIME);
-  private static final Transform2d TURRET_TO_CAMERA =
-      new Transform2d(
-          Constants.kTurretToCameraX, Constants.kTurretToCameraY, MathHelpers.kRotation2dZero);
-  private static final Transform2d ROBOT_TO_CAMERA_B =
-      new Transform2d(
-          Constants.kTurretToCameraBX, Constants.kTurretToCameraBY, MathHelpers.kRotation2dZero);
+  // Current robot-relative chassis speeds (measured from encoders)
   private final AtomicReference<ChassisSpeeds> measuredRobotRelativeChassisSpeeds =
       new AtomicReference<>(new ChassisSpeeds());
+  // Current field-relative chassis speeds (measured from encoders)
   private final AtomicReference<ChassisSpeeds> measuredFieldRelativeChassisSpeeds =
       new AtomicReference<>(new ChassisSpeeds());
+  // Desired robot-relative chassis speeds (set by control systems)
+  private final AtomicReference<ChassisSpeeds> desiredRobotRelativeChassisSpeeds =
+      new AtomicReference<>(new ChassisSpeeds());
+  // Desired field-relative chassis speeds (set by control systems)
   private final AtomicReference<ChassisSpeeds> desiredFieldRelativeChassisSpeeds =
       new AtomicReference<>(new ChassisSpeeds());
   private final AtomicReference<ChassisSpeeds> fusedFieldRelativeChassisSpeeds =
@@ -76,30 +74,29 @@ public class RobotState {
   private final AtomicInteger iteration = new AtomicInteger(0);
 
   private double lastUsedMegatagTimestamp = 0;
-  private double lastTriggeredIntakeSensorTimestamp = 0;
-  private ConcurrentTimeInterpolatableBuffer<Double> turretAngularVelocity =
+  private Pose2d lastUsedMegatagPose = Pose2d.kZero;
+  private final ConcurrentTimeInterpolatableBuffer<Double> driveYawAngularVelocity =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> turretPositionRadians =
+  private final ConcurrentTimeInterpolatableBuffer<Double> driveRollAngularVelocity =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> driveYawAngularVelocity =
-      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> driveRollAngularVelocity =
-      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> drivePitchAngularVelocity =
+  private final ConcurrentTimeInterpolatableBuffer<Double> drivePitchAngularVelocity =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
 
-  private ConcurrentTimeInterpolatableBuffer<Double> drivePitchRads =
+  private final ConcurrentTimeInterpolatableBuffer<Double> drivePitchRads =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> driveRollRads =
+  private final ConcurrentTimeInterpolatableBuffer<Double> driveRollRads =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> accelX =
+  private final ConcurrentTimeInterpolatableBuffer<Double> accelX =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
-  private ConcurrentTimeInterpolatableBuffer<Double> accelY =
+  private final ConcurrentTimeInterpolatableBuffer<Double> accelY =
       ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(LOOKBACK_TIME);
 
   private final AtomicBoolean enablePathCancel = new AtomicBoolean(false);
 
   private double autoStartTime;
+
+  private Optional<Pose2d> trajectoryTargetPose = Optional.empty();
+  private Optional<Pose2d> trajectoryCurrentPose = Optional.empty();
 
   public void setAutoStartTime(double timestamp) {
     autoStartTime = timestamp;
@@ -146,6 +143,7 @@ public class RobotState {
       double rollRads,
       double accelX,
       double accelY,
+      ChassisSpeeds desiredRobotRelativeChassisSpeeds,
       ChassisSpeeds desiredFieldRelativeSpeeds,
       ChassisSpeeds measuredSpeeds,
       ChassisSpeeds measuredFieldRelativeSpeeds,
@@ -157,6 +155,7 @@ public class RobotState {
     this.driveRollRads.addSample(timestamp, rollRads);
     this.accelY.addSample(timestamp, accelY);
     this.accelX.addSample(timestamp, accelX);
+    this.desiredRobotRelativeChassisSpeeds.set(desiredRobotRelativeChassisSpeeds);
     this.desiredFieldRelativeChassisSpeeds.set(desiredFieldRelativeSpeeds);
     this.measuredRobotRelativeChassisSpeeds.set(measuredSpeeds);
     this.measuredFieldRelativeChassisSpeeds.set(measuredFieldRelativeSpeeds);
@@ -167,6 +166,12 @@ public class RobotState {
     return fieldToRobot.getLatest();
   }
 
+  /**
+   * Predicts robot's future pose based on current velocity.
+   *
+   * @param lookaheadTimeS How far ahead to predict (seconds)
+   * @return Predicted pose
+   */
   public Pose2d getPredictedFieldToRobot(double lookaheadTimeS) {
     var maybeFieldToRobot = getLatestFieldToRobot();
     Pose2d fieldToRobot =
@@ -177,70 +182,25 @@ public class RobotState {
         new Twist2d(delta.vxMetersPerSecond, delta.vyMetersPerSecond, delta.omegaRadiansPerSecond));
   }
 
-  public Pose2d getLatestFieldToRobotCenter() {
-    return fieldToRobot.getLatest().getValue().transformBy(Constants.kTurretToRobotCenter);
-  }
-
-  // This has rotation and radians to allow for wrapping tracking.
-  public void addTurretUpdates(
-      double timestamp,
-      Rotation2d turretRotation,
-      double turretRadians,
-      double angularYawRadsPerS) {
-    // turret frame 180 degrees off from robot frame
-    robotToTurret.addSample(timestamp, turretRotation.rotateBy(MathHelpers.kRotation2dPi));
-    this.turretAngularVelocity.addSample(timestamp, angularYawRadsPerS);
-    this.turretPositionRadians.addSample(timestamp, turretRadians);
-  }
-
-  public double getLatestTurretPositionRadians() {
-    return this.turretPositionRadians.getInternalBuffer().lastEntry().getValue();
-  }
-
-  public double getLatestTurretAngularVelocity() {
-    return this.turretAngularVelocity.getInternalBuffer().lastEntry().getValue();
-  }
-
-  private Rotation2d hoodRotation = new Rotation2d();
-
-  public void addHoodRotation(Rotation2d rotationFromZero) {
-    hoodRotation = rotationFromZero;
-  }
-
-  public Rotation2d getHoodRotation() {
-    return hoodRotation;
-  }
-
-  private double elevatorHeightM = 0.0;
-
-  public void setElevatorHeight(double heightM) {
-    this.elevatorHeightM = heightM;
-  }
-
-  public double getElevatorHeight() {
-    return elevatorHeightM;
-  }
-
-  private double climberRotations = 0.0;
-
-  public void setClimberRotations(double rotations) {
-    this.climberRotations = rotations;
-  }
-
-  public Optional<Rotation2d> getRobotToTurret(double timestamp) {
-    return robotToTurret.getSample(timestamp);
+  /**
+   * Like getPredictedFieldToRobot but caps negative velocities to zero. Used for non-holonomic path
+   * planning.
+   */
+  public Pose2d getPredictedCappedFieldToRobot(double lookaheadTimeS) {
+    var maybeFieldToRobot = getLatestFieldToRobot();
+    Pose2d fieldToRobot =
+        maybeFieldToRobot == null ? MathHelpers.kPose2dZero : maybeFieldToRobot.getValue();
+    var delta = getLatestRobotRelativeChassisSpeed();
+    delta = delta.times(lookaheadTimeS);
+    return fieldToRobot.exp(
+        new Twist2d(
+            Math.max(0.0, delta.vxMetersPerSecond),
+            Math.max(0.0, delta.vyMetersPerSecond),
+            delta.omegaRadiansPerSecond));
   }
 
   public Optional<Pose2d> getFieldToRobot(double timestamp) {
     return fieldToRobot.getSample(timestamp);
-  }
-
-  public Transform2d getTurretToCamera(boolean isTurretCamera) {
-    return isTurretCamera ? TURRET_TO_CAMERA : ROBOT_TO_CAMERA_B;
-  }
-
-  public Map.Entry<Double, Rotation2d> getLatestRobotToTurret() {
-    return robotToTurret.getLatest();
   }
 
   public ChassisSpeeds getLatestMeasuredFieldRelativeChassisSpeeds() {
@@ -249,6 +209,10 @@ public class RobotState {
 
   public ChassisSpeeds getLatestRobotRelativeChassisSpeed() {
     return measuredRobotRelativeChassisSpeeds.get();
+  }
+
+  public ChassisSpeeds getLatestDesiredRobotRelativeChassisSpeeds() {
+    return desiredRobotRelativeChassisSpeeds.get();
   }
 
   public ChassisSpeeds getLatestDesiredFieldRelativeChassisSpeed() {
@@ -265,8 +229,12 @@ public class RobotState {
     return speeds;
   }
 
-  public Optional<Double> getTurretAngularVelocity(double timestamp) {
-    return turretAngularVelocity.getSample(timestamp);
+  public void setLedState(LedState state) {
+    ledState.set(state);
+  }
+
+  public LedState getLedState() {
+    return ledState.get();
   }
 
   private Optional<Double> getMaxAbsValueInRange(
@@ -279,13 +247,9 @@ public class RobotState {
     else return min;
   }
 
-  public Optional<Double> getMaxAbsTurretYawAngularVelocityInRange(double minTime, double maxTime) {
-    return getMaxAbsValueInRange(turretAngularVelocity, minTime, maxTime);
-  }
-
   public Optional<Double> getMaxAbsDriveYawAngularVelocityInRange(double minTime, double maxTime) {
     // Gyro yaw rate not set in sim.
-    if (RobotBase.isReal()) return getMaxAbsValueInRange(driveYawAngularVelocity, minTime, maxTime);
+    if (Robot.isReal()) return getMaxAbsValueInRange(driveYawAngularVelocity, minTime, maxTime);
     return Optional.of(measuredRobotRelativeChassisSpeeds.get().omegaRadiansPerSecond);
   }
 
@@ -299,24 +263,17 @@ public class RobotState {
   }
 
   public void updateMegatagEstimate(VisionFieldPoseEstimate megatagEstimate) {
-    lastUsedMegatagTimestamp = Timer.getFPGATimestamp();
+    lastUsedMegatagTimestamp = megatagEstimate.getTimestampSeconds();
+    lastUsedMegatagPose = megatagEstimate.getVisionRobotPoseMeters();
     visionEstimateConsumer.accept(megatagEstimate);
-  }
-
-  public void updatePinholeEstimate(VisionFieldPoseEstimate pinholeEstimate) {
-    visionEstimateConsumer.accept(pinholeEstimate);
-  }
-
-  public void updateLastTriggeredIntakeSensorTimestamp(boolean triggered) {
-    if (triggered) lastTriggeredIntakeSensorTimestamp = RobotTime.getTimestampSeconds();
   }
 
   public double lastUsedMegatagTimestamp() {
     return lastUsedMegatagTimestamp;
   }
 
-  public double lastTriggeredIntakeSensorTimestamp() {
-    return lastTriggeredIntakeSensorTimestamp;
+  public Pose2d lastUsedMegatagPose() {
+    return lastUsedMegatagPose;
   }
 
   public boolean isRedAlliance() {
@@ -340,6 +297,14 @@ public class RobotState {
           "RobotState/PitchAngularVelocity",
           this.drivePitchAngularVelocity.getInternalBuffer().lastEntry().getValue());
     }
+    if (this.drivePitchRads.getInternalBuffer().lastEntry() != null) {
+      Logger.recordOutput(
+          "RobotState/PitchRads", this.drivePitchRads.getInternalBuffer().lastEntry().getValue());
+    }
+    if (this.driveRollRads.getInternalBuffer().lastEntry() != null) {
+      Logger.recordOutput(
+          "RobotState/RollRads", this.driveRollRads.getInternalBuffer().lastEntry().getValue());
+    }
     if (this.accelX.getInternalBuffer().lastEntry() != null) {
       Logger.recordOutput(
           "RobotState/AccelX", this.accelX.getInternalBuffer().lastEntry().getValue());
@@ -351,14 +316,192 @@ public class RobotState {
     Logger.recordOutput(
         "RobotState/DesiredChassisSpeedFieldFrame", getLatestDesiredFieldRelativeChassisSpeed());
     Logger.recordOutput(
+        "RobotState/DesiredChassisSpeedRobotFrame", getLatestDesiredRobotRelativeChassisSpeeds());
+    Logger.recordOutput(
         "RobotState/MeasuredChassisSpeedFieldFrame", getLatestMeasuredFieldRelativeChassisSpeeds());
     Logger.recordOutput(
         "RobotState/FusedChassisSpeedFieldFrame", getLatestFusedFieldRelativeChassisSpeed());
+
+    // Add mechanism logging
+    Logger.recordOutput("RobotState/ElevatorHeightMeters", getElevatorHeightMeters());
+    Logger.recordOutput("RobotState/WristRadians", getWristRadians());
+    Logger.recordOutput("RobotState/IntakeRollerRotations", getIntakeRollerRotations());
+    Logger.recordOutput("RobotState/CoralRollerRotations", getClawRollerRotations());
+
+    // Add LED state logging
+    LedState currentLEDState = getLedState();
+    Logger.recordOutput(
+        "RobotState/LEDState",
+        String.format(
+            "R:%d G:%d B:%d", currentLEDState.red, currentLEDState.green, currentLEDState.blue));
   }
 
-  Pose3d ampPose3d = new Pose3d();
-  Pose3d climberPose3d = new Pose3d();
-  Pose3d hoodPose3d = new Pose3d();
-  Pose3d shooterPose3d = new Pose3d();
-  Pose3d turretPose3d = new Pose3d();
+  private final AtomicReference<Optional<Integer>> exclusiveTag =
+      new AtomicReference<>(Optional.empty());
+
+  private final AtomicReference<Double> elevatorHeightMeters = new AtomicReference<>(0.0);
+  private final AtomicReference<Double> wristRadians = new AtomicReference<>(0.0);
+  private final AtomicReference<Double> clawRollerRotations = new AtomicReference<>(0.0);
+
+  private final AtomicReference<Double> intakeRollerRotations = new AtomicReference<>(0.0);
+  private final AtomicReference<Double> intakeRollerRPS = new AtomicReference<>(0.0);
+  private final AtomicReference<Double> intakePivotRadians = new AtomicReference<>(0.0);
+
+  private final AtomicReference<Double> indexerRotations = new AtomicReference<>(0.0);
+  private final AtomicReference<Double> indexerRPS = new AtomicReference<>(0.0);
+
+  private final AtomicReference<Double> climberPivotRadians = new AtomicReference<>(0.0);
+
+  private final AtomicReference<Double> climberRollerRotations = new AtomicReference<>(0.0);
+
+  private final AtomicReference<Double> clawRollerRPS = new AtomicReference<>(0.0);
+
+  private final AtomicReference<LedState> ledState = new AtomicReference<>(LedState.kBlue);
+
+  public void setClimberRollerRotations(double rotations) {
+    climberRollerRotations.set(rotations);
+  }
+
+  public void setClimberPivotRadians(double radians) {
+    climberPivotRadians.set(radians);
+  }
+
+  public void setIndexerRotations(double rotations) {
+    indexerRotations.set(rotations);
+  }
+
+  public void setIndexerRPS(double rps) {
+    indexerRPS.set(rps);
+  }
+
+  public double getIndexerRotations() {
+    return indexerRotations.get();
+  }
+
+  public double getIndexerRPS() {
+    return indexerRPS.get();
+  }
+
+  public void setIntakePivotRadians(double radians) {
+    intakePivotRadians.set(radians);
+  }
+
+  public double getIntakePivotRadians() {
+    return intakePivotRadians.get();
+  }
+
+  public void setElevatorHeightMeters(double heightMeters) {
+    elevatorHeightMeters.set(heightMeters);
+  }
+
+  public void setWristRadians(double radians) {
+    wristRadians.set(radians);
+  }
+
+  public void setIntakeRollerRotations(double rotations) {
+    intakeRollerRotations.set(rotations);
+  }
+
+  public void setIntakeRollerRPS(double rps) {
+    intakeRollerRPS.set(rps);
+  }
+
+  public void setClawRollerRotations(double rotations) {
+    clawRollerRotations.set(rotations);
+  }
+
+  public double getElevatorHeightMeters() {
+    return elevatorHeightMeters.get();
+  }
+
+  public double getWristRadians() {
+    return wristRadians.get();
+  }
+
+  public double getIntakeRollerRotations() {
+    return intakeRollerRotations.get();
+  }
+
+  public double getIntakeRollerRPS() {
+    return intakeRollerRPS.get();
+  }
+
+  public double getClawRollerRotations() {
+    return clawRollerRotations.get();
+  }
+
+  public double getClimberRollerRotations() {
+    return climberRollerRotations.get();
+  }
+
+  public double getClimberPivotRadians() {
+    return climberPivotRadians.get();
+  }
+
+  public void setClawRollerRPS(double rps) {
+    clawRollerRPS.set(rps);
+  }
+
+  public double getClawRollerRPS() {
+    return clawRollerRPS.get();
+  }
+
+  public void setExclusiveTag(int id) {
+    exclusiveTag.set(Optional.of(id));
+  }
+
+  public void clearExclusiveTag() {
+    exclusiveTag.set(Optional.empty());
+  }
+
+  public Optional<Integer> getExclusiveTag() {
+    return exclusiveTag.get();
+  }
+
+  public void setTrajectoryTargetPose(Pose2d pose) {
+    trajectoryTargetPose = Optional.of(pose);
+  }
+
+  public Optional<Pose2d> getTrajectoryTargetPose() {
+    return trajectoryTargetPose;
+  }
+
+  public void setTrajectoryCurrentPose(Pose2d pose) {
+    trajectoryCurrentPose = Optional.of(pose);
+  }
+
+  public Optional<Pose2d> getTrajectoryCurrentPose() {
+    return trajectoryCurrentPose;
+  }
+
+  public double getDrivePitchRadians() {
+    if (this.drivePitchRads.getInternalBuffer().lastEntry() != null) {
+      return drivePitchRads.getInternalBuffer().lastEntry().getValue();
+    }
+    return 0.0;
+  }
+
+  public double getDriveRollRadians() {
+    if (this.driveRollRads.getInternalBuffer().lastEntry() != null) {
+      return driveRollRads.getInternalBuffer().lastEntry().getValue();
+    }
+    return 0.0;
+  }
+
+  // public void logControllerMode() {
+  //   Logger.recordOutput("Controller Mode", ModalControls.getInstance().getMode().toString());
+  // }
+
+  public static boolean onOpponentSide(boolean isRedAlliance, Pose2d pose) {
+    return (isRedAlliance
+            && pose.getTranslation().getX()
+                < FieldConstants.fieldLength / 2 - Constants.kMidlineBuffer)
+        || (!isRedAlliance
+            && pose.getTranslation().getX()
+                > FieldConstants.fieldLength / 2 + Constants.kMidlineBuffer);
+  }
+
+  public boolean onOpponentSide() {
+    return onOpponentSide(this.isRedAlliance(), this.getLatestFieldToRobot().getValue());
+  }
 }

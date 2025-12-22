@@ -1,4 +1,4 @@
-// Copyright (c) 2024 FRC 254
+// Copyright (c) 2024-2025 FRC 254
 // https://github.com/team254
 //
 // This program is free software; you can redistribute it and/or
@@ -20,12 +20,58 @@ import frc.robot.util.LimelightHelpers;
 import frc.robot.util.MathHelpers;
 import java.nio.ByteBuffer;
 
-public class MegatagPoseEstimate implements StructSerializable {
+/**
+ * Represents a robot pose estimate using multiple AprilTags (Megatag).
+ *
+ * @param fieldToRobot The estimated robot pose on the field
+ * @param timestampSeconds The timestamp when this estimate was captured
+ * @param latency Processing latency in seconds
+ * @param avgTagArea Average area of detected tags
+ * @param quality Quality score of the pose estimate (0-1)
+ * @param fiducialIds IDs of fiducials used for this estimate
+ */
+public record MegatagPoseEstimate(
+    Pose2d fieldToRobot,
+    double timestampSeconds,
+    double latency,
+    double avgTagArea,
+    double quality,
+    int[] fiducialIds)
+    implements StructSerializable {
+
+  public MegatagPoseEstimate {
+    if (fieldToRobot == null) {
+      fieldToRobot = MathHelpers.kPose2dZero;
+    }
+    if (fiducialIds == null) {
+      fiducialIds = new int[0];
+    }
+  }
+
+  /** Converts a Limelight pose estimate to a MegatagPoseEstimate. */
+  public static MegatagPoseEstimate fromLimelight(LimelightHelpers.PoseEstimate poseEstimate) {
+    Pose2d fieldToRobot = poseEstimate.pose;
+    if (fieldToRobot == null) {
+      fieldToRobot = MathHelpers.kPose2dZero;
+    }
+    int[] fiducialIds = new int[poseEstimate.rawFiducials.length];
+    for (int i = 0; i < poseEstimate.rawFiducials.length; i++) {
+      if (poseEstimate.rawFiducials[i] != null) {
+        fiducialIds[i] = poseEstimate.rawFiducials[i].id;
+      }
+    }
+    return new MegatagPoseEstimate(
+        fieldToRobot,
+        poseEstimate.timestampSeconds,
+        poseEstimate.latency,
+        poseEstimate.avgTagArea,
+        fiducialIds.length > 1 ? 1.0 : 1.0 - poseEstimate.rawFiducials[0].ambiguity,
+        fiducialIds);
+  }
+
+  public static final MegatagPoseEstimateStruct struct = new MegatagPoseEstimateStruct();
+
   public static class MegatagPoseEstimateStruct implements Struct<MegatagPoseEstimate> {
-    public Pose2d fieldToCamera = MathHelpers.kPose2dZero;
-    public double timestampSeconds;
-    public double latency;
-    public double avgTagArea;
 
     @Override
     public Class<MegatagPoseEstimate> getTypeClass() {
@@ -33,23 +79,18 @@ public class MegatagPoseEstimate implements StructSerializable {
     }
 
     @Override
-    public String getTypeName() {
-      return "MegatagPoseEstimate";
-    }
-
-    @Override
     public String getTypeString() {
-      return "struct:MegatagPoseEstimate";
+      return "record:MegatagPoseEstimate";
     }
 
     @Override
     public int getSize() {
-      return Pose2d.struct.getSize() + kSizeDouble * 3;
+      return Pose2d.struct.getSize() + 3 * Double.BYTES;
     }
 
     @Override
     public String getSchema() {
-      return "Pose2d fieldToCamera;double timestampSeconds;double latency;double avgTagArea";
+      return "Pose2d fieldToRobot; double timestampSeconds; double latency; double avgTagArea";
     }
 
     @Override
@@ -59,46 +100,28 @@ public class MegatagPoseEstimate implements StructSerializable {
 
     @Override
     public MegatagPoseEstimate unpack(ByteBuffer bb) {
-      MegatagPoseEstimate rv = new MegatagPoseEstimate();
-      rv.fieldToCamera = Pose2d.struct.unpack(bb);
-      rv.timestampSeconds = bb.getDouble();
-      rv.latency = bb.getDouble();
-      rv.avgTagArea = bb.getDouble();
-      rv.fiducialIds = new int[0];
-      return rv;
+      Pose2d fieldToRobot = Pose2d.struct.unpack(bb);
+      double timestampSeconds = bb.getDouble();
+      double latency = bb.getDouble();
+      double avgTagArea = bb.getDouble();
+      double quality = bb.getDouble();
+      int[] fiducialIds = new int[0];
+      return new MegatagPoseEstimate(
+          fieldToRobot, timestampSeconds, latency, avgTagArea, quality, fiducialIds);
     }
 
     @Override
     public void pack(ByteBuffer bb, MegatagPoseEstimate value) {
-      Pose2d.struct.pack(bb, value.fieldToCamera);
-      bb.putDouble(value.timestampSeconds);
-      bb.putDouble(value.latency);
-      bb.putDouble(value.avgTagArea);
-    }
-  }
-
-  public Pose2d fieldToCamera = MathHelpers.kPose2dZero;
-  public double timestampSeconds;
-  public double latency;
-  public double avgTagArea;
-  public int[] fiducialIds;
-
-  public MegatagPoseEstimate() {}
-
-  public static MegatagPoseEstimate fromLimelight(LimelightHelpers.PoseEstimate poseEstimate) {
-    MegatagPoseEstimate rv = new MegatagPoseEstimate();
-    rv.fieldToCamera = poseEstimate.pose;
-    if (rv.fieldToCamera == null) rv.fieldToCamera = MathHelpers.kPose2dZero;
-    rv.timestampSeconds = poseEstimate.timestampSeconds;
-    rv.latency = poseEstimate.latency;
-    rv.avgTagArea = poseEstimate.avgTagArea;
-    rv.fiducialIds = new int[poseEstimate.rawFiducials.length];
-    for (int i = 0; i < rv.fiducialIds.length; ++i) {
-      rv.fiducialIds[i] = poseEstimate.rawFiducials[i].id;
+      Pose2d.struct.pack(bb, value.fieldToRobot());
+      bb.putDouble(value.timestampSeconds());
+      bb.putDouble(value.latency());
+      bb.putDouble(value.avgTagArea());
+      bb.putDouble(value.quality());
     }
 
-    return rv;
+    @Override
+    public String getTypeName() {
+      return "MegatagPoseEstimate";
+    }
   }
-
-  public static final MegatagPoseEstimateStruct struct = new MegatagPoseEstimateStruct();
 }

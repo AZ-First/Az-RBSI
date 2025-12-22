@@ -1,4 +1,4 @@
-// Copyright (c) 2024 FRC 254
+// Copyright (c) 2024-2025 FRC 254
 // https://github.com/team254
 //
 // This program is free software; you can redistribute it and/or
@@ -13,34 +13,30 @@
 
 package frc.robot.subsystems.vision.FRC254;
 
-import org.littletonrobotics.junction.AutoLog;
+import edu.wpi.first.math.geometry.Pose3d;
 
+/** Interface for vision system hardware abstraction. */
 public interface VisionIO {
 
-  @AutoLog
+  /** Container for all vision input data. */
   class VisionIOInputs {
-    public boolean turretCameraSeesTarget;
+    /** Input data from a single camera. */
+    public static class CameraInputs {
+      public boolean seesTarget;
+      public FiducialObservation[] fiducialObservations;
+      public MegatagPoseEstimate megatagPoseEstimate;
+      public MegatagPoseEstimate megatag2PoseEstimate;
+      public int megatag2Count;
+      public int megatagCount;
+      public Pose3d pose3d;
+      public double[] standardDeviations =
+          new double[12]; // [MT1x, MT1y, MT1z, MT1roll, MT1pitch, MT1Yaw, MT2x,
+      // MT2y, MT2z, MT2roll, MT2pitch, MT2yaw]
+    }
 
-    public boolean elevatorCameraSeesTarget;
-
-    public FiducialObservation[] turretCameraFiducialObservations;
-
-    public FiducialObservation[] elevatorCameraFiducialObservations;
-
-    public MegatagPoseEstimate turretCameraMegatagPoseEstimate;
-
-    public int turretCameraMegatagCount;
-
-    public MegatagPoseEstimate elevatorCameraMegatagPoseEstimate;
-
-    public int elevatorCameraMegatagCount;
-
-    public MegatagPoseEstimate turretCameraMegatag2PoseEstimate;
-
-    public MegatagPoseEstimate elevatorCameraMegatag2PoseEstimate;
+    public CameraInputs cameraA = new CameraInputs();
+    public CameraInputs cameraB = new CameraInputs();
   }
 
   void readInputs(VisionIOInputs inputs);
-
-  void pollNetworkTables();
 }
