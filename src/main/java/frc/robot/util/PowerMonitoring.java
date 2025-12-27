@@ -19,17 +19,16 @@ import frc.robot.Constants.CANandPowerPorts;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
-import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each
  * port and the sum total currents are compared with limits defined in the ``Constants.java`` file,
  * and subsystem total currents are also computed based on the power ports listed in
  * ``RobotContainer.java``.
- * @param <LoggedPowerDistribution>
  */
-public class PowerMonitoring<LoggedPowerDistribution> extends VirtualSubsystem {
+public class PowerMonitoring extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
 
