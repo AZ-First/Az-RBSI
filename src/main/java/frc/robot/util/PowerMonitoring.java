@@ -20,7 +20,7 @@ import frc.robot.Constants.PowerConstants;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.inputs.LoggedPowerDistribution;
+import org.littletonrobotics.junction.LoggedPowerDistribution;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each

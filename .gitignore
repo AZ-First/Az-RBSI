@@ -109,7 +109,6 @@ Temporary Items
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-*.code-workspace
 
 ### Windows ###
 # Windows thumbnail cache files
@@ -171,7 +170,7 @@ out/
 
 # Simulation GUI and other tools window save file
 networktables.json
-simgui*.json
+simgui.json
 *-window.json
 
 # Simulation data log directory
@@ -184,8 +183,5 @@ ctre_sim/
 /.cache
 compile_commands.json
 
-# Version file
-src/main/java/frc/robot/BuildConstants.java
-
-# Do not push changes to the wpilib_preferences,json file
-wpilib_preferences.json
+# Eclipse generated file for annotation processors
+.factorypath
