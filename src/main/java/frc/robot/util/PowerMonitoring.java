@@ -27,8 +27,9 @@ import org.littletonrobotics.junction.LoggedPowerDistribution;
  * port and the sum total currents are compared with limits defined in the ``Constants.java`` file,
  * and subsystem total currents are also computed based on the power ports listed in
  * ``RobotContainer.java``.
+ * @param <LoggedPowerDistribution>
  */
-public class PowerMonitoring extends VirtualSubsystem {
+public class PowerMonitoring<LoggedPowerDistribution> extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
 
