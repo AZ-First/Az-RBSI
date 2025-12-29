@@ -48,8 +48,8 @@ import frc.robot.util.Alert.AlertType;
 import frc.robot.util.GetJoystickValue;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
-import frc.robot.util.PowerMonitoring;
 import frc.robot.util.RBSIEnum;
+import frc.robot.util.RBSIPowerMonitor;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
@@ -67,10 +67,12 @@ public class RobotContainer {
   private final Drive m_drivebase;
 
   private final Flywheel m_flywheel;
+  // ... Add additional subsystems here (e.g., elevator, arm, etc.)
+
   // These are "Virtual Subsystems" that report information but have no motors
   private final Accelerometer m_accel;
+  private final RBSIPowerMonitor m_power;
   private final Vision m_vision;
-  private final PowerMonitoring m_power;
 
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
@@ -143,10 +145,10 @@ public class RobotContainer {
         break;
     }
 
-    // In addition to the initial battery capacity from the Dashbaord, ``PowerMonitoring`` takes all
-    // the non-drivebase subsystems for which you wish to have power monitoring; DO NOT include
-    // ``m_drivebase``, as that is automatically monitored.
-    m_power = new PowerMonitoring(batteryCapacity, m_flywheel);
+    // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
+    // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
+    // include ``m_drivebase``, as that is automatically monitored.
+    m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
 
     // Set up the SmartDashboard Auto Chooser based on auto type
     switch (Constants.getAutoType()) {

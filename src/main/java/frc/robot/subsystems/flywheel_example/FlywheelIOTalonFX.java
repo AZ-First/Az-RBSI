@@ -19,6 +19,7 @@ import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
@@ -33,11 +34,11 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private final TalonFX leader =
       new TalonFX(
           CANandPowerPorts.FLYWHEEL_LEADER.getDeviceNumber(),
-          CANandPowerPorts.FLYWHEEL_LEADER.getBus());
+          CANandPowerPorts.FLYWHEEL_LEADER.getCANBus());
   private final TalonFX follower =
       new TalonFX(
           CANandPowerPorts.FLYWHEEL_FOLLOWER.getDeviceNumber(),
-          CANandPowerPorts.FLYWHEEL_FOLLOWER.getBus());
+          CANandPowerPorts.FLYWHEEL_FOLLOWER.getCANBus());
   // IMPORTANT: Include here all devices listed above that are part of this mechanism!
   public final int[] powerPorts = {
     CANandPowerPorts.FLYWHEEL_LEADER.getPowerPort(),
@@ -61,8 +62,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
         };
     leader.getConfigurator().apply(config);
     follower.getConfigurator().apply(config);
-    // If follower rotates in the opposite direction, set "OpposeMasterDirection" to true
-    follower.setControl(new Follower(leader.getDeviceID(), false));
+    // If follower rotates in the opposite direction, set "MotorAlignmentValue" to Opposed
+    follower.setControl(new Follower(leader.getDeviceID(), MotorAlignmentValue.Aligned));
 
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0, leaderPosition, leaderVelocity, leaderAppliedVolts, leaderCurrent, followerCurrent);

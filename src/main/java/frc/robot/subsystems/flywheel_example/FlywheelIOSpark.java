@@ -64,9 +64,9 @@ public class FlywheelIOSpark implements FlywheelIO {
     leaderConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pidf(
-            0.0, 0.0,
-            0.0, 0.0);
+        .pid(0.0, 0.0, 0.0)
+        .feedForward
+        .kV(0.0);
     leaderConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
@@ -101,7 +101,7 @@ public class FlywheelIOSpark implements FlywheelIO {
 
   @Override
   public void setVelocity(double velocityRadPerSec, double ffVolts) {
-    pid.setReference(
+    pid.setSetpoint(
         Units.radiansPerSecondToRotationsPerMinute(velocityRadPerSec) * kFlywheelGearRatio,
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,

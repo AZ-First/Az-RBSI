@@ -160,9 +160,9 @@ public class ModuleIOBlended implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    driveTalon = new TalonFX(constants.DriveMotorId, SwerveConstants.kCANbusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, kCANBus);
     turnSpark = new SparkMax(constants.SteerMotorId, MotorType.kBrushless);
-    cancoder = new CANcoder(constants.EncoderId, SwerveConstants.kCANbusName);
+    cancoder = new CANcoder(constants.EncoderId, kCANBus);
 
     turnController = turnSpark.getClosedLoopController();
 
@@ -198,11 +198,12 @@ public class ModuleIOBlended implements ModuleIO {
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
-        .pidf(
+        .pid(
             AutoConstants.kPPsteerPID.kP,
             AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD,
-            0.0);
+            AutoConstants.kPPsteerPID.kD)
+        .feedForward
+        .kV(0.0);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
@@ -333,7 +334,7 @@ public class ModuleIOBlended implements ModuleIO {
             rotation.plus(Rotation2d.fromRotations(constants.EncoderOffset)).getRadians(),
             turnPIDMinInput,
             turnPIDMaxInput);
-    turnController.setReference(setpoint, ControlType.kPosition);
+    turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 
   private SwerveModuleConstantsFactory<

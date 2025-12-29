@@ -143,7 +143,7 @@ public class Robot extends LoggedRobot {
         m_autoCommandPathPlanner = m_robotContainer.getAutonomousCommandPathPlanner();
         // schedule the autonomous command
         if (m_autoCommandPathPlanner != null) {
-          m_autoCommandPathPlanner.schedule();
+          CommandScheduler.getInstance().schedule(m_autoCommandPathPlanner);
         }
         break;
       case CHOREO:

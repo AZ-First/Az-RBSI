@@ -128,11 +128,12 @@ public class ModuleIOSpark implements ModuleIO {
     driveConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pidf(
+        .pid(
             AutoConstants.kPPdrivePID.kP,
             AutoConstants.kPPdrivePID.kI,
-            AutoConstants.kPPdrivePID.kD,
-            0.0);
+            AutoConstants.kPPdrivePID.kD)
+        .feedForward
+        .kV(0.0);
     driveConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
@@ -168,11 +169,12 @@ public class ModuleIOSpark implements ModuleIO {
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
-        .pidf(
+        .pid(
             AutoConstants.kPPsteerPID.kP,
             AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD,
-            0.0);
+            AutoConstants.kPPsteerPID.kD)
+        .feedForward
+        .kV(0.0);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
@@ -253,7 +255,7 @@ public class ModuleIOSpark implements ModuleIO {
     double ffVolts =
         SwerveConstants.kDriveFrictionVoltage * Math.signum(velocityRadPerSec)
             + driveKv * velocityRadPerSec;
-    driveController.setReference(
+    driveController.setSetpoint(
         velocityRadPerSec,
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
@@ -266,6 +268,6 @@ public class ModuleIOSpark implements ModuleIO {
     double setpoint =
         MathUtil.inputModulus(
             rotation.plus(zeroRotation).getRadians(), turnPIDMinInput, turnPIDMaxInput);
-    turnController.setReference(setpoint, ControlType.kPosition);
+    turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 }

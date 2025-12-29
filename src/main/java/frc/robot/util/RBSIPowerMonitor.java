@@ -19,7 +19,6 @@ import frc.robot.Constants.CANandPowerPorts;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
-import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -33,8 +32,9 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private final RBSISubsystem[] subsystems;
 
   // Get the AdvantageKit conduit for pulling PDM information
-  @SuppressWarnings("unused")
-  private LoggedPowerDistribution loggedPowerDistribution = LoggedPowerDistribution.getInstance();
+  // @SuppressWarnings("unused")
+  // private LoggedPowerDistribution loggedPowerDistribution =
+  // LoggedPowerDistribution.getInstance();
 
   private ConduitApi conduit = ConduitApi.getInstance();
 

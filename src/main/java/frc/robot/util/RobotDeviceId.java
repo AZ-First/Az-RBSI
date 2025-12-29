@@ -9,6 +9,8 @@
 
 package frc.robot.util;
 
+import com.ctre.phoenix6.CANBus;
+
 /**
  * Class for wrapping Robot / CAN devices with a name and functionality. Included here are both the
  * CAN ID for devices and the port on the Power Distribution Module for power monitoring and
@@ -38,6 +40,11 @@ public class RobotDeviceId {
   /** Get the CAN bus name for a named device */
   public String getBus() {
     return m_CANBus;
+  }
+
+  /** Get the CTRE CANBus object for a named device */
+  public CANBus getCANBus() {
+    return new CANBus(m_CANBus);
   }
 
   /** Get the Power Port for a named device */

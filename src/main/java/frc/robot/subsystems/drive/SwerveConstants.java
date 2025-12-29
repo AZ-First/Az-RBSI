@@ -29,6 +29,7 @@ public class SwerveConstants {
   public static final double kWheelRadiusInches;
   public static final double kWheelRadiusMeters;
   public static final String kCANbusName;
+  public static final CANBus kCANBus;
   public static final int kPigeonId;
   public static final double kSteerInertia;
   public static final double kDriveInertia;
@@ -110,6 +111,7 @@ public class SwerveConstants {
         kWheelRadiusMeters = TunerConstants.FrontLeft.WheelRadius;
         kWheelRadiusInches = Units.metersToInches(kWheelRadiusMeters);
         kCANbusName = TunerConstants.DrivetrainConstants.CANBusName;
+        kCANBus = new CANBus(TunerConstants.DrivetrainConstants.CANBusName);
         kPigeonId = TunerConstants.DrivetrainConstants.Pigeon2Id;
         kSteerInertia = TunerConstants.FrontLeft.SteerInertia;
         kDriveInertia = TunerConstants.FrontLeft.DriveInertia;
@@ -195,6 +197,7 @@ public class SwerveConstants {
         kWheelRadiusInches = YagslConstants.kWheelRadiusInches;
         kWheelRadiusMeters = Units.inchesToMeters(kWheelRadiusInches);
         kCANbusName = YagslConstants.kCANbusName;
+        kCANBus = new CANBus(YagslConstants.kCANbusName);
         kPigeonId = YagslConstants.kPigeonId;
         kSteerInertia = YagslConstants.kSteerInertia;
         kDriveInertia = YagslConstants.kDriveInertia;

@@ -9,6 +9,7 @@
 
 package frc.robot.subsystems.drive;
 
+import static frc.robot.subsystems.drive.SwerveConstants.*;
 import static frc.robot.util.PhoenixUtil.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
@@ -105,9 +106,9 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    driveTalon = new TalonFX(constants.DriveMotorId, SwerveConstants.kCANbusName);
-    turnTalon = new TalonFX(constants.SteerMotorId, SwerveConstants.kCANbusName);
-    cancoder = new CANcoder(constants.EncoderId, SwerveConstants.kCANbusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, kCANBus);
+    turnTalon = new TalonFX(constants.SteerMotorId, kCANBus);
+    cancoder = new CANcoder(constants.EncoderId, kCANBus);
 
     // Configure drive motor
     var driveConfig = constants.DriveMotorInitialConfigs;
