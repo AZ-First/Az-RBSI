@@ -1,0 +1,47 @@
+name: "Ensure Dependabot Labels Exist"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/dependabot.yml'
+  workflow_dispatch:
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write  # Needed to create labels via API
+    steps:
+      - name: Create labels for Dependabot PRs
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const labels = [
+              { name: "github_actions", color: "BFFFD1", description: "Updates to GitHub Actions workflows" },
+              { name: "gradle dependencies", color: "02303A", description: "Gradle dependency updates" },
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                });
+                core.info(`✅ Label '${label.name}' already exists.`);
+              } catch (error) {
+                if (error.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description,
+                  });
+                  core.info(`🎨 Created label '${label.name}'.`);
+                } else {
+                  throw error;
+                }
+              }
+            }
