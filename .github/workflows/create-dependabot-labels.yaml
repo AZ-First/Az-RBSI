@@ -14,11 +14,7 @@ jobs:
       issues: write  # Needed to create labels via API
     steps:
       - name: Create labels for Dependabot PRs
-<<<<<<< HEAD
         uses: actions/github-script@v8
-=======
-        uses: actions/github-script@v7
->>>>>>> ec71cef (New template-syncing Action)
         with:
           script: |
             const labels = [
