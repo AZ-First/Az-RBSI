@@ -1,0 +1,101 @@
+name: Admin branch orchestration
+
+on:
+  create:
+
+  push:
+    branches:
+      - "main"
+
+  schedule:
+    - cron: "0 3 * * 1"   # Weekly, Monday 03:00 UTC
+
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - admin
+  pull_request_review:
+    types:
+      - submitted
+  check_suite:
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  admin-orchestrator:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ------------------------------------------------------------
+      # Detect default branch
+      # ------------------------------------------------------------
+      - name: Detect default branch
+        id: default
+        run: |
+          DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
+          echo "branch=$DEFAULT_BRANCH" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------
+      # Ensure admin branch exists
+      # ------------------------------------------------------------
+      - name: Ensure admin branch exists
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/admin; then
+            echo "admin branch already exists"
+          else
+            git checkout "${{ steps.default.outputs.branch }}"
+            git checkout -b admin
+            git push origin admin
+          fi
+
+      # ------------------------------------------------------------
+      # Periodically rebase admin onto default (true rebase)
+      # ------------------------------------------------------------
+      - name: Rebase admin onto default
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin
+          git checkout admin
+
+          # Rebase admin commits on top of default branch
+          git rebase origin/${{ steps.default.outputs.branch }}
+
+          # Push updated admin branch
+          git push --force-with-lease origin admin
+
+      # ------------------------------------------------------------
+      # Guardrail: warn if non-Dependabot PR targets admin
+      # (no hard failure without branch protection)
+      # ------------------------------------------------------------
+      - name: Warn on non-Dependabot PRs
+        if: github.event_name == 'pull_request'
+        run: |
+          if [[ "${{ github.actor }}" != "dependabot[bot]" ]]; then
+            echo "::warning::PR to admin opened by non-Dependabot actor"
+          fi
+
+      # ------------------------------------------------------------
+      # Auto-merge Dependabot PRs
+      # ------------------------------------------------------------
+      - name: Auto-merge Dependabot PR
+        if: |
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'dependabot[bot]'
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: squash
