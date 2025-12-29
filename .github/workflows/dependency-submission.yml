@@ -1,5 +1,9 @@
 name: Dependency Submission
 
+# Purpose: Generate and submit Gradle dependency metadata (graph) to Gradle’s services.
+# Trigger: Push to main branch only.
+# Effect: Helps with dependency insight, conflict detection, and build analytics.
+
 on:
   push:
     branches: [ 'main' ]
