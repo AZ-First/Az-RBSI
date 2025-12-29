@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -64,9 +64,14 @@ jobs:
 
       - name: Record template origin file
         run: |
-          echo "Template: ${{ steps.template.outputs.template_repo }}" > TEMPLATE_ORIGIN.txt
-          echo "Template Branch: ${{ steps.template.outputs.template_branch }}" >> TEMPLATE_ORIGIN.txt
-          echo "Template Commit: ${{ steps.template.outputs.template_commit }}" >> TEMPLATE_ORIGIN.txt
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          {
+            echo "Template: ${{ steps.template.outputs.template_repo }}"
+            echo "Template Branch: ${{ steps.template.outputs.template_branch }}"
+            echo "Template Commit: ${{ steps.template.outputs.template_commit }}"
+            echo "Recorded At (UTC): $timestamp"
+          } > TEMPLATE_ORIGIN.txt
+
           echo "Recorded template origin:"
           cat TEMPLATE_ORIGIN.txt
 
