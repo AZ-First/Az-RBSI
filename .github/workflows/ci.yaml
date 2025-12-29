@@ -5,9 +5,13 @@ on:
   pull_request:
 
 jobs:
+  # ------------------------------------------------------------
+  # Main build job
+  # ------------------------------------------------------------
   build:
     runs-on: ubuntu-latest
     container: wpilib/roborio-cross-ubuntu:2024-22.04
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request == null }}
 
     steps:
       - name: Checkout repository
@@ -22,19 +26,26 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      # ------------------------------------------------------------
-      # Always build (all branches, all PRs)
-      # ------------------------------------------------------------
       - name: Build robot code
-        run: ./gradlew build
+        run: ./gradlew build --no-daemon --parallel --build-cache
 
-      # ------------------------------------------------------------
-      # Spotless only on main/develop
-      # ------------------------------------------------------------
-      - name: Run Spotless checks
-        if: |
-          github.ref == 'refs/heads/main' ||
-          github.ref == 'refs/heads/develop' ||
-          github.base_ref == 'main' ||
-          github.base_ref == 'develop'
-        run: ./gradlew spotlessCheck
+  # ------------------------------------------------------------
+  # Spotless job (separate for branch protection)
+  # ------------------------------------------------------------
+  spotless:
+    runs-on: ubuntu-latest
+    container: wpilib/roborio-cross-ubuntu:2024-22.04
+    # Only run for PRs or pushes targeting main/develop
+    if: github.base_ref == 'main' || github.base_ref == 'develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run Spotless check
+        run: ./gradlew spotlessCheck --no-daemon --parallel --build-cache
