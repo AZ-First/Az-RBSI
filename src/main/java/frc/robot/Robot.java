@@ -78,6 +78,9 @@ public class Robot extends LoggedRobot {
         break;
     }
 
+    // Add pointer to LoggedPowerDitrubution here!!!
+    // LoggedPowerDistribution.getInstance(50, ModuleType.kRev); // Example: PDH on CAN ID 50
+
     // Start AdvantageKit logger
     Logger.start();
 
