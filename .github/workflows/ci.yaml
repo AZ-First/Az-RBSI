@@ -24,7 +24,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Build robot code
         run: ./gradlew build --no-daemon --parallel --build-cache
@@ -45,7 +45,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Run Spotless check
         run: ./gradlew spotlessCheck --no-daemon --parallel --build-cache
