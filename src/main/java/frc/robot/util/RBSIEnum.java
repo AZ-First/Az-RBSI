@@ -28,6 +28,7 @@ public class RBSIEnum {
 
   /** Enumerate the supported autonomous path planning types */
   public static enum AutoType {
+    MANUAL, // Manual commands only
     PATHPLANNER, // PathPlanner (https://pathplanner.dev/home.html)
     CHOREO // Choreo (https://sleipnirgroup.github.io/Choreo/)
   }
