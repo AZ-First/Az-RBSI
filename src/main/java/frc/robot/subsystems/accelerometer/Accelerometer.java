@@ -1,15 +1,9 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.subsystems.accelerometer;
 
@@ -43,8 +37,8 @@ public class Accelerometer extends VirtualSubsystem {
   // Define the 3D vectors needed to hold values
   private Translation3d rioAccVector;
   private Translation3d imuAccVector;
-  private Translation3d prevRioAccel = new Translation3d();
-  private Translation3d prevImuAccel = new Translation3d();
+  private Translation3d prevRioAccel = Translation3d.kZero;
+  private Translation3d prevImuAccel = Translation3d.kZero;
   private Translation3d rioJerkVector;
   private Translation3d imuJerkVector;
 
@@ -109,7 +103,7 @@ public class Accelerometer extends VirtualSubsystem {
               navXAccelerometer.getWorldLinearAccelY(),
               navXAccelerometer.getWorldLinearAccelZ());
     } else {
-      imuAccVector = new Translation3d();
+      imuAccVector = Translation3d.kZero;
     }
     imuAccVector =
         imuAccVector.rotateBy(new Rotation3d(0., 0., kIMUOrientation.getRadians())).times(9.81);

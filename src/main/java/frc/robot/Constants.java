@@ -1,15 +1,9 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 //
 // Copyright (c) FIRST and other WPILib contributors.
 // Open Source Software; you can modify and/or share it under the terms of
@@ -31,6 +25,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.Constants.AprilTagConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
@@ -73,7 +68,7 @@ public final class Constants {
   //       via GitHub issues.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
   private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
-  private static AutoType autoType = AutoType.PATHPLANNER; // PATHPLANNER, CHOREO
+  private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
   private static VisionType visionType = VisionType.NONE; // PHOTON, LIMELIGHT, NONE
 
   /** Enumerate the robot types (name your robots here) */
@@ -107,7 +102,7 @@ public final class Constants {
   public static final boolean tuningMode = false;
 
   /** Physical Constants for Robot Operation ******************************* */
-  public static final class PhysicalConstants {
+  public static final class RobotPhysicalConstants {
 
     public static final double kRobotMassKg = Units.lbsToKilograms(100.);
     public static final Matter kChassis =
@@ -122,6 +117,10 @@ public final class Constants {
 
   /** Power Distribution Constants ********************************** */
   public static final class PowerConstants {
+
+    // Power Distribution Module Configuration
+    public static final PowerDistribution.ModuleType kPDMType = PowerDistribution.ModuleType.kRev;
+    public static final int kPDMCANid = 0;
 
     // Current Limits
     public static final double kTotalMaxCurrent = 120.;
@@ -248,12 +247,12 @@ public final class Constants {
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(
-            PhysicalConstants.kRobotMassKg,
-            PhysicalConstants.kRobotMOI,
+            RobotPhysicalConstants.kRobotMassKg,
+            RobotPhysicalConstants.kRobotMOI,
             new ModuleConfig(
                 SwerveConstants.kWheelRadiusMeters,
                 DrivebaseConstants.kMaxLinearSpeed,
-                PhysicalConstants.kWheelCOF,
+                RobotPhysicalConstants.kWheelCOF,
                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
                 SwerveConstants.kDriveSlipCurrent,
                 1),

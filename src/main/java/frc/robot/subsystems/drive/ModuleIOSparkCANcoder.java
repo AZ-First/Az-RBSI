@@ -1,17 +1,11 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2021-2025 FRC 6328
+// Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.subsystems.drive;
 
@@ -23,6 +17,7 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.ClosedLoopSlot;
+import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkBase.PersistMode;
@@ -32,7 +27,6 @@ import com.revrobotics.spark.SparkClosedLoopController.ArbFFUnits;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -87,7 +81,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
           case 1 -> new Rotation2d(kFREncoderOffset);
           case 2 -> new Rotation2d(kBLEncoderOffset);
           case 3 -> new Rotation2d(kBREncoderOffset);
-          default -> new Rotation2d();
+          default -> Rotation2d.kZero;
         };
     driveSpark =
         new SparkFlex(
@@ -135,7 +129,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
               case 3 -> kBREncoderId;
               default -> 0;
             },
-            kCANbusName);
+            kCANBus);
     driveController = driveSpark.getClosedLoopController();
     turnController = turnSpark.getClosedLoopController();
 
@@ -154,11 +148,12 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     driveConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pidf(
+        .pid(
             AutoConstants.kPPdrivePID.kP,
             AutoConstants.kPPdrivePID.kI,
-            AutoConstants.kPPdrivePID.kD,
-            0.0);
+            AutoConstants.kPPdrivePID.kD)
+        .feedForward
+        .kV(0.0);
     driveConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
@@ -194,11 +189,12 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
-        .pidf(
+        .pid(
             AutoConstants.kPPsteerPID.kP,
             AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD,
-            0.0);
+            AutoConstants.kPPsteerPID.kD)
+        .feedForward
+        .kV(0.0);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
@@ -286,7 +282,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     double ffVolts =
         SwerveConstants.kDriveFrictionVoltage * Math.signum(velocityRadPerSec)
             + driveKv * velocityRadPerSec;
-    driveController.setReference(
+    driveController.setSetpoint(
         velocityRadPerSec,
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
@@ -299,6 +295,6 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     double setpoint =
         MathUtil.inputModulus(
             rotation.plus(zeroRotation).getRadians(), turnPIDMinInput, turnPIDMaxInput);
-    turnController.setReference(setpoint, ControlType.kPosition);
+    turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 }
