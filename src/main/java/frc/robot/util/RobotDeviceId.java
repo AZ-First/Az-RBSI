@@ -1,19 +1,15 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2024 FRC 254
 // https://github.com/team254
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.util;
+
+import com.ctre.phoenix6.CANBus;
 
 /**
  * Class for wrapping Robot / CAN devices with a name and functionality. Included here are both the
@@ -44,6 +40,11 @@ public class RobotDeviceId {
   /** Get the CAN bus name for a named device */
   public String getBus() {
     return m_CANBus;
+  }
+
+  /** Get the CTRE CANBus object for a named device */
+  public CANBus getCANBus() {
+    return new CANBus(m_CANBus);
   }
 
   /** Get the Power Port for a named device */

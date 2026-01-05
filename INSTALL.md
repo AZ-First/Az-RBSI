@@ -2,19 +2,19 @@
 
 The Az-RBSI is available as a [Template Repository](
 https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)
-for teams to use for creating their own 2025 FRC robot code.  These instructions
+for teams to use for creating their own 2026 FRC robot code.  These instructions
 assume that [you](
 https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github)
 and/or [your team](
 https://docs.github.com/en/get-started/learning-about-github/types-of-github-accounts#organization-accounts)
-already have a GitHub account where you will store your 2025 FRC robot code.
+already have a GitHub account where you will store your 2026 FRC robot code.
 
-### Creating a 2025 FRC project from the Az-RBSI Template
+### Creating a 2026 FRC project from the Az-RBSI Template
 
 From the [Az-RBSI GiuHub page](https://github.com/AZ-First/Az-RBSI/), click the "Use this template" button in the upper right corner of the page.
 
 In the page that opens, select the Owner (most likely your team's account) and
-Repository name (*e.g.*, "FRC-2025" or "Reefscape Robot Code" or whatever your team's naming convention
+Repository name (*e.g.*, "FRC-2026" or "REBUILT Robot Code" or whatever your team's naming convention
 is) into which the create the new robot project.  Optionally, include a
 description of the repository for your reference.  Select "public" or "private"
 repository based on the usual practices of your team.
@@ -26,20 +26,20 @@ recommended to **not** select the "Include all branches" checkbox.
 
 ### Software Requirements
 
-The Az-RBSI requires the [2025 WPILib Installer](
+The Az-RBSI requires the [2026 WPILib Installer](
 https://github.com/wpilibsuite/allwpilib/releases) (VSCode and associated
-tools), 2025 firmware installed on all hardware (motors, encoders, power
-distribution, etc.), the [2025 NI FRC Game Tools](
+tools), 2026 firmware installed on all hardware (motors, encoders, power
+distribution, etc.), the [2026 NI FRC Game Tools](
 https://www.ni.com/en/support/downloads/drivers/download.frc-game-tools.html)
-(Driver Station and associated tools), and the [2025 CTRE Phoenix Tuner X](
+(Driver Station and associated tools), and the [2026 CTRE Phoenix Tuner X](
 https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html).  Take a
 moment to update all software and firmware before attempting to load your new
 robot project.
 
 Please note that you need these _minimum_ versions of the following components:
 
-* WPILib `2025.1.1`
-* RoboRIO image `FRC_roboRIO_2025_v2.0`
+* WPILib ` v2026.1.1-beta-1`
+* RoboRIO image `FRC_roboRIO_2026_v2.0`
 
 --------
 
@@ -123,7 +123,7 @@ repository](https://github.com/AZ-First/Az-RBSI).
 
 ### Robot Development
 
-As you program your robot for the 2025 (Reefscape) game, you will likely be
+As you program your robot for the 2026 (REBUILT) game, you will likely be
 adding new subsystems and mechanisms to control and the commands to go with
 them.  Add new subsystems in the `subsystems` directory within
 `src/main/java/frc/robot` -- you will find an example flywheel already included

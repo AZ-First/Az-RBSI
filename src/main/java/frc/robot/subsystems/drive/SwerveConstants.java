@@ -1,15 +1,9 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.subsystems.drive;
 
@@ -35,6 +29,7 @@ public class SwerveConstants {
   public static final double kWheelRadiusInches;
   public static final double kWheelRadiusMeters;
   public static final String kCANbusName;
+  public static final CANBus kCANBus;
   public static final int kPigeonId;
   public static final double kSteerInertia;
   public static final double kDriveInertia;
@@ -116,6 +111,7 @@ public class SwerveConstants {
         kWheelRadiusMeters = TunerConstants.FrontLeft.WheelRadius;
         kWheelRadiusInches = Units.metersToInches(kWheelRadiusMeters);
         kCANbusName = TunerConstants.DrivetrainConstants.CANBusName;
+        kCANBus = new CANBus(TunerConstants.DrivetrainConstants.CANBusName);
         kPigeonId = TunerConstants.DrivetrainConstants.Pigeon2Id;
         kSteerInertia = TunerConstants.FrontLeft.SteerInertia;
         kDriveInertia = TunerConstants.FrontLeft.DriveInertia;
@@ -201,6 +197,7 @@ public class SwerveConstants {
         kWheelRadiusInches = YagslConstants.kWheelRadiusInches;
         kWheelRadiusMeters = Units.inchesToMeters(kWheelRadiusInches);
         kCANbusName = YagslConstants.kCANbusName;
+        kCANBus = new CANBus(YagslConstants.kCANbusName);
         kPigeonId = YagslConstants.kPigeonId;
         kSteerInertia = YagslConstants.kSteerInertia;
         kDriveInertia = YagslConstants.kDriveInertia;

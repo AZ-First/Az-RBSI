@@ -64,7 +64,8 @@
     "javax.smartcardio.*",
     "edu.wpi.first.math.proto.*",
     "edu.wpi.first.math.**.proto.*",
-    "edu.wpi.first.math.**.struct.*"
+    "edu.wpi.first.math.**.struct.*",
+    null
   ],
   "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
   "[json]": {
@@ -72,5 +73,6 @@
   },
   "[java]": {
     "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle"
-  }
+  },
+  "java.dependency.enableDependencyCheckup": false
 }

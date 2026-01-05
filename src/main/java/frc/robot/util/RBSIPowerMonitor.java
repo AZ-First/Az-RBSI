@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -20,7 +20,6 @@ import frc.robot.Constants.PowerConstants;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.inputs.LoggedPowerDistribution;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each
@@ -28,13 +27,14 @@ import org.littletonrobotics.junction.inputs.LoggedPowerDistribution;
  * and subsystem total currents are also computed based on the power ports listed in
  * ``RobotContainer.java``.
  */
-public class PowerMonitoring extends VirtualSubsystem {
+public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
 
   // Get the AdvantageKit conduit for pulling PDM information
-  @SuppressWarnings("unused")
-  private LoggedPowerDistribution loggedPowerDistribution = LoggedPowerDistribution.getInstance();
+  // @SuppressWarnings("unused")
+  // private LoggedPowerDistribution loggedPowerDistribution =
+  // LoggedPowerDistribution.getInstance();
 
   private ConduitApi conduit = ConduitApi.getInstance();
 
@@ -67,7 +67,7 @@ public class PowerMonitoring extends VirtualSubsystem {
   };
 
   // Class method definition, including inputs of optional subsystems
-  public PowerMonitoring(LoggedTunableNumber batteryCapacity, RBSISubsystem... subsystems) {
+  public RBSIPowerMonitor(LoggedTunableNumber batteryCapacity, RBSISubsystem... subsystems) {
     this.batteryCapacity = batteryCapacity;
     this.subsystems = subsystems;
   }

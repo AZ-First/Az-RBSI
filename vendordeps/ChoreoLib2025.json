@@ -3,7 +3,7 @@
   "name": "ChoreoLib",
   "version": "2025.0.3",
   "uuid": "b5e23f0a-dac9-4ad2-8dd6-02767c520aca",
-  "frcYear": "2025",
+  "frcYear": "2026beta",
   "mavenUrls": [
     "https://lib.choreo.autos/dep",
     "https://repo1.maven.org/maven2"
