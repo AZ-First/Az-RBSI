@@ -150,11 +150,16 @@ public final class Constants {
     public static final double kQuasiTimeout = 5.0; // seconds
     public static final double kDynamicTimeout = 3.0; // seconds
 
-    // Not sure what to do with these, yet...
-    // kDriveF = 0.13;
-    // kDriveIZ = 0.0;
-    // kSteerF = 0.0;
-    // kSteerIZ = 0.0;
+    // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
+    // NOTE: Default values from 6328's 2025 Public Code
+    public static final double kDriveP = 40.0;
+    public static final double kDriveD = 0.03;
+    public static final double kDriveV = 0.83;
+    public static final double kDriveS = 0.21;
+    public static final double kDriveT =
+        SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
+    public static final double kSteerP = 400.0;
+    public static final double kSteerD = 20.0;
   }
 
   /** Example Flywheel Mechanism Constants ********************************* */
