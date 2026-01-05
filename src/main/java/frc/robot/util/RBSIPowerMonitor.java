@@ -15,8 +15,8 @@ package frc.robot.util;
 
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.Constants.CANandPowerPorts;
 import frc.robot.Constants.PowerConstants;
+import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
@@ -54,16 +54,16 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
 
   // DRIVE and STEER motor power ports
   private final int[] m_drivePowerPorts = {
-    CANandPowerPorts.FL_DRIVE.getPowerPort(),
-    CANandPowerPorts.FR_DRIVE.getPowerPort(),
-    CANandPowerPorts.BL_DRIVE.getPowerPort(),
-    CANandPowerPorts.BR_DRIVE.getPowerPort()
+    RobotDevices.FL_DRIVE.getPowerPort(),
+    RobotDevices.FR_DRIVE.getPowerPort(),
+    RobotDevices.BL_DRIVE.getPowerPort(),
+    RobotDevices.BR_DRIVE.getPowerPort()
   };
   private final int[] m_steerPowerPorts = {
-    CANandPowerPorts.FL_ROTATION.getPowerPort(),
-    CANandPowerPorts.FR_ROTATION.getPowerPort(),
-    CANandPowerPorts.BL_ROTATION.getPowerPort(),
-    CANandPowerPorts.BR_ROTATION.getPowerPort()
+    RobotDevices.FL_ROTATION.getPowerPort(),
+    RobotDevices.FR_ROTATION.getPowerPort(),
+    RobotDevices.BL_ROTATION.getPowerPort(),
+    RobotDevices.BR_ROTATION.getPowerPort()
   };
 
   // Class method definition, including inputs of optional subsystems

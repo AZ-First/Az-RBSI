@@ -7,7 +7,7 @@
 
 package frc.robot.subsystems.accelerometer;
 
-import static frc.robot.Constants.AccelerometerConstants.*;
+import static frc.robot.Constants.RobotConstants.*;
 
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.studica.frc.AHRS;

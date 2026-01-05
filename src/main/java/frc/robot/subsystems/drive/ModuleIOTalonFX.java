@@ -10,7 +10,6 @@
 package frc.robot.subsystems.drive;
 
 import static frc.robot.subsystems.drive.SwerveConstants.*;
-import static frc.robot.util.PhoenixUtil.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
@@ -40,6 +39,7 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import frc.robot.Constants;
 import frc.robot.generated.TunerConstants;
+import frc.robot.util.PhoenixUtil;
 import java.util.Queue;
 
 /**
@@ -162,9 +162,9 @@ public class ModuleIOTalonFX implements ModuleIO {
     }
 
     // Finally, apply the configs to the motor controllers
-    tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
-    tryUntilOk(5, () -> driveTalon.setPosition(0.0, 0.25));
-    tryUntilOk(5, () -> turnTalon.getConfigurator().apply(turnConfig, 0.25));
+    PhoenixUtil.tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
+    PhoenixUtil.tryUntilOk(5, () -> driveTalon.setPosition(0.0, 0.25));
+    PhoenixUtil.tryUntilOk(5, () -> turnTalon.getConfigurator().apply(turnConfig, 0.25));
     cancoder.getConfigurator().apply(cancoderConfig);
 
     // Create timestamp queue

@@ -113,8 +113,8 @@ public class RobotContainer {
               case LIMELIGHT ->
                   new Vision(
                       m_drivebase::addVisionMeasurement,
-                      new VisionIOLimelight(camera0Name, m_drivebase::getRotation),
-                      new VisionIOLimelight(camera1Name, m_drivebase::getRotation));
+                      new VisionIOLimelight(camera0Name, m_drivebase::getHeading),
+                      new VisionIOLimelight(camera1Name, m_drivebase::getHeading));
               case NONE ->
                   new Vision(
                       m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});

@@ -98,8 +98,9 @@ public final class Constants {
 
   public static final boolean tuningMode = false;
 
+  /************************************************************************* */
   /** Physical Constants for Robot Operation ******************************* */
-  public static final class RobotPhysicalConstants {
+  public static final class RobotConstants {
 
     public static final Mass kRobotMass = Kilograms.of(100.);
     public static final Matter kChassis =
@@ -110,9 +111,28 @@ public final class Constants {
 
     // Wheel coefficient of friction
     public static final double kWheelCOF = 1.2;
+
+    // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
+    // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
+    //   frame.
+    // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
+    public static final Rotation2d kRioOrientation =
+        switch (getRobot()) {
+          case COMPBOT -> Rotation2d.fromDegrees(0.);
+          case DEVBOT -> Rotation2d.fromDegrees(0.);
+          default -> Rotation2d.fromDegrees(0.);
+        };
+    // IMU can be one of Pigeon2 or NavX
+    public static final Rotation2d kIMUOrientation =
+        switch (getRobot()) {
+          case COMPBOT -> Rotation2d.fromDegrees(0.);
+          case DEVBOT -> Rotation2d.fromDegrees(0.);
+          default -> Rotation2d.fromDegrees(0.);
+        };
   }
 
-  /** Power Distribution Constants ********************************** */
+  /************************************************************************* */
+  /** Power Distribution Constants ***************************************** */
   public static final class PowerConstants {
 
     // Power Distribution Module Configuration
@@ -125,6 +145,7 @@ public final class Constants {
     public static final double kSmallPortMaxCurrent = 20.;
   }
 
+  /************************************************************************* */
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
 
@@ -140,6 +161,12 @@ public final class Constants {
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
     public static final double kMaxLinearAccel = 4.0; // m/s/s
     public static final double kMaxAngularAccel = Degrees.of(720).in(Radians);
+
+    // For Profiled PID Motion, these are the rotational PID Constants:
+    // TODO: Need tuning!
+    public static final double kPTheta = 5.0;
+    public static final double kITheta = 0.0;
+    public static final double kDTheta = 0.0;
 
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTime = 10; // seconds
@@ -162,6 +189,7 @@ public final class Constants {
     public static final double kSteerD = 20.0;
   }
 
+  /************************************************************************* */
   /** Example Flywheel Mechanism Constants ********************************* */
   public static final class FlywheelConstants {
 
@@ -186,30 +214,13 @@ public final class Constants {
     public static final PIDConstants pidSim = new PIDConstants(1.0, 0.0, 0.0);
   }
 
-  /** Place other Mechanism Constant Classes Here ************************** */
+  /************************************************************************* */
+  /** Place Other Mechanism Constant Classes Here ************************** */
+  // public static class Mechanism1Constants {}
+  // public static class Mechanism2Constants {}
+  // ...
 
-  /** Accelerometer Constants ********************************************** */
-  public static class AccelerometerConstants {
-
-    // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
-    // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
-    //   frame.
-    // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
-    public static final Rotation2d kRioOrientation =
-        switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
-        };
-    // IMU can be one of Pigeon2 or NavX
-    public static final Rotation2d kIMUOrientation =
-        switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
-        };
-  }
-
+  /************************************************************************* */
   /** Operator Constants *************************************************** */
   public static class OperatorConstants {
 
@@ -241,9 +252,11 @@ public final class Constants {
     public static final int[] MULTI_TOGGLE = {4, 5};
   }
 
-  /** Autonomous Action Constants ****************************************** */
+  /************************************************************************* */
+  /** (Semi-)Autonomous Action Constants *********************************** */
   public static final class AutoConstants {
 
+    // ********** PATHPLANNER CONSTANTS *******************
     // Drive and Turn PID constants used for PathPlanner
     public static final PIDConstants kPPdrivePID = new PIDConstants(5.0, 0.0, 0.0);
     public static final PIDConstants kPPsteerPID = new PIDConstants(5.0, 0.0, 0.0);
@@ -251,12 +264,12 @@ public final class Constants {
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(
-            RobotPhysicalConstants.kRobotMass.in(Kilograms),
-            RobotPhysicalConstants.kRobotMOI,
+            RobotConstants.kRobotMass.in(Kilograms),
+            RobotConstants.kRobotMOI,
             new ModuleConfig(
                 SwerveConstants.kWheelRadiusMeters,
                 DrivebaseConstants.kMaxLinearSpeed,
-                RobotPhysicalConstants.kWheelCOF,
+                RobotConstants.kWheelCOF,
                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
                 SwerveConstants.kDriveSlipCurrent,
                 1),
@@ -265,32 +278,31 @@ public final class Constants {
     // Alternatively, we can build this from the PathPlanner GUI:
     // public static final RobotConfig kPathPlannerConfig = RobotConfig.fromGUISettings();
 
-    // Drive and Turn PID constants used for Chorep
+    // ********** CHOREO CONSTANTS ************************
+    // Drive and Turn PID constants used for ChoreO
     public static final PIDConstants kChoreoDrivePID = new PIDConstants(10.0, 0.0, 0.0);
     public static final PIDConstants kChoreoSteerPID = new PIDConstants(7.5, 0.0, 0.0);
-  }
 
-  /** Autopilot Constants ************************************************** */
-  public static class AutpoilotConstants {
-
+    // ********** AUTOPILOT CONSTANTS *********************
     // Autopilot (Drive to Pose in Teleop) Constraints
     // see https://therekrab.github.io/autopilot/usage.html
 
     // Acceleration and Jerk to be applied
-    private static final APConstraints kConstraints =
+    private static final APConstraints kAPConstraints =
         new APConstraints().withAcceleration(5.0).withJerk(2.0);
 
     // Motion profile for drive to pose
-    private static final APProfile kProfile =
-        new APProfile(kConstraints)
+    private static final APProfile kAPProfile =
+        new APProfile(kAPConstraints)
             .withErrorXY(Centimeters.of(2))
             .withErrorTheta(Degrees.of(0.5))
             .withBeelineRadius(Centimeters.of(8));
 
     // Autopilot object to be used for specific commands
-    public static final Autopilot kAutopilot = new Autopilot(kProfile);
+    public static final Autopilot kAutopilot = new Autopilot(kAPProfile);
   }
 
+  /************************************************************************* */
   /** Vision Constants (Assuming PhotonVision) ***************************** */
   public static class VisionConstants {
 
@@ -317,6 +329,7 @@ public final class Constants {
         Double.POSITIVE_INFINITY; // No rotation data available
   }
 
+  /************************************************************************* */
   /** Vision Camera Posses ************************************************* */
   public static class Cameras {
     // Camera names, must match names configured on coprocessor
@@ -340,8 +353,9 @@ public final class Constants {
         };
   }
 
-  /** List of Device CAN and Power Distribution Circuit IDs **************** */
-  public static class CANandPowerPorts {
+  /************************************************************************* */
+  /** List of Robot Device CAN and Power Distribution Circuit IDs ********** */
+  public static class RobotDevices {
 
     /* DRIVETRAIN CAN DEVICE IDS */
     // Input the correct Power Distribution Module port for each motor!!!!
@@ -397,6 +411,7 @@ public final class Constants {
     // public static final int INTAKE_SERVO = 0;
   }
 
+  /************************************************************************* */
   /** Deploy Directoy Location Constants *********************************** */
   public static final class DeployConstants {
     public static final String apriltagDir = "apriltags";

@@ -18,11 +18,14 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PathPlannerLogging;
+import com.therekrab.autopilot.APTarget;
+import com.therekrab.autopilot.Autopilot.APResult;
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -34,6 +37,8 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -73,6 +78,14 @@ public class Drive extends SubsystemBase {
       };
   private SwerveDrivePoseEstimator m_PoseEstimator =
       new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, Pose2d.kZero);
+
+  private final ProfiledPIDController thetaController =
+      new ProfiledPIDController(
+          DrivebaseConstants.kPTheta,
+          DrivebaseConstants.kITheta,
+          DrivebaseConstants.kDTheta,
+          new TrapezoidProfile.Constraints(
+              DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
 
   // Constructor
   public Drive() {
@@ -304,6 +317,50 @@ public class Drive extends SubsystemBase {
     }
   }
 
+  // /** Drive Forward Command Factory **************************************** */
+  //   // Example factory method
+  //   public Command driveForwardCommand(double distance) {
+  //       // This method composes and returns a complex command object
+  //       return Commands.sequence(
+  //           // Use internal methods and sensor data to define the command logic
+  //           new DriveToPositionCommand(this, distance),
+  //           new StopDrivetrainCommand(this)
+  //       );
+  //   }
+
+  /** AutoPilot Command Factory ******************************************** */
+  public Command alignCommand(APTarget target) {
+    return this.run(
+            () -> {
+              ChassisSpeeds robotRelativeSpeeds = this.getChassisSpeeds();
+              Pose2d pose = this.getPose();
+
+              // Compute the needed output control transform to move the robot to the desired
+              // position
+              APResult output =
+                  AutoConstants.kAutopilot.calculate(pose, robotRelativeSpeeds, target);
+
+              // Output is field relative
+              ChassisSpeeds speeds =
+                  new ChassisSpeeds(
+                      output.vx(), output.vy(), this.calculateOmega(output.targetAngle()));
+              this.runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(speeds, this.getHeading()));
+            })
+        .until(() -> AutoConstants.kAutopilot.atTarget(this.getPose(), target))
+        .finallyDo(this::stop);
+  }
+
+  /**
+   * Reset the heading ProfiledPIDController
+   *
+   * <p>TODO: CALL THIS FUNCTION!!!
+   *
+   * <p>Call this when: (A) robot is disabled, (B) gyro is zeroed, (C) autonomous starts
+   */
+  public void resetHeadingController() {
+    thetaController.reset(getHeading().getRadians());
+  }
+
   /** SysId Characterization Routines ************************************** */
 
   /** Returns a command to run a quasistatic test in the specified direction. */
@@ -352,8 +409,19 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the current odometry rotation. */
-  public Rotation2d getRotation() {
+  public Rotation2d getHeading() {
     return getPose().getRotation();
+  }
+
+  /**
+   * Returns the computed omega (rad/s) based on the ProfiledPID controller
+   *
+   * @param targetHeading Desired target heading
+   * @return Omega (rad/s) for input into ChassisSpeeds
+   */
+  public AngularVelocity calculateOmega(Rotation2d targetHeading) {
+    return RadiansPerSecond.of(
+        thetaController.calculate(getHeading().getRadians(), targetHeading.getRadians()));
   }
 
   /** Returns an array of module translations. */

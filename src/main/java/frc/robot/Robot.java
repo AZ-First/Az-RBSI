@@ -84,8 +84,9 @@ public class Robot extends LoggedRobot {
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
 
-    // Add pointer to LoggedPowerDitrubution here!!!
-    // LoggedPowerDistribution.getInstance(50, ModuleType.kRev); // Example: PDH on CAN ID 50
+    // TODO: Uncomment this upon next release of AKit
+    // LoggedPowerDistribution.getInstance(
+    //     PowerConstants.kPDMCANid, PowerConstants.kPDMType);
 
     // Start AdvantageKit logger
     Logger.start();
