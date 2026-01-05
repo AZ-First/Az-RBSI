@@ -24,7 +24,7 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants.AprilTagConstants;
+import frc.robot.AprilTagLayout;
 import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
 import java.util.LinkedList;
 import java.util.List;
@@ -90,7 +90,7 @@ public class Vision extends SubsystemBase {
 
       // Add tag poses
       for (int tagId : inputs[cameraIndex].tagIds) {
-        var tagPose = AprilTagConstants.aprilTagLayout.getTagPose(tagId);
+        var tagPose = AprilTagLayout.aprilTagLayout.getTagPose(tagId);
         if (tagPose.isPresent()) {
           tagPoses.add(tagPose.get());
         }
@@ -108,9 +108,9 @@ public class Vision extends SubsystemBase {
 
                 // Must be within the field boundaries
                 || observation.pose().getX() < 0.0
-                || observation.pose().getX() > AprilTagConstants.aprilTagLayout.getFieldLength()
+                || observation.pose().getX() > AprilTagLayout.aprilTagLayout.getFieldLength()
                 || observation.pose().getY() < 0.0
-                || observation.pose().getY() > AprilTagConstants.aprilTagLayout.getFieldWidth();
+                || observation.pose().getY() > AprilTagLayout.aprilTagLayout.getFieldWidth();
 
         // Add pose to log
         robotPoses.add(observation.pose());

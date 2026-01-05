@@ -11,23 +11,23 @@
 
 package frc.robot;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static edu.wpi.first.units.Units.*;
+
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
+import com.therekrab.autopilot.APConstraints;
+import com.therekrab.autopilot.APProfile;
+import com.therekrab.autopilot.Autopilot;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.units.measure.*;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
-import frc.robot.Constants.AprilTagConstants.AprilTagLayoutType;
+import frc.robot.AprilTagLayout.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
@@ -39,9 +39,6 @@ import frc.robot.util.RBSIEnum.MotorIdleMode;
 import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
-import java.io.IOException;
-import java.nio.file.Path;
-import lombok.Getter;
 import swervelib.math.Matter;
 
 /**
@@ -104,9 +101,9 @@ public final class Constants {
   /** Physical Constants for Robot Operation ******************************* */
   public static final class RobotPhysicalConstants {
 
-    public static final double kRobotMassKg = Units.lbsToKilograms(100.);
+    public static final Mass kRobotMass = Kilograms.of(100.);
     public static final Matter kChassis =
-        new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), kRobotMassKg);
+        new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kRobotMass.in(Kilograms));
     // Robot moment of intertial; this can be obtained from a CAD model of your drivetrain. Usually,
     // this is between 3 and 8 kg*m^2.
     public static final double kRobotMOI = 6.8;
@@ -134,7 +131,7 @@ public final class Constants {
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed
     // of YOUR ROBOT, and replace the estimate here with your measured value!
-    public static final double kMaxLinearSpeed = Units.feetToMeters(18);
+    public static final double kMaxLinearSpeed = Feet.of(18).in(Meters);
 
     // Set 3/4 of a rotation per second as the max angular velocity (radians/sec)
     public static final double kMaxAngularSpeed = 1.5 * Math.PI;
@@ -142,7 +139,7 @@ public final class Constants {
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
     public static final double kMaxLinearAccel = 4.0; // m/s/s
-    public static final double kMaxAngularAccel = Units.degreesToRadians(720);
+    public static final double kMaxAngularAccel = Degrees.of(720).in(Radians);
 
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTime = 10; // seconds
@@ -183,6 +180,8 @@ public final class Constants {
     // Feedback (PID) constants
     public static final PIDConstants pidSim = new PIDConstants(1.0, 0.0, 0.0);
   }
+
+  /** Place other Mechanism Constant Classes Here ************************** */
 
   /** Accelerometer Constants ********************************************** */
   public static class AccelerometerConstants {
@@ -247,7 +246,7 @@ public final class Constants {
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(
-            RobotPhysicalConstants.kRobotMassKg,
+            RobotPhysicalConstants.kRobotMass.in(Kilograms),
             RobotPhysicalConstants.kRobotMOI,
             new ModuleConfig(
                 SwerveConstants.kWheelRadiusMeters,
@@ -264,6 +263,27 @@ public final class Constants {
     // Drive and Turn PID constants used for Chorep
     public static final PIDConstants kChoreoDrivePID = new PIDConstants(10.0, 0.0, 0.0);
     public static final PIDConstants kChoreoSteerPID = new PIDConstants(7.5, 0.0, 0.0);
+  }
+
+  /** Autopilot Constants ************************************************** */
+  public static class AutpoilotConstants {
+
+    // Autopilot (Drive to Pose in Teleop) Constraints
+    // see https://therekrab.github.io/autopilot/usage.html
+
+    // Acceleration and Jerk to be applied
+    private static final APConstraints kConstraints =
+        new APConstraints().withAcceleration(5.0).withJerk(2.0);
+
+    // Motion profile for drive to pose
+    private static final APProfile kProfile =
+        new APProfile(kConstraints)
+            .withErrorXY(Centimeters.of(2))
+            .withErrorTheta(Degrees.of(0.5))
+            .withBeelineRadius(Centimeters.of(8));
+
+    // Autopilot object to be used for specific commands
+    public static final Autopilot kAutopilot = new Autopilot(kProfile);
   }
 
   /** Vision Constants (Assuming PhotonVision) ***************************** */
@@ -372,55 +392,6 @@ public final class Constants {
     // public static final int INTAKE_SERVO = 0;
   }
 
-  /** AprilTag Field Layout ************************************************ */
-  /* SEASON SPECIFIC! -- This section is for 2025 (Reefscape) */
-  public static class AprilTagConstants {
-
-    public static final double aprilTagWidth = Units.inchesToMeters(6.50);
-    public static final String aprilTagFamily = "36h11";
-    public static final AprilTagLayoutType defaultAprilTagType = AprilTagLayoutType.OFFICIAL;
-
-    public static final AprilTagFieldLayout aprilTagLayout =
-        AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
-
-    @Getter
-    public enum AprilTagLayoutType {
-      OFFICIAL("2025-official");
-
-      // SPEAKERS_ONLY("2024-speakers"),
-      // AMPS_ONLY("2024-amps"),
-      // WPI("2024-wpi");
-
-      private AprilTagLayoutType(String name) {
-        if (Constants.disableHAL) {
-          layout = null;
-        } else {
-          try {
-            layout =
-                new AprilTagFieldLayout(
-                    Path.of(
-                        Filesystem.getDeployDirectory().getPath(), "apriltags", name + ".json"));
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        }
-        if (layout == null) {
-          layoutString = "";
-        } else {
-          try {
-            layoutString = new ObjectMapper().writeValueAsString(layout);
-          } catch (JsonProcessingException e) {
-            throw new RuntimeException(
-                "Failed to serialize AprilTag layout JSON " + toString() + "for PhotonVision");
-          }
-        }
-      }
-
-      private final AprilTagFieldLayout layout;
-      private final String layoutString;
-    }
-  }
-
   /** Deploy Directoy Location Constants *********************************** */
   public static final class DeployConstants {
     public static final String apriltagDir = "apriltags";
@@ -471,6 +442,6 @@ public final class Constants {
 
   /** Get the current AprilTag layout type. */
   public static AprilTagLayoutType getAprilTagLayoutType() {
-    return AprilTagConstants.defaultAprilTagType;
+    return AprilTagLayout.defaultAprilTagType;
   }
 }
