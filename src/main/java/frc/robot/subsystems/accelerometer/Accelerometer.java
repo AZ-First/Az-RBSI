@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.robot.util.VirtualSubsystem;
 import frc.robot.util.YagslConstants;
+import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -42,8 +43,13 @@ public class Accelerometer extends VirtualSubsystem {
   private Translation3d rioJerkVector;
   private Translation3d imuJerkVector;
 
-  /** Constructor method, takes the IMU accelerometer instance */
-  public Accelerometer(Object accelerometer) {
+  /** Constructor method, takes the IMU accelerometer supplier */
+  public Accelerometer(Supplier<Object> accelerometerSupplier) {
+
+    // Get the object from the supplier
+    Object accelerometer = accelerometerSupplier.get();
+
+    // Case out the type of accelerometer
     switch (Constants.getSwerveType()) {
       case PHOENIX6:
         // CTRE Tuner X drive bases must use a Pigeon2

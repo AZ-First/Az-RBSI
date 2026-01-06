@@ -13,7 +13,6 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
 import static frc.robot.Constants.Cameras.*;
 
 import choreo.auto.AutoChooser;
@@ -123,7 +122,7 @@ public class RobotContainer {
                       m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
               default -> null;
             };
-        m_accel = new Accelerometer(m_drivebase.getGyro());
+        m_accel = new Accelerometer(m_drivebase::getGyro);
         break;
 
       case SIM:
@@ -135,7 +134,7 @@ public class RobotContainer {
                 m_drivebase::addVisionMeasurement,
                 new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_drivebase::getPose),
                 new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, m_drivebase::getPose));
-        m_accel = new Accelerometer(m_drivebase.getGyro());
+        m_accel = new Accelerometer(m_drivebase::getGyro);
         break;
 
       default:
@@ -144,7 +143,7 @@ public class RobotContainer {
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =
             new Vision(m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
-        m_accel = new Accelerometer(m_drivebase.getGyro());
+        m_accel = new Accelerometer(m_drivebase::getGyro);
         break;
     }
 
@@ -155,6 +154,15 @@ public class RobotContainer {
 
     // Set up the SmartDashboard Auto Chooser based on auto type
     switch (Constants.getAutoType()) {
+      case MANUAL:
+        // This is where the "Leave Auto" will go
+        // ...
+        // Set the others to null
+        autoChooserPathPlanner = null;
+        autoChooserChoreo = null;
+        autoFactoryChoreo = null;
+        break;
+
       case PATHPLANNER:
         autoChooserPathPlanner =
             new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
