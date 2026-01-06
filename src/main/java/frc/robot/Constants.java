@@ -437,6 +437,8 @@ public final class Constants {
     if (!disableHAL && RobotBase.isReal() && robotType == RobotType.SIMBOT) {
       new Alert(
               "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
+      new Alert(
+              "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
           .set(true);
       robotType = RobotType.COMPBOT;
     }
