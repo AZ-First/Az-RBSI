@@ -13,6 +13,7 @@
 
 package frc.robot;
 
+import static edu.wpi.first.units.Units.*;
 import static frc.robot.Constants.Cameras.*;
 
 import choreo.auto.AutoChooser;
@@ -20,8 +21,10 @@ import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.therekrab.autopilot.APTarget;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -267,6 +270,32 @@ public class RobotContainer {
                 () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
                 m_flywheel::stop,
                 m_flywheel));
+
+    // Press LEFT BUMPER --> Drive to a pose 2 feet closer to the BLUE ALLIANCE wall
+    driverController
+        .leftBumper()
+        .whileTrue(
+            Commands.startEnd(
+                () -> {
+                  // New pose 2 feet closer to BLUE ALLIANCE wall
+                  Pose2d pose =
+                      m_drivebase
+                          .getPose()
+                          .transformBy(new Transform2d(-0.6096, 0.0, Rotation2d.kZero));
+                  // Alternatively, you could define a pose in a separate module and call it here.
+                  //
+                  // Example from 2025 Reefscape:
+                  // -----
+                  // pose = ReefTarget.getInstance().getReefFaceCoralPose("right");
+
+                  // Convert to an AutoPilot Target
+                  APTarget target = new APTarget(pose);
+                  // Call the factory command
+                  m_drivebase.alignCommand(target);
+                },
+                // Stop when command ended
+                m_drivebase::stop,
+                m_drivebase));
   }
 
   /**
