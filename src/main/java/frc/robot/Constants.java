@@ -37,7 +37,6 @@ import frc.robot.AprilTagLayout.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
-import frc.robot.util.Alert.AlertType;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.RBSIEnum.Mode;
@@ -143,12 +142,17 @@ public final class Constants {
 
     // Power Distribution Module Configuration
     public static final PowerDistribution.ModuleType kPDMType = PowerDistribution.ModuleType.kRev;
-    public static final int kPDMCANid = 0;
+    public static final int kPDMCANid = 1;
 
     // Current Limits
     public static final double kTotalMaxCurrent = 120.;
     public static final double kMotorPortMaxCurrent = 40.;
     public static final double kSmallPortMaxCurrent = 20.;
+
+    // Brownout voltage levels
+    public static final double kVoltageWarning = 7.5;
+    public static final double kVoltageLimiting = 7.0;
+    public static final double kVoltageCritical = 6.5;
   }
 
   /************************************************************************* */
@@ -431,7 +435,8 @@ public final class Constants {
   /** Get the current robot */
   public static RobotType getRobot() {
     if (!disableHAL && RobotBase.isReal() && robotType == RobotType.SIMBOT) {
-      new Alert("Invalid robot selected, using competition robot as default.", AlertType.ERROR)
+      new Alert(
+              "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
           .set(true);
       robotType = RobotType.COMPBOT;
     }

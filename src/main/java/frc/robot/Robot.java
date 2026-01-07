@@ -95,8 +95,7 @@ public class Robot extends LoggedRobot {
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
 
     // TODO: Uncomment this upon next release of AKit
-    // LoggedPowerDistribution.getInstance(
-    //     PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+    // LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
 
     // Start AdvantageKit logger
     Logger.start();
