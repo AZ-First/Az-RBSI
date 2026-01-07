@@ -222,14 +222,16 @@ public class RobotContainer {
     GetJoystickValue driveStickY;
     GetJoystickValue driveStickX;
     GetJoystickValue turnStickX;
-    if (OperatorConstants.kDriveLeftTurnRight) {
-      driveStickY = driverController::getLeftY;
-      driveStickX = driverController::getLeftX;
-      turnStickX = driverController::getRightX;
-    } else {
-      driveStickY = driverController::getRightY;
-      driveStickX = driverController::getRightX;
-      turnStickX = driverController::getLeftX;
+    switch (OperatorConstants.kDriveStyle) {
+      case GAMER:
+        driveStickY = driverController::getRightY;
+        driveStickX = driverController::getRightX;
+        turnStickX = driverController::getLeftX;
+        break;
+      default: // Includes case TANK
+        driveStickY = driverController::getLeftY;
+        driveStickX = driverController::getLeftX;
+        turnStickX = driverController::getRightX;
     }
 
     // SET STANDARD DRIVING AS DEFAULT COMMAND FOR THE DRIVEBASE
@@ -311,7 +313,7 @@ public class RobotContainer {
             Commands.startEnd(
                 () -> {
                   m_drivebase.runVelocity(
-                      new ChassisSpeeds(Units.inchesToMeters(0.), Units.inchesToMeters(11), 0.));
+                      new ChassisSpeeds(Units.inchesToMeters(0.), Units.inchesToMeters(11.0), 0.));
                 },
                 // Stop when command ended
                 m_drivebase::stop,

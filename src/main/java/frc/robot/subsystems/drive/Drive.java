@@ -9,7 +9,7 @@
 
 package frc.robot.subsystems.drive;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import choreo.trajectory.SwerveSample;

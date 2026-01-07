@@ -18,6 +18,7 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
+import static frc.robot.util.RBSIEnum.*;
 
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
@@ -30,19 +31,13 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.units.measure.*;
+import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.AprilTagLayout.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
-import frc.robot.util.RBSIEnum.AutoType;
-import frc.robot.util.RBSIEnum.CTREPro;
-import frc.robot.util.RBSIEnum.Mode;
-import frc.robot.util.RBSIEnum.MotorIdleMode;
-import frc.robot.util.RBSIEnum.SwerveType;
-import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
 import swervelib.math.Matter;
 
@@ -238,8 +233,10 @@ public final class Constants {
   public static class OperatorConstants {
 
     // Joystick Functions
-    // Set to TRUE for Drive = Left Stick, Turn = Right Stick; else FALSE
-    public static final boolean kDriveLeftTurnRight = true;
+    // Set to TANK for Drive = Left Stick, Turn = Right Stick;
+    // Set to GAMER for Drive = Right Stick, Turn = Left Stick;
+    // NOTE: Intrepid programmers can turn this into a Dashboard-settable value
+    public static final DriveStyle kDriveStyle = DriveStyle.TANK; // TANK, GAMER
 
     // Joystick Deadbands
     public static final double kDeadband = 0.1;

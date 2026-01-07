@@ -60,4 +60,9 @@ public class RBSIEnum {
     COAST, // Allow the motor to coast when idle
     BRAKE // Hold motor position when idle
   }
+
+  public static enum DriveStyle {
+    TANK, // Left stick = drive, Right stick = turn
+    GAMER, // Right stick = drive, Left stick = turn
+  }
 }

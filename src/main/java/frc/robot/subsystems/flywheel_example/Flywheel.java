@@ -9,7 +9,7 @@
 
 package frc.robot.subsystems.flywheel_example;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.Constants.FlywheelConstants.*;
 
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
