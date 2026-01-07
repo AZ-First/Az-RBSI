@@ -17,8 +17,11 @@
 
 package frc.robot.subsystems.imu;
 
+import static edu.wpi.first.units.Units.*;
+
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.units.measure.AngularVelocity;
 import org.littletonrobotics.junction.AutoLog;
 
 /**
@@ -30,9 +33,12 @@ public interface ImuIO {
   public static class ImuIOInputs {
     public boolean connected = false;
 
+    // Timestamp
+    public long timestampNs = 0;
+
     // Gyro
     public Rotation2d yawPosition = Rotation2d.kZero;
-    public double yawVelocityRadPerSec = 0.0;
+    public AngularVelocity yawVelocityRadPerSec = RadiansPerSecond.of(0.0);
 
     // Linear acceleration in robot frame (m/s^2)
     public Translation3d linearAccel = Translation3d.kZero;

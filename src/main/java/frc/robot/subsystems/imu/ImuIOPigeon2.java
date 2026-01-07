@@ -17,6 +17,8 @@
 
 package frc.robot.subsystems.imu;
 
+import static edu.wpi.first.units.Units.*;
+
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
@@ -39,8 +41,7 @@ public class ImuIOPigeon2 implements ImuIO {
   private final Queue<Double> odomTimestamps;
   private final Queue<Double> odomYaws;
 
-  // Optional: override linear acceleration for simulation/logging
-  private Translation3d linearAccel = null;
+  private Translation3d prevAccel = Translation3d.kZero;
 
   /** Constructor */
   public ImuIOPigeon2() {
@@ -69,8 +70,16 @@ public class ImuIOPigeon2 implements ImuIO {
 
     inputs.connected = BaseStatusSignal.refreshAll(yawSignal, yawRateSignal).equals(StatusCode.OK);
     inputs.yawPosition = Rotation2d.fromDegrees(yawSignal.getValueAsDouble());
-    inputs.yawVelocityRadPerSec = Math.toRadians(yawRateSignal.getValueAsDouble());
-    inputs.linearAccel = linearAccel; // optional: populate from Pigeon acceleration API
+    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateSignal.getValueAsDouble());
+    inputs.linearAccel =
+        new Translation3d(
+            pigeon.getAccelerationX().getValueAsDouble(),
+            pigeon.getAccelerationY().getValueAsDouble(),
+            pigeon.getAccelerationZ().getValueAsDouble());
+    // Compute the jerk and set the new timestamp
+    double timediff = (start - inputs.timestampNs) / 1.0e9;
+    inputs.jerk = inputs.linearAccel.minus(prevAccel).div(timediff);
+    inputs.timestampNs = start;
 
     // Update odometry history
     double now = System.currentTimeMillis() / 1000.0;
@@ -97,11 +106,6 @@ public class ImuIOPigeon2 implements ImuIO {
   @Override
   public void zeroYaw(Rotation2d yaw) {
     pigeon.setYaw(yaw.getDegrees());
-  }
-
-  /** Optional: simulate linear acceleration for logging */
-  public void setLinearAccel(Translation3d accelMps2) {
-    linearAccel = accelMps2;
   }
 
   // /**

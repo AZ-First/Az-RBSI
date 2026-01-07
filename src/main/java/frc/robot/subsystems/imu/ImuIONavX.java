@@ -17,11 +17,12 @@
 
 package frc.robot.subsystems.imu;
 
+import static edu.wpi.first.units.Units.*;
+
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.subsystems.drive.PhoenixOdometryThread;
@@ -38,8 +39,7 @@ public class ImuIONavX implements ImuIO {
   private final Queue<Double> yawPositionQueue;
   private final Queue<Double> yawTimestampQueue;
 
-  // Optional: override linear acceleration for simulation/logging
-  private Translation3d linearAccel = null;
+  private Translation3d prevAccel = Translation3d.kZero;
 
   public ImuIONavX() {
     // Initialize NavX over SPI
@@ -64,8 +64,14 @@ public class ImuIONavX implements ImuIO {
 
     inputs.connected = navx.isConnected();
     inputs.yawPosition = Rotation2d.fromDegrees(-navx.getAngle());
-    inputs.yawVelocityRadPerSec = Units.degreesToRadians(-navx.getRawGyroZ());
-    inputs.linearAccel = linearAccel; // optional: populate from Pigeon acceleration API
+    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(-navx.getRawGyroZ());
+    inputs.linearAccel =
+        new Translation3d(
+            navx.getWorldLinearAccelX(), navx.getWorldLinearAccelY(), navx.getWorldLinearAccelZ());
+    // Compute the jerk and set the new timestamp
+    double timediff = (start - inputs.timestampNs) / 1.0e9;
+    inputs.jerk = inputs.linearAccel.minus(prevAccel).div(timediff);
+    inputs.timestampNs = start;
 
     // Update odometry history
     inputs.odometryYawTimestamps = yawTimestampQueue.stream().mapToDouble(d -> d).toArray();
@@ -86,11 +92,6 @@ public class ImuIONavX implements ImuIO {
   public void zeroYaw(Rotation2d yaw) {
     navx.setAngleAdjustment(yaw.getDegrees());
     navx.zeroYaw();
-  }
-
-  /** Optional: simulate linear acceleration for logging */
-  public void setLinearAccel(Translation3d accelMps2) {
-    linearAccel = accelMps2;
   }
 
   // /**

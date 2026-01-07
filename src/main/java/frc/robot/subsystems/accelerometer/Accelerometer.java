@@ -38,7 +38,6 @@ public class Accelerometer extends VirtualSubsystem {
   private final ImuIO.ImuIOInputs imuInputs = new ImuIO.ImuIOInputs();
 
   private Translation3d prevRioAccel = Translation3d.kZero;
-  private Translation3d prevImuAccel = Translation3d.kZero;
 
   public Accelerometer(ImuIO imuIO) {
     this.imuIO = imuIO;
@@ -53,7 +52,7 @@ public class Accelerometer extends VirtualSubsystem {
     Translation3d rioAccVector =
         new Translation3d(rioAccel.getX(), rioAccel.getY(), rioAccel.getZ())
             .rotateBy(new Rotation3d(0., 0., kRioOrientation.getRadians()))
-            .times(9.81);
+            .times(9.81); // convert to m/s²
 
     Translation3d imuAccVector =
         imuInputs
@@ -63,7 +62,8 @@ public class Accelerometer extends VirtualSubsystem {
 
     // --- Compute jerks ---
     Translation3d rioJerk = rioAccVector.minus(prevRioAccel).div(Constants.loopPeriodSecs);
-    Translation3d imuJerk = imuAccVector.minus(prevImuAccel).div(Constants.loopPeriodSecs);
+    Translation3d imuJerk =
+        imuInputs.jerk.rotateBy(new Rotation3d(0.0, 0.0, kIMUOrientation.getRadians()));
 
     // --- Log to AdvantageKit ---
     Logger.recordOutput("Accel/Rio/Accel_mps2", rioAccVector);
@@ -80,6 +80,5 @@ public class Accelerometer extends VirtualSubsystem {
     }
 
     prevRioAccel = rioAccVector;
-    prevImuAccel = imuAccVector;
   }
 }

@@ -17,6 +17,8 @@
 
 package frc.robot.subsystems.imu;
 
+import static edu.wpi.first.units.Units.*;
+
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import java.util.LinkedList;
@@ -43,7 +45,7 @@ public class ImuIOSim implements ImuIO {
     // Populate raw IMU readings
     inputs.connected = true;
     inputs.yawPosition = Rotation2d.fromDegrees(yawDeg);
-    inputs.yawVelocityRadPerSec = Math.toRadians(yawRateDps);
+    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateDps);
     inputs.linearAccel = linearAccel;
 
     // Maintain odometry history for latency/logging
