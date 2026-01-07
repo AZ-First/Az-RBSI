@@ -54,6 +54,7 @@ import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSIEnum;
 import frc.robot.util.RBSIPowerMonitor;
+import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
@@ -285,7 +286,7 @@ public class RobotContainer {
     driverController
         .leftBumper()
         .onTrue(
-            Commands.startEnd(
+            Commands.defer(
                 () -> {
                   // New pose 2 feet closer to BLUE ALLIANCE wall
                   Pose2d pose =
@@ -299,10 +300,9 @@ public class RobotContainer {
                   // --------
                   // pose = ReefPoses.kBluePoleE;
 
-                  AutopilotCommands.runAutopilot(m_drivebase, pose);
+                  return AutopilotCommands.runAutopilot(m_drivebase, pose);
                 },
-                m_drivebase::stop,
-                m_drivebase));
+                Set.of(m_drivebase)));
 
     // Press POV LEFT to nudge the robot left
     driverController

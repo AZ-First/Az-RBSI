@@ -178,10 +178,6 @@ public class AutopilotCommands {
    */
   private static Command autopilotToTarget(Drive drive, APTarget target) {
 
-    Logger.recordOutput("Autopilot/Target", target.getReference());
-    Logger.recordOutput(
-        "Autopilot/falseTarget", AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
-
     // Create PID controller
     ProfiledPIDController angleController =
         new ProfiledPIDController(
@@ -193,39 +189,40 @@ public class AutopilotCommands {
     angleController.enableContinuousInput(-Math.PI, Math.PI);
 
     return Commands.run(
-        () -> {
-          ChassisSpeeds robotRelativeSpeeds = drive.getChassisSpeeds();
-          Pose2d pose = drive.getPose();
+            () -> {
+              ChassisSpeeds robotRelativeSpeeds = drive.getChassisSpeeds();
+              Pose2d pose = drive.getPose();
 
-          Logger.recordOutput("Autopilot/CurrentPose", pose);
-          Logger.recordOutput("Autopilot/FinalPose", target.getReference());
-          Logger.recordOutput("Autopilot/RobotSpeeds", robotRelativeSpeeds);
+              Logger.recordOutput("Autopilot/CurrentPose", pose);
+              Logger.recordOutput("Autopilot/FinalPose", target.getReference());
+              Logger.recordOutput("Autopilot/RobotSpeeds", robotRelativeSpeeds);
 
-          // Compute the needed output control transform to move the robot to the desired
-          // position
-          APResult output = AutoConstants.kAutopilot.calculate(pose, robotRelativeSpeeds, target);
+              // Compute the needed output control transform to move the robot to the desired
+              // position
+              APResult output =
+                  AutoConstants.kAutopilot.calculate(pose, robotRelativeSpeeds, target);
 
-          Logger.recordOutput("Autopilot/outputVx", output.vx());
-          Logger.recordOutput("Autopilot/outputVy", output.vy());
-          Logger.recordOutput("Autopilot/targetAngle", output.targetAngle());
-          Logger.recordOutput(
-              "Autopilot/atTarget", AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
+              Logger.recordOutput("Autopilot/outputVx", output.vx());
+              Logger.recordOutput("Autopilot/outputVy", output.vy());
+              Logger.recordOutput("Autopilot/targetAngle", output.targetAngle());
+              Logger.recordOutput(
+                  "Autopilot/atTarget", AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
 
-          // Output is field relative
-          ChassisSpeeds speeds =
-              new ChassisSpeeds(
-                  output.vx(),
-                  output.vy(),
-                  RadiansPerSecond.of(
-                      angleController.calculate(
-                          drive.getHeading().getRadians(), output.targetAngle().getRadians())));
+              // Output is field relative
+              ChassisSpeeds speeds =
+                  new ChassisSpeeds(
+                      output.vx(),
+                      output.vy(),
+                      RadiansPerSecond.of(
+                          angleController.calculate(
+                              drive.getHeading().getRadians(), output.targetAngle().getRadians())));
 
-          drive.runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(speeds, drive.getHeading()));
-        },
-        drive);
+              drive.runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(speeds, drive.getHeading()));
+            },
+            drive)
 
-    // // Reset PID controller when command starts
-    // .beforeStarting(() -> angleController.reset(drive.getHeading().getRadians()))
-    // .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
+        // Reset PID controller when command starts
+        .beforeStarting(() -> angleController.reset(drive.getHeading().getRadians()))
+        .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
   }
 }
