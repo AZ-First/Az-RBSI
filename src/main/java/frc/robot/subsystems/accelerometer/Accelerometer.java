@@ -52,13 +52,13 @@ public class Accelerometer extends VirtualSubsystem {
     Translation3d rioAccVector =
         new Translation3d(rioAccel.getX(), rioAccel.getY(), rioAccel.getZ())
             .rotateBy(new Rotation3d(0., 0., kRioOrientation.getRadians()))
-            .times(9.81); // convert to m/s²
+            .times(9.81); // convert to m/s/s
 
     Translation3d imuAccVector =
         imuInputs
             .linearAccel
             .rotateBy(new Rotation3d(0., 0., kIMUOrientation.getRadians()))
-            .times(1.0); // already converted to m/s² in ImuIO
+            .times(9.81); // convert to m/s/s
 
     // --- Compute jerks ---
     Translation3d rioJerk = rioAccVector.minus(prevRioAccel).div(Constants.loopPeriodSecs);

@@ -35,9 +35,9 @@ import java.util.Queue;
 /** IMU IO for CTRE Pigeon2 */
 public class ImuIOPigeon2 implements ImuIO {
 
-  private final Pigeon2 pigeon;
-  private final StatusSignal<Angle> yawSignal;
-  private final StatusSignal<AngularVelocity> yawRateSignal;
+  private final Pigeon2 pigeon = new Pigeon2(SwerveConstants.kPigeonId, SwerveConstants.kCANBus);
+  private final StatusSignal<Angle> yawSignal = pigeon.getYaw();
+  private final StatusSignal<AngularVelocity> yawRateSignal = pigeon.getAngularVelocityZWorld();
   private final Queue<Double> odomTimestamps;
   private final Queue<Double> odomYaws;
 
@@ -45,22 +45,15 @@ public class ImuIOPigeon2 implements ImuIO {
 
   /** Constructor */
   public ImuIOPigeon2() {
-    pigeon = new Pigeon2(SwerveConstants.kPigeonId, SwerveConstants.kCANBus);
     pigeon.getConfigurator().apply(new Pigeon2Configuration());
+    pigeon.getConfigurator().setYaw(0.0);
+    yawSignal.setUpdateFrequency(SwerveConstants.kOdometryFrequency);
+    yawRateSignal.setUpdateFrequency(50.0);
     pigeon.optimizeBusUtilization();
-
-    // Get the Signals
-    this.yawSignal = pigeon.getYaw();
-    this.yawRateSignal = pigeon.getAngularVelocityZWorld();
 
     // Create queues for odometry logging/replay inside the class
     odomTimestamps = PhoenixOdometryThread.getInstance().makeTimestampQueue();
-    odomYaws =
-        PhoenixOdometryThread.getInstance().registerSignal(() -> yawSignal.getValueAsDouble());
-
-    // Configure update rates
-    yawSignal.setUpdateFrequency(250);
-    yawRateSignal.setUpdateFrequency(50);
+    odomYaws = PhoenixOdometryThread.getInstance().registerSignal(pigeon.getYaw());
   }
 
   /** Update inputs for logging and robot code */
@@ -70,28 +63,25 @@ public class ImuIOPigeon2 implements ImuIO {
 
     inputs.connected = BaseStatusSignal.refreshAll(yawSignal, yawRateSignal).equals(StatusCode.OK);
     inputs.yawPosition = Rotation2d.fromDegrees(yawSignal.getValueAsDouble());
-    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateSignal.getValueAsDouble());
+    inputs.yawVelocityRadPerSec = DegreesPerSecond.of(yawRateSignal.getValueAsDouble());
+
     inputs.linearAccel =
         new Translation3d(
             pigeon.getAccelerationX().getValueAsDouble(),
             pigeon.getAccelerationY().getValueAsDouble(),
             pigeon.getAccelerationZ().getValueAsDouble());
+
     // Compute the jerk and set the new timestamp
     double timediff = (start - inputs.timestampNs) / 1.0e9;
     inputs.jerk = inputs.linearAccel.minus(prevAccel).div(timediff);
     inputs.timestampNs = start;
 
-    // Update odometry history
-    double now = System.currentTimeMillis() / 1000.0;
-    odomTimestamps.add(now);
-    odomYaws.add(inputs.yawPosition.getDegrees());
-
-    while (odomTimestamps.size() > 50) odomTimestamps.poll();
-    while (odomYaws.size() > 50) odomYaws.poll();
-
     inputs.odometryYawTimestamps = odomTimestamps.stream().mapToDouble(d -> d).toArray();
     inputs.odometryYawPositions =
-        odomYaws.stream().map(d -> Rotation2d.fromDegrees(d)).toArray(Rotation2d[]::new);
+        odomYaws.stream().map(deg -> Rotation2d.fromDegrees(deg)).toArray(Rotation2d[]::new);
+
+    odomTimestamps.clear();
+    odomYaws.clear();
 
     // Latency in seconds
     long end = System.nanoTime();

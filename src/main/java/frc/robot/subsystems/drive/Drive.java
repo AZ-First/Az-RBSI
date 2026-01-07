@@ -220,6 +220,7 @@ public class Drive extends SubsystemBase {
       if (imuInputs.connected && imuInputs.odometryYawPositions.length > i) {
         rawGyroRotation = imuInputs.odometryYawPositions[i];
       } else {
+        // Use the angle delta from the kinematics and module deltas
         Twist2d twist = kinematics.toTwist2d(moduleDeltas);
         rawGyroRotation = rawGyroRotation.plus(new Rotation2d(twist.dtheta));
       }

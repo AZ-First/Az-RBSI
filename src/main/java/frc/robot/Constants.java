@@ -118,7 +118,7 @@ public final class Constants {
     // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
     public static final Rotation2d kRioOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
+          case COMPBOT -> Rotation2d.fromDegrees(-90.);
           case DEVBOT -> Rotation2d.fromDegrees(0.);
           default -> Rotation2d.fromDegrees(0.);
         };
@@ -435,8 +435,6 @@ public final class Constants {
   /** Get the current robot */
   public static RobotType getRobot() {
     if (!disableHAL && RobotBase.isReal() && robotType == RobotType.SIMBOT) {
-      new Alert(
-              "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
       new Alert(
               "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
           .set(true);
