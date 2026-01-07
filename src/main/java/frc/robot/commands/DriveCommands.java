@@ -161,6 +161,7 @@ public class DriveCommands {
         .beforeStarting(() -> angleController.reset(drive.getHeading().getRadians()));
   }
 
+  /** Utility functions needed by commands in this module ****************** */
   /**
    * Compute the new linear velocity from inputs, including applying deadbands and squaring for
    * smoothness. Also apply the linear velocity Slew Rate Limiter.

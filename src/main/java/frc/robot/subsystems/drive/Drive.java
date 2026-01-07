@@ -18,8 +18,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PathPlannerLogging;
-import com.therekrab.autopilot.APTarget;
-import com.therekrab.autopilot.Autopilot.APResult;
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
@@ -38,7 +36,6 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
-import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -328,28 +325,6 @@ public class Drive extends SubsystemBase {
   //       );
   //   }
 
-  /** AutoPilot Command Factory ******************************************** */
-  public Command alignCommand(APTarget target) {
-    return this.run(
-            () -> {
-              ChassisSpeeds robotRelativeSpeeds = this.getChassisSpeeds();
-              Pose2d pose = this.getPose();
-
-              // Compute the needed output control transform to move the robot to the desired
-              // position
-              APResult output =
-                  AutoConstants.kAutopilot.calculate(pose, robotRelativeSpeeds, target);
-
-              // Output is field relative
-              ChassisSpeeds speeds =
-                  new ChassisSpeeds(
-                      output.vx(), output.vy(), this.calculateOmega(output.targetAngle()));
-              this.runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(speeds, this.getHeading()));
-            })
-        .until(() -> AutoConstants.kAutopilot.atTarget(this.getPose(), target))
-        .finallyDo(this::stop);
-  }
-
   /**
    * Reset the heading ProfiledPIDController
    *
@@ -398,7 +373,7 @@ public class Drive extends SubsystemBase {
 
   /** Returns the measured chassis speeds of the robot. */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
-  private ChassisSpeeds getChassisSpeeds() {
+  public ChassisSpeeds getChassisSpeeds() {
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
@@ -411,17 +386,6 @@ public class Drive extends SubsystemBase {
   /** Returns the current odometry rotation. */
   public Rotation2d getHeading() {
     return getPose().getRotation();
-  }
-
-  /**
-   * Returns the computed omega (rad/s) based on the ProfiledPID controller
-   *
-   * @param targetHeading Desired target heading
-   * @return Omega (rad/s) for input into ChassisSpeeds
-   */
-  public AngularVelocity calculateOmega(Rotation2d targetHeading) {
-    return RadiansPerSecond.of(
-        thetaController.calculate(getHeading().getRadians(), targetHeading.getRadians()));
   }
 
   /** Returns an array of module translations. */

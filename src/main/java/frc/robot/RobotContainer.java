@@ -20,10 +20,11 @@ import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
-import com.therekrab.autopilot.APTarget;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -34,6 +35,7 @@ import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.AprilTagLayout.AprilTagLayoutType;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
 import frc.robot.subsystems.drive.Drive;
@@ -282,24 +284,34 @@ public class RobotContainer {
     // Press LEFT BUMPER --> Drive to a pose 2 feet closer to the BLUE ALLIANCE wall
     driverController
         .leftBumper()
-        .whileTrue(
+        .onTrue(
             Commands.startEnd(
                 () -> {
                   // New pose 2 feet closer to BLUE ALLIANCE wall
                   Pose2d pose =
                       m_drivebase
                           .getPose()
-                          .transformBy(new Transform2d(-0.6096, 0.0, Rotation2d.kZero));
+                          .transformBy(new Transform2d(-10, 0.0, Rotation2d.kZero));
+
                   // Alternatively, you could define a pose in a separate module and call it here.
                   //
                   // Example from 2025 Reefscape:
-                  // -----
-                  // pose = ReefTarget.getInstance().getReefFaceCoralPose("right");
+                  // --------
+                  // pose = ReefPoses.kBluePoleE;
 
-                  // Convert to an AutoPilot Target
-                  APTarget target = new APTarget(pose);
-                  // Call the factory command
-                  m_drivebase.alignCommand(target);
+                  AutopilotCommands.runAutopilot(m_drivebase, pose);
+                },
+                m_drivebase::stop,
+                m_drivebase));
+
+    // Press POV LEFT to nudge the robot left
+    driverController
+        .povLeft()
+        .whileTrue(
+            Commands.startEnd(
+                () -> {
+                  m_drivebase.runVelocity(
+                      new ChassisSpeeds(Units.inchesToMeters(0.), Units.inchesToMeters(11), 0.));
                 },
                 // Stop when command ended
                 m_drivebase::stop,
