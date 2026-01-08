@@ -284,17 +284,18 @@ public class RobotContainer {
                 m_flywheel::stop,
                 m_flywheel));
 
-    // Press LEFT BUMPER --> Drive to a pose 2 feet closer to the BLUE ALLIANCE wall
+    // Press LEFT BUMPER --> Drive to a pose 10 feet closer to the BLUE ALLIANCE wall
     driverController
         .leftBumper()
-        .onTrue(
+        .whileTrue(
             Commands.defer(
                 () -> {
                   // New pose 2 feet closer to BLUE ALLIANCE wall
                   Pose2d pose =
                       m_drivebase
                           .getPose()
-                          .transformBy(new Transform2d(-10, 0.0, Rotation2d.kZero));
+                          .transformBy(
+                              new Transform2d(Units.feetToMeters(-10.0), 0.0, Rotation2d.kZero));
 
                   // Alternatively, you could define a pose in a separate module and call it here.
                   //
