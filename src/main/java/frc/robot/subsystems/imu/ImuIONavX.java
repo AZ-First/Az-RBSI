@@ -67,7 +67,10 @@ public class ImuIONavX implements ImuIO {
     inputs.yawVelocityRadPerSec = RadiansPerSecond.of(-navx.getRawGyroZ());
     inputs.linearAccel =
         new Translation3d(
-            navx.getWorldLinearAccelX(), navx.getWorldLinearAccelY(), navx.getWorldLinearAccelZ());
+                navx.getWorldLinearAccelX(),
+                navx.getWorldLinearAccelY(),
+                navx.getWorldLinearAccelZ())
+            .times(9.81); // Convert to m/s^2
     // Compute the jerk and set the new timestamp
     double timediff = (start - inputs.timestampNs) / 1.0e9;
     inputs.jerk = inputs.linearAccel.minus(prevAccel).div(timediff);

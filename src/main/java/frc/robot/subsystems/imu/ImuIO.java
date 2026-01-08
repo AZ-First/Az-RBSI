@@ -40,7 +40,7 @@ public interface ImuIO {
     public Rotation2d yawPosition = Rotation2d.kZero;
     public AngularVelocity yawVelocityRadPerSec = RadiansPerSecond.of(0.0);
 
-    // Linear acceleration in robot frame (m/s^2)
+    // Linear acceleration and jerk in robot frame (m/s^2;  m/s^3)
     public Translation3d linearAccel = Translation3d.kZero;
     public Translation3d jerk = Translation3d.kZero;
 

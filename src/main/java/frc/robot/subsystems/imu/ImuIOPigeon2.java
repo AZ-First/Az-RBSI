@@ -67,9 +67,10 @@ public class ImuIOPigeon2 implements ImuIO {
 
     inputs.linearAccel =
         new Translation3d(
-            pigeon.getAccelerationX().getValueAsDouble(),
-            pigeon.getAccelerationY().getValueAsDouble(),
-            pigeon.getAccelerationZ().getValueAsDouble());
+                pigeon.getAccelerationX().getValueAsDouble(),
+                pigeon.getAccelerationY().getValueAsDouble(),
+                pigeon.getAccelerationZ().getValueAsDouble())
+            .times(9.81); // Convert to m/s^2
 
     // Compute the jerk and set the new timestamp
     double timediff = (start - inputs.timestampNs) / 1.0e9;
