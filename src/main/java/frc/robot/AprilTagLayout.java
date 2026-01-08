@@ -31,8 +31,6 @@ import lombok.Getter;
 public class AprilTagLayout {
 
   /** AprilTag Field Layout ************************************************ */
-  /* SEASON SPECIFIC! -- This section is for 2025 (Reefscape) */
-
   public static final double aprilTagWidth = Inches.of(6.50).in(Meters);
 
   public static final String aprilTagFamily = "36h11";
@@ -43,7 +41,9 @@ public class AprilTagLayout {
 
   @Getter
   public enum AprilTagLayoutType {
-    OFFICIAL("2025-official");
+    OFFICIAL("2026-official"),
+
+    REEFSCAPE("2025-official");
 
     // SPEAKERS_ONLY("2024-speakers"),
     // AMPS_ONLY("2024-amps"),

@@ -15,16 +15,12 @@ package frc.robot.subsystems.accelerometer;
 
 import static frc.robot.Constants.RobotConstants.*;
 
-import com.ctre.phoenix6.hardware.Pigeon2;
-import com.studica.frc.AHRS;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.BuiltInAccelerometer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
+import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.VirtualSubsystem;
-import frc.robot.util.YagslConstants;
-import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -37,110 +33,52 @@ import org.littletonrobotics.junction.Logger;
  */
 public class Accelerometer extends VirtualSubsystem {
 
-  private final BuiltInAccelerometer rioAccelerometer = new BuiltInAccelerometer();
-  private final Pigeon2 pigeonAccelerometer;
-  private final AHRS navXAccelerometer;
+  private final BuiltInAccelerometer rioAccel = new BuiltInAccelerometer();
+  private final ImuIO imuIO;
+  private final ImuIO.ImuIOInputs imuInputs = new ImuIO.ImuIOInputs();
 
-  // Define the 3D vectors needed to hold values
-  private Translation3d rioAccVector;
-  private Translation3d imuAccVector;
   private Translation3d prevRioAccel = Translation3d.kZero;
-  private Translation3d prevImuAccel = Translation3d.kZero;
-  private Translation3d rioJerkVector;
-  private Translation3d imuJerkVector;
 
-  /** Constructor method, takes the IMU accelerometer supplier */
-  public Accelerometer(Supplier<Object> accelerometerSupplier) {
-
-    // Get the object from the supplier
-    Object accelerometer = accelerometerSupplier.get();
-
-    // Case out the type of accelerometer
-    switch (Constants.getSwerveType()) {
-      case PHOENIX6:
-        // CTRE Tuner X drive bases must use a Pigeon2
-        pigeonAccelerometer = (Pigeon2) accelerometer;
-        navXAccelerometer = null;
-        break;
-
-      case YAGSL:
-        // Logic checking the type of IMU included in the parsed YAGSL:
-        if (YagslConstants.swerveDriveJson.imu.type == "pigeon2") {
-          pigeonAccelerometer = (Pigeon2) accelerometer;
-          navXAccelerometer = null;
-          break;
-        }
-
-        if (YagslConstants.swerveDriveJson.imu.type == "navx"
-            || YagslConstants.swerveDriveJson.imu.type == "navx_spi") {
-          navXAccelerometer = (AHRS) accelerometer;
-          pigeonAccelerometer = null;
-          break;
-        }
-
-      default:
-        // Otherwise kick a message to the console, and set to null
-        System.out.println("WARNING: Cannot initialize IMU's accelerometer for logging!");
-        this.pigeonAccelerometer = null;
-        this.navXAccelerometer = null;
-    }
+  public Accelerometer(ImuIO imuIO) {
+    this.imuIO = imuIO;
   }
 
-  /** Get accelerations, compute jerks, log everything */
+  @Override
   public void periodic() {
+    // --- Update IMU readings ---
+    imuIO.updateInputs(imuInputs);
 
-    // Log the execution time
-    long start = System.nanoTime();
-
-    // Compute the Rio's acceleration, rotated as needed in the XY plane (yaw)
-    // RoboRio provides accelerations in `g`, from -8 to +8; convert to m/s^2
-    rioAccVector =
-        new Translation3d(rioAccelerometer.getX(), rioAccelerometer.getY(), rioAccelerometer.getZ())
+    // --- Apply orientation corrections ---
+    Translation3d rioAccVector =
+        new Translation3d(rioAccel.getX(), rioAccel.getY(), rioAccel.getZ())
             .rotateBy(new Rotation3d(0., 0., kRioOrientation.getRadians()))
-            .times(9.81);
+            .times(9.81); // convert to m/s^2
 
-    // Compute the IMU's acceleration, rotated as needed
-    if (pigeonAccelerometer != null) {
-      // Pigeon provides accelerations in `g`, from -2 to +2; convert to m/s^2
-      imuAccVector =
-          new Translation3d(
-              pigeonAccelerometer.getAccelerationX().getValueAsDouble(),
-              pigeonAccelerometer.getAccelerationY().getValueAsDouble(),
-              pigeonAccelerometer.getAccelerationZ().getValueAsDouble());
-    } else if (navXAccelerometer != null) {
-      // NavX provides accelerations in ...
-      imuAccVector =
-          new Translation3d(
-              navXAccelerometer.getWorldLinearAccelX(),
-              navXAccelerometer.getWorldLinearAccelY(),
-              navXAccelerometer.getWorldLinearAccelZ());
-    } else {
-      imuAccVector = Translation3d.kZero;
+    Translation3d imuAccVector =
+        imuInputs
+            .linearAccel
+            .rotateBy(new Rotation3d(0., 0., kIMUOrientation.getRadians()))
+            .times(1.00); // already converted to m/s^2 in ImuIO implementation
+
+    // --- Compute jerks ---
+    Translation3d rioJerk = rioAccVector.minus(prevRioAccel).div(Constants.loopPeriodSecs);
+    Translation3d imuJerk =
+        imuInputs.jerk.rotateBy(new Rotation3d(0.0, 0.0, kIMUOrientation.getRadians()));
+
+    // --- Log to AdvantageKit ---
+    Logger.recordOutput("Accel/Rio/Accel_mps2", rioAccVector);
+    Logger.recordOutput("Accel/Rio/Jerk_mps3", rioJerk);
+    Logger.recordOutput("Accel/IMU/Accel_mps2", imuAccVector);
+    Logger.recordOutput("Accel/IMU/Jerk_mps3", imuJerk);
+
+    // --- Log IMU latency ---
+    if (imuInputs.odometryYawTimestamps.length > 0) {
+      double latencySeconds =
+          System.currentTimeMillis() / 1000.0
+              - imuInputs.odometryYawTimestamps[imuInputs.odometryYawTimestamps.length - 1];
+      Logger.recordOutput("IMU/LatencySec", latencySeconds);
     }
-    imuAccVector =
-        imuAccVector.rotateBy(new Rotation3d(0., 0., kIMUOrientation.getRadians())).times(9.81);
 
-    // Compute the jerks ((current - prev accel) / loop time)
-    rioJerkVector = rioAccVector.minus(prevRioAccel).div(Constants.loopPeriodSecs);
-    imuJerkVector = imuAccVector.minus(prevImuAccel).div(Constants.loopPeriodSecs);
-
-    // Log everything to both AdvantageKit and SmartDashboard
-    Logger.recordOutput("Acceleration/Rio/Accel_mss", rioAccVector);
-    Logger.recordOutput("Acceleration/Rio/Jerk_msss", rioJerkVector);
-    Logger.recordOutput("Acceleration/IMU/Accel_mss", imuAccVector);
-    Logger.recordOutput("Acceleration/IMU/Jerk_msss", imuJerkVector);
-    SmartDashboard.putNumber("RioXAccel", rioAccVector.getX());
-    SmartDashboard.putNumber("RioYAccel", rioAccVector.getY());
-    SmartDashboard.putNumber("IMUXAccel", imuAccVector.getX());
-    SmartDashboard.putNumber("IMUYAccel", imuAccVector.getY());
-
-    // Set the "previous" accelerations to the current for the next loop
     prevRioAccel = rioAccVector;
-    prevImuAccel = imuAccVector;
-
-    // Quick logging to see how long this periodic takes
-    long finish = System.nanoTime();
-    long timeElapsed = finish - start;
-    Logger.recordOutput("LoggedRobot/AccelCodeMS", (double) timeElapsed / 1.e6);
   }
 }

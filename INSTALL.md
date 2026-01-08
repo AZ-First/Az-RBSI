@@ -9,6 +9,8 @@ and/or [your team](
 https://docs.github.com/en/get-started/learning-about-github/types-of-github-accounts#organization-accounts)
 already have a GitHub account where you will store your 2026 FRC robot code.
 
+--------
+
 ### Creating a 2026 FRC project from the Az-RBSI Template
 
 From the [Az-RBSI GiuHub page](https://github.com/AZ-First/Az-RBSI/), click the "Use this template" button in the upper right corner of the page.
@@ -30,7 +32,7 @@ The Az-RBSI requires the [2026 WPILib Installer](
 https://github.com/wpilibsuite/allwpilib/releases) (VSCode and associated
 tools), 2026 firmware installed on all hardware (motors, encoders, power
 distribution, etc.), the [2026 NI FRC Game Tools](
-https://www.ni.com/en/support/downloads/drivers/download.frc-game-tools.html)
+https://github.com/wpilibsuite/2026Beta)
 (Driver Station and associated tools), and the [2026 CTRE Phoenix Tuner X](
 https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html).  Take a
 moment to update all software and firmware before attempting to load your new
@@ -39,7 +41,7 @@ robot project.
 Please note that you need these _minimum_ versions of the following components:
 
 * WPILib ` v2026.1.1-beta-1`
-* RoboRIO image `FRC_roboRIO_2026_v2.0`
+* RoboRIO image `FRC_roboRIO_2026_v1.2`
 
 --------
 
@@ -98,66 +100,32 @@ this functionality has not been extensively tested.  Any teams that adopt this
 method are encouraged to submit bug reports and code fixes to the [Az-RBSI
 repository](https://github.com/AZ-First/Az-RBSI).
 
-6. The Az-RBSI expects an Xbox-style controller -- if you have a PS4 or other,
-   substitute the proper command-based controller class for
-   `CommandXboxController` near the top of the `RobotContainer.java` file in
-   the `src/main/java/frc/robot` directory.
-
-7. Power monitoring by subsystem is included in the Az-RBSI.  In order to
-   properly match subsystems to ports on your Power Distribution Module,
-   carefully edit the `CANandPowerPorts` of `Constants.java` to include the
-   proper power ports for each motor in your drivetrain, and include any
-   motors from additional subsystems you add to your robot.  To include
-   additional subsystems in the monitoring, add them to the [`m_power`
-   instantiation](
-   https://github.com/AZ-First/Az-RBSI/blob/38f6391cb70c4caa90502710f591682815064677/src/main/java/frc/robot/RobotContainer.java#L154-L157) in the `RobotContainer.java` file.
-
-8. All of the constants for needed for tuning your robot should be in the
-   `Constants.java` file in the `src/main/java/frc/robot` directory.  This file
-   should be thoroughly edited to match the particulars of your robot.  Be sure
-   to work through each section of this file and include the proper values for
-   your robot.
-
-
---------
-
-### Robot Development
-
-As you program your robot for the 2026 (REBUILT) game, you will likely be
-adding new subsystems and mechanisms to control and the commands to go with
-them.  Add new subsystems in the `subsystems` directory within
-`src/main/java/frc/robot` -- you will find an example flywheel already included
-for inspiration.  New command modules should go into the `commands` directory.
-
-The Az-RBSI is pre-plumbed to work with both the [PathPlanner](
-https://pathplanner.dev/home.html) and [Choreo](
-https://sleipnirgroup.github.io/Choreo/) autonomous path planning software
-packages -- select which you are using in the `Constants.java` file.
-Additionally, both [PhotonVision](https://docs.photonvision.org/en/latest/) and
-[Limelight](
-https://docs.limelightvision.io/docs/docs-limelight/getting-started/summary)
-computer vision systems are supported in the present release.
-
 
 --------
 
 ### Updating your project based on the latest released version of Az-RBSI
 
+As the season progresses, the Az-RBSI developers may add additional features
+to the codebase based on user feedback and developing understanding of needed
+functionality to compete well in the 2026 REBUILT game.
+
 The Az-RBSI includes a GitHub Action that will cause your robot project
-repository on GitHub to check for new versions of the template on a weekly
+repository on GitHub to check for new updates to the template on a weekly
 basis.  If a new version has been released, the `github-actions` bot will
 automatically create a [Pull Request](
 https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests)
-in your repository that includes all of the changes.  All you need to do to
+in your repository that includes all of the changes since either you created
+the 2026 robot code or the last time you updated.  All you need to do to
 accept the changes is to merge the pull request (assuming no conflicts).
 
 If you wish to check for updates more frequently, you may force the "Sync with
 Az-RBSI Template" process to run under the "Actions" tab on your repository's
 GitHub page.
 
-Please note that this update process does NOT remove files that have been
+The update process has been re-engineered for 2026, and *should* be a straight
+list of the commits that have been applied to the Az-RBSI template since the
+cloning or last update.  This process *should* remove files that have been
 renamed (*e.g.*, `vendordeps` files that are labeled as "beta" in the months
-prior to the start of the season).  As such, it is important to inspect the
-list of file changes and manually remove these kinds of files.  The Az-RBSI
-developers will endeavor to list all such files on the [Az-RBSI Releases page](
-https://github.com/AZ-First/Az-RBSI/releases), but *caveat emptor*.
+prior to the start of the season), but it is important to inspect the list of
+file changes.  Please submit a [GitHub Issue](https://github.com/AZ-First/Az-RBSI/issues)
+if you have problems with the update process.

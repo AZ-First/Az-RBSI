@@ -39,9 +39,14 @@ import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
 import frc.robot.subsystems.flywheel_example.FlywheelIOSim;
+import frc.robot.subsystems.imu.ImuIO;
+import frc.robot.subsystems.imu.ImuIONavX;
+import frc.robot.subsystems.imu.ImuIOPigeon2;
+import frc.robot.subsystems.imu.ImuIOSim;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
@@ -68,15 +73,22 @@ public class RobotContainer {
   final OverrideSwitches overrides = new OverrideSwitches(2); // Console toggle switches
 
   /** Declare the robot subsystems here ************************************ */
-  // These are the "Active Subsystems" that the robot controlls
+  // These are the "Active Subsystems" that the robot controls
   private final Drive m_drivebase;
 
+  private final ImuIO m_imu;
   private final Flywheel m_flywheel;
+
   // ... Add additional subsystems here (e.g., elevator, arm, etc.)
 
   // These are "Virtual Subsystems" that report information but have no motors
+  @SuppressWarnings("unused")
   private final Accelerometer m_accel;
+
+  @SuppressWarnings("unused")
   private final RBSIPowerMonitor m_power;
+
+  @SuppressWarnings("unused")
   private final Vision m_vision;
 
   /** Dashboard inputs ***************************************************** */
@@ -106,7 +118,21 @@ public class RobotContainer {
       case REAL:
         // Real robot, instantiate hardware IO implementations
         // YAGSL drivebase, get config from deploy directory
-        m_drivebase = new Drive();
+
+        // Get the IMU instance
+        switch (SwerveConstants.kImuType) {
+          case "pigeon2":
+            m_imu = new ImuIOPigeon2();
+            break;
+          case "navx":
+          case "navx_spi":
+            m_imu = new ImuIONavX();
+            break;
+          default:
+            throw new RuntimeException("Invalid IMU type");
+        }
+
+        m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
         m_vision =
             switch (Constants.getVisionType()) {
@@ -125,28 +151,30 @@ public class RobotContainer {
                       m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
               default -> null;
             };
-        m_accel = new Accelerometer(m_drivebase::getGyro);
+        m_accel = new Accelerometer(m_imu);
         break;
 
       case SIM:
         // Sim robot, instantiate physics sim IO implementations
-        m_drivebase = new Drive();
+        m_imu = new ImuIOSim(Constants.loopPeriodSecs);
+        m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim() {});
         m_vision =
             new Vision(
                 m_drivebase::addVisionMeasurement,
                 new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_drivebase::getPose),
                 new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, m_drivebase::getPose));
-        m_accel = new Accelerometer(m_drivebase::getGyro);
+        m_accel = new Accelerometer(m_imu);
         break;
 
       default:
         // Replayed robot, disable IO implementations
-        m_drivebase = new Drive();
+        m_imu = new ImuIOSim(Constants.loopPeriodSecs);
+        m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =
             new Vision(m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
-        m_accel = new Accelerometer(m_drivebase::getGyro);
+        m_accel = new Accelerometer(m_imu);
         break;
     }
 
@@ -268,11 +296,7 @@ public class RobotContainer {
     driverController
         .y()
         .onTrue(
-            Commands.runOnce(
-                    () ->
-                        m_drivebase.resetPose(
-                            new Pose2d(m_drivebase.getPose().getTranslation(), Rotation2d.kZero)),
-                    m_drivebase)
+            Commands.runOnce(m_drivebase::zeroHeadingForAlliance, m_drivebase)
                 .ignoringDisable(true));
 
     // Press RIGHT BUMPER --> Run the example flywheel
