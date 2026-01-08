@@ -151,6 +151,98 @@ public final class Constants {
   }
 
   /************************************************************************* */
+  /** List of Robot Device CAN and Power Distribution Circuit IDs ********** */
+  public static class RobotDevices {
+
+    /* DRIVETRAIN CAN DEVICE IDS */
+    // Input the correct Power Distribution Module port for each motor!!!!
+    // NOTE: The CAN ID and bus are set in the Swerve Generator (Phoenix Tuner or YAGSL)
+
+    // Front Left
+    public static final RobotDeviceId FL_DRIVE =
+        new RobotDeviceId(SwerveConstants.kFLDriveMotorId, SwerveConstants.kFLDriveCanbus, 18);
+    public static final RobotDeviceId FL_ROTATION =
+        new RobotDeviceId(SwerveConstants.kFLSteerMotorId, SwerveConstants.kFLSteerCanbus, 19);
+    public static final RobotDeviceId FL_CANCODER =
+        new RobotDeviceId(SwerveConstants.kFLEncoderId, SwerveConstants.kFLEncoderCanbus, null);
+    // Front Right
+    public static final RobotDeviceId FR_DRIVE =
+        new RobotDeviceId(SwerveConstants.kFRDriveMotorId, SwerveConstants.kFRDriveCanbus, 17);
+    public static final RobotDeviceId FR_ROTATION =
+        new RobotDeviceId(SwerveConstants.kFRSteerMotorId, SwerveConstants.kFRSteerCanbus, 16);
+    public static final RobotDeviceId FR_CANCODER =
+        new RobotDeviceId(SwerveConstants.kFREncoderId, SwerveConstants.kFREncoderCanbus, null);
+    // Back Left
+    public static final RobotDeviceId BL_DRIVE =
+        new RobotDeviceId(SwerveConstants.kBLDriveMotorId, SwerveConstants.kBLDriveCanbus, 1);
+    public static final RobotDeviceId BL_ROTATION =
+        new RobotDeviceId(SwerveConstants.kBLSteerMotorId, SwerveConstants.kBLSteerCanbus, 0);
+    public static final RobotDeviceId BL_CANCODER =
+        new RobotDeviceId(SwerveConstants.kBLEncoderId, SwerveConstants.kBLEncoderCanbus, null);
+    // Back Right
+    public static final RobotDeviceId BR_DRIVE =
+        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 2);
+    public static final RobotDeviceId BR_ROTATION =
+        new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 3);
+    public static final RobotDeviceId BR_CANCODER =
+        new RobotDeviceId(SwerveConstants.kBREncoderId, SwerveConstants.kBREncoderCanbus, null);
+    // Pigeon
+    public static final RobotDeviceId PIGEON =
+        new RobotDeviceId(SwerveConstants.kPigeonId, SwerveConstants.kCANbusName, null);
+
+    /* SUBSYSTEM CAN DEVICE IDS */
+    // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
+    // Example:
+    public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, "", 8);
+    public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, "", 9);
+
+    /* BEAM BREAK and/or LIMIT SWITCH DIO CHANNELS */
+    // This is where digital I/O feedback devices are defined
+    // Example:
+    // public static final int ELEVATOR_BOTTOM_LIMIT = 3;
+
+    /* LINEAR SERVO PWM CHANNELS */
+    // This is where PWM-controlled devices (actuators, servos, pneumatics, etc.)
+    // are defined
+    // Example:
+    // public static final int INTAKE_SERVO = 0;
+  }
+
+  /************************************************************************* */
+  /** Operator Constants *************************************************** */
+  public static class OperatorConstants {
+
+    // Joystick Functions
+    // Set to TANK for Drive = Left Stick, Turn = Right Stick;
+    // Set to GAMER for Drive = Right Stick, Turn = Left Stick;
+    // NOTE: Intrepid programmers can turn this into a Dashboard-settable value
+    public static final DriveStyle kDriveStyle = DriveStyle.TANK; // TANK, GAMER
+
+    // Joystick Deadbands
+    public static final double kDeadband = 0.1;
+    public static final double kTurnConstant = 6;
+
+    // Joystick slew rate limiters to smooth erratic joystick motions, measured in units per second
+    public static final double kJoystickSlewLimit = 0.5;
+
+    // Override and Console Toggle Switches
+    // Assumes this controller: https://www.amazon.com/gp/product/B00UUROWWK
+    // Example from:
+    // https://www.chiefdelphi.com/t/frc-6328-mechanical-advantage-2024-build-thread/442736/72
+    public static final int DRIVER_SWITCH_0 = 1;
+    public static final int DRIVER_SWITCH_1 = 2;
+    public static final int DRIVER_SWITCH_2 = 3;
+
+    public static final int OPERATOR_SWITCH_0 = 8;
+    public static final int OPERATOR_SWITCH_1 = 9;
+    public static final int OPERATOR_SWITCH_2 = 10;
+    public static final int OPERATOR_SWITCH_3 = 11;
+    public static final int OPERATOR_SWITCH_4 = 12;
+
+    public static final int[] MULTI_TOGGLE = {4, 5};
+  }
+
+  /************************************************************************* */
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
 
@@ -227,40 +319,6 @@ public final class Constants {
   // public static class Mechanism1Constants {}
   // public static class Mechanism2Constants {}
   // ...
-
-  /************************************************************************* */
-  /** Operator Constants *************************************************** */
-  public static class OperatorConstants {
-
-    // Joystick Functions
-    // Set to TANK for Drive = Left Stick, Turn = Right Stick;
-    // Set to GAMER for Drive = Right Stick, Turn = Left Stick;
-    // NOTE: Intrepid programmers can turn this into a Dashboard-settable value
-    public static final DriveStyle kDriveStyle = DriveStyle.TANK; // TANK, GAMER
-
-    // Joystick Deadbands
-    public static final double kDeadband = 0.1;
-    public static final double kTurnConstant = 6;
-
-    // Joystick slew rate limiters to smooth erratic joystick motions, measured in units per second
-    public static final double kJoystickSlewLimit = 0.5;
-
-    // Override and Console Toggle Switches
-    // Assumes this controller: https://www.amazon.com/gp/product/B00UUROWWK
-    // Example from:
-    // https://www.chiefdelphi.com/t/frc-6328-mechanical-advantage-2024-build-thread/442736/72
-    public static final int DRIVER_SWITCH_0 = 1;
-    public static final int DRIVER_SWITCH_1 = 2;
-    public static final int DRIVER_SWITCH_2 = 3;
-
-    public static final int OPERATOR_SWITCH_0 = 8;
-    public static final int OPERATOR_SWITCH_1 = 9;
-    public static final int OPERATOR_SWITCH_2 = 10;
-    public static final int OPERATOR_SWITCH_3 = 11;
-    public static final int OPERATOR_SWITCH_4 = 12;
-
-    public static final int[] MULTI_TOGGLE = {4, 5};
-  }
 
   /************************************************************************* */
   /** (Semi-)Autonomous Action Constants *********************************** */
@@ -361,64 +419,6 @@ public final class Constants {
           1.0, // Camera 0
           1.0 // Camera 1
         };
-  }
-
-  /************************************************************************* */
-  /** List of Robot Device CAN and Power Distribution Circuit IDs ********** */
-  public static class RobotDevices {
-
-    /* DRIVETRAIN CAN DEVICE IDS */
-    // Input the correct Power Distribution Module port for each motor!!!!
-    // NOTE: The CAN ID and bus are set in the Swerve Generator (Phoenix Tuner or YAGSL)
-
-    // Front Left
-    public static final RobotDeviceId FL_DRIVE =
-        new RobotDeviceId(SwerveConstants.kFLDriveMotorId, SwerveConstants.kFLDriveCanbus, 18);
-    public static final RobotDeviceId FL_ROTATION =
-        new RobotDeviceId(SwerveConstants.kFLSteerMotorId, SwerveConstants.kFLSteerCanbus, 19);
-    public static final RobotDeviceId FL_CANCODER =
-        new RobotDeviceId(SwerveConstants.kFLEncoderId, SwerveConstants.kFLEncoderCanbus, null);
-    // Front Right
-    public static final RobotDeviceId FR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kFRDriveMotorId, SwerveConstants.kFRDriveCanbus, 17);
-    public static final RobotDeviceId FR_ROTATION =
-        new RobotDeviceId(SwerveConstants.kFRSteerMotorId, SwerveConstants.kFRSteerCanbus, 16);
-    public static final RobotDeviceId FR_CANCODER =
-        new RobotDeviceId(SwerveConstants.kFREncoderId, SwerveConstants.kFREncoderCanbus, null);
-    // Back Left
-    public static final RobotDeviceId BL_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBLDriveMotorId, SwerveConstants.kBLDriveCanbus, 1);
-    public static final RobotDeviceId BL_ROTATION =
-        new RobotDeviceId(SwerveConstants.kBLSteerMotorId, SwerveConstants.kBLSteerCanbus, 0);
-    public static final RobotDeviceId BL_CANCODER =
-        new RobotDeviceId(SwerveConstants.kBLEncoderId, SwerveConstants.kBLEncoderCanbus, null);
-    // Back Right
-    public static final RobotDeviceId BR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 2);
-    public static final RobotDeviceId BR_ROTATION =
-        new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 3);
-    public static final RobotDeviceId BR_CANCODER =
-        new RobotDeviceId(SwerveConstants.kBREncoderId, SwerveConstants.kBREncoderCanbus, null);
-    // Pigeon
-    public static final RobotDeviceId PIGEON =
-        new RobotDeviceId(SwerveConstants.kPigeonId, SwerveConstants.kCANbusName, null);
-
-    /* SUBSYSTEM CAN DEVICE IDS */
-    // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
-    // Example:
-    public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, "", 8);
-    public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, "", 9);
-
-    /* BEAM BREAK and/or LIMIT SWITCH DIO CHANNELS */
-    // This is where digital I/O feedback devices are defined
-    // Example:
-    // public static final int ELEVATOR_BOTTOM_LIMIT = 3;
-
-    /* LINEAR SERVO PWM CHANNELS */
-    // This is where PWM-controlled devices (actuators, servos, pneumatics, etc.)
-    // are defined
-    // Example:
-    // public static final int INTAKE_SERVO = 0;
   }
 
   /************************************************************************* */
