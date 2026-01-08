@@ -9,9 +9,10 @@ Arizona's Reference Build and Software Implementation for FRC Robots (read: "A-Z
 
 ## Installation
 
-Installation instructions are found in the [INSTALL.md](INSTALL.md) file.  See
-the [Releases Page](https://github.com/AZ-First/Az-RBSI/releases) for details
-on the latest release, including restrictions and cautions.
+Installation instructions are found in the [INSTALL.md](INSTALL.md) file, and the [Getting
+Started Guide](RBSI-GSG.md) includes the steps you'll need to do before taking your robot
+out for a spin.  See the [Releases Page](https://github.com/AZ-First/Az-RBSI/releases) for
+details on the latest release, including restrictions and cautions.
 
 
 ## Purpose
@@ -53,6 +54,7 @@ effective logging for troubleshooting.
 * [PhotonVision](https://docs.photonvision.org/en/latest/) / [Limelight](
   https://docs.limelightvision.io/docs/docs-limelight/getting-started/summary)
   -- Robot vision / tracking
+* [Autopilot](https://therekrab.github.io/autopilot/index.html) -- Drive-to-Pose semi-autonomous movements
 
 ## Further Reading
 

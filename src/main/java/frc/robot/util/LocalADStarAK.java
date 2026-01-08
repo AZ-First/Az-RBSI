@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2024 Michael Jansen
-// http://gist.github.com/mjansen4857
+// Copyright (c) 2021-2026 Littleton Robotics
+// http://github.com/Mechanical-Advantage
 //
 // Use of this source code is governed by a BSD
 // license that can be found in the AdvantageKit-License.md file
