@@ -6,6 +6,10 @@ robot.  The files that should exist in this directory are listed below, along
 with a brief description of their contents and which files MUST be edited to
 include information about the specific robot being controlled.
 
+AprilTagLayout.java
+    The year-specific AprilTag and field layout file.  Teams may modify this
+    file to include additional information specific for their needs.
+
 BuildConstants.java
     Not tracked by git, used by the build system to record information about
     the latest build of the code.  This file should NOT be altered, and will be
@@ -42,7 +46,7 @@ RobotContainer.java
 Subdirectories:
 
 commands/
-    Commands build in separate modules (rather than in subsystem definitions or
+    Commands built in separate modules (rather than in subsystem definitions or
     inline commands in ``RobotContainer.java``) live in this directory.
     Organization of files and subdirectories herein is left to the discrection
     of teams.
@@ -68,12 +72,8 @@ util/
     Various utility functions used by the Az-RBSI are included in this
     directory.  Most teams will not need to modify these routines, but
     additional utilities deemed necessary by individual teams may be placed
-    here for organizational purposes.  The EXCEPTION is
-    ``OverrideSwitches.java``, which may be modified to meet the specific
-    design requirements of teams.  ``OverrideSwitches.java`` can be modified
-    to match any manual override switches on an operator console as described
-    in that module.
+    here for organizational purposes.
 
 
 --------------------
-Last Modified: 06 Nov 2024, TPEB
+Last Modified: 06 Jan 2026, TPEB

@@ -1,23 +1,17 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2021-2025 FRC 6328
+// Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Transform3d;
-import frc.robot.Constants.AprilTagConstants;
+import frc.robot.AprilTagLayout;
 import java.util.function.Supplier;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.SimCameraProperties;
@@ -44,7 +38,7 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
     // Initialize vision sim
     if (visionSim == null) {
       visionSim = new VisionSystemSim("main");
-      visionSim.addAprilTags(AprilTagConstants.aprilTagLayout);
+      visionSim.addAprilTags(AprilTagLayout.aprilTagLayout);
     }
 
     // Add sim camera

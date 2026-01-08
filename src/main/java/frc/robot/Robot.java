@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -10,9 +10,14 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
+//
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
 
 package frc.robot;
 
+import com.revrobotics.util.StatusLogger;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -24,6 +29,7 @@ import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+import org.littletonrobotics.urcl.URCL;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -50,17 +56,13 @@ public class Robot extends LoggedRobot {
     Logger.recordMetadata("GitSHA", BuildConstants.GIT_SHA);
     Logger.recordMetadata("GitDate", BuildConstants.GIT_DATE);
     Logger.recordMetadata("GitBranch", BuildConstants.GIT_BRANCH);
-    switch (BuildConstants.DIRTY) {
-      case 0:
-        Logger.recordMetadata("GitDirty", "All changes committed");
-        break;
-      case 1:
-        Logger.recordMetadata("GitDirty", "Uncomitted changes");
-        break;
-      default:
-        Logger.recordMetadata("GitDirty", "Unknown");
-        break;
-    }
+    Logger.recordMetadata(
+        "GitDirty",
+        switch (BuildConstants.DIRTY) {
+          case 0 -> "All changes committed";
+          case 1 -> "Uncommitted changes";
+          default -> "Unknown";
+        });
 
     // Set up data receivers & replay source
     switch (Constants.getMode()) {
@@ -83,6 +85,13 @@ public class Robot extends LoggedRobot {
         Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
         break;
     }
+
+    // Initialize URCL
+    Logger.registerURCL(URCL.startExternal());
+    StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
+
+    // TODO: Uncomment this upon next release of AKit
+    // LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -149,7 +158,7 @@ public class Robot extends LoggedRobot {
         m_autoCommandPathPlanner = m_robotContainer.getAutonomousCommandPathPlanner();
         // schedule the autonomous command
         if (m_autoCommandPathPlanner != null) {
-          m_autoCommandPathPlanner.schedule();
+          CommandScheduler.getInstance().schedule(m_autoCommandPathPlanner);
         }
         break;
       case CHOREO:

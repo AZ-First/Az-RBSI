@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -10,7 +10,6 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-
 package frc.robot.util;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;

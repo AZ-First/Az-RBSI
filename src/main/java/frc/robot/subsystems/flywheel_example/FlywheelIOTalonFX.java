@@ -1,21 +1,16 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2021-2025 FRC 6328
+// Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.subsystems.flywheel_example;
 
 import static frc.robot.Constants.FlywheelConstants.*;
+import static frc.robot.Constants.RobotDevices.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
@@ -25,29 +20,24 @@ import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.Constants.CANandPowerPorts;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
 
   // Define the leader / follower motors from the Ports section of RobotContainer
   private final TalonFX leader =
-      new TalonFX(
-          CANandPowerPorts.FLYWHEEL_LEADER.getDeviceNumber(),
-          CANandPowerPorts.FLYWHEEL_LEADER.getBus());
+      new TalonFX(FLYWHEEL_LEADER.getDeviceNumber(), FLYWHEEL_LEADER.getCANBus());
   private final TalonFX follower =
-      new TalonFX(
-          CANandPowerPorts.FLYWHEEL_FOLLOWER.getDeviceNumber(),
-          CANandPowerPorts.FLYWHEEL_FOLLOWER.getBus());
+      new TalonFX(FLYWHEEL_FOLLOWER.getDeviceNumber(), FLYWHEEL_FOLLOWER.getCANBus());
   // IMPORTANT: Include here all devices listed above that are part of this mechanism!
   public final int[] powerPorts = {
-    CANandPowerPorts.FLYWHEEL_LEADER.getPowerPort(),
-    CANandPowerPorts.FLYWHEEL_FOLLOWER.getPowerPort()
+    FLYWHEEL_LEADER.getPowerPort(), FLYWHEEL_FOLLOWER.getPowerPort()
   };
 
   private final StatusSignal<Angle> leaderPosition = leader.getPosition();
@@ -67,8 +57,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
         };
     leader.getConfigurator().apply(config);
     follower.getConfigurator().apply(config);
-    // If follower rotates in the opposite direction, set "OpposeMasterDirection" to true
-    follower.setControl(new Follower(leader.getDeviceID(), false));
+    // If follower rotates in the opposite direction, set "MotorAlignmentValue" to Opposed
+    follower.setControl(new Follower(leader.getDeviceID(), MotorAlignmentValue.Aligned));
 
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0, leaderPosition, leaderVelocity, leaderAppliedVolts, leaderCurrent, followerCurrent);

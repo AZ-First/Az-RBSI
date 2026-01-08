@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -34,6 +34,7 @@ public class RBSIEnum {
 
   /** Enumerate the supported autonomous path planning types */
   public static enum AutoType {
+    MANUAL, // Manual commands only
     PATHPLANNER, // PathPlanner (https://pathplanner.dev/home.html)
     CHOREO // Choreo (https://sleipnirgroup.github.io/Choreo/)
   }
@@ -58,5 +59,10 @@ public class RBSIEnum {
   public static enum MotorIdleMode {
     COAST, // Allow the motor to coast when idle
     BRAKE // Hold motor position when idle
+  }
+
+  public static enum DriveStyle {
+    TANK, // Left stick = drive, Right stick = turn
+    GAMER, // Right stick = drive, Left stick = turn
   }
 }

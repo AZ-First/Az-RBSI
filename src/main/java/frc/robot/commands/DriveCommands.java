@@ -1,17 +1,11 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2021-2025 FRC 6328
+// Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.commands;
 
@@ -81,8 +75,8 @@ public class DriveCommands {
               ChassisSpeeds.fromFieldRelativeSpeeds(
                   speeds,
                   isFlipped
-                      ? drive.getRotation().plus(new Rotation2d(Math.PI))
-                      : drive.getRotation()));
+                      ? drive.getHeading().plus(new Rotation2d(Math.PI))
+                      : drive.getHeading()));
         },
         drive);
   }
@@ -143,7 +137,7 @@ public class DriveCommands {
               // Calculate angular speed
               double omega =
                   angleController.calculate(
-                      drive.getRotation().getRadians(), rotationSupplier.get().getRadians());
+                      drive.getHeading().getRadians(), rotationSupplier.get().getRadians());
 
               // Convert to field relative speeds & send command
               ChassisSpeeds speeds =
@@ -158,15 +152,16 @@ public class DriveCommands {
                   ChassisSpeeds.fromFieldRelativeSpeeds(
                       speeds,
                       isFlipped
-                          ? drive.getRotation().plus(new Rotation2d(Math.PI))
-                          : drive.getRotation()));
+                          ? drive.getHeading().plus(new Rotation2d(Math.PI))
+                          : drive.getHeading()));
             },
             drive)
 
         // Reset PID controller when command starts
-        .beforeStarting(() -> angleController.reset(drive.getRotation().getRadians()));
+        .beforeStarting(() -> angleController.reset(drive.getHeading().getRadians()));
   }
 
+  /** Utility functions needed by commands in this module ****************** */
   /**
    * Compute the new linear velocity from inputs, including applying deadbands and squaring for
    * smoothness. Also apply the linear velocity Slew Rate Limiter.
@@ -181,8 +176,8 @@ public class DriveCommands {
     linearMagnitude = linearMagnitude * linearMagnitude;
 
     // Return new linear velocity
-    return new Pose2d(new Translation2d(), linearDirection)
-        .transformBy(new Transform2d(linearMagnitude, 0.0, new Rotation2d()))
+    return new Pose2d(Translation2d.kZero, linearDirection)
+        .transformBy(new Transform2d(linearMagnitude, 0.0, Rotation2d.kZero))
         .getTranslation();
   }
 
@@ -291,14 +286,14 @@ public class DriveCommands {
             Commands.runOnce(
                 () -> {
                   state.positions = drive.getWheelRadiusCharacterizationPositions();
-                  state.lastAngle = drive.getRotation();
+                  state.lastAngle = drive.getHeading();
                   state.gyroDelta = 0.0;
                 }),
 
             // Update gyro delta
             Commands.run(
                     () -> {
-                      var rotation = drive.getRotation();
+                      var rotation = drive.getHeading();
                       state.gyroDelta += Math.abs(rotation.minus(state.lastAngle).getRadians());
                       state.lastAngle = rotation;
                     })
@@ -332,7 +327,7 @@ public class DriveCommands {
 
   private static class WheelRadiusCharacterizationState {
     double[] positions = new double[4];
-    Rotation2d lastAngle = new Rotation2d();
+    Rotation2d lastAngle = Rotation2d.kZero;
     double gyroDelta = 0.0;
   }
 }

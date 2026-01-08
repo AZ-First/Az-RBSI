@@ -1,21 +1,15 @@
-// Copyright (c) 2024-2025 Az-FIRST
+// Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2021-2025 FRC 6328
+// Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// version 3 as published by the Free Software Foundation or
-// available in the root directory of this project.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Use of this source code is governed by a BSD
+// license that can be found in the AdvantageKit-License.md file
+// at the root directory of this project.
 
 package frc.robot.subsystems.drive;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import choreo.trajectory.SwerveSample;
@@ -29,6 +23,7 @@ import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -40,6 +35,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -50,6 +46,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
@@ -61,15 +58,15 @@ import org.littletonrobotics.junction.Logger;
 public class Drive extends SubsystemBase {
 
   static final Lock odometryLock = new ReentrantLock();
-  private final GyroIO gyroIO;
-  private final GyroIOInputsAutoLogged gyroInputs = new GyroIOInputsAutoLogged();
+  private final ImuIO imuIO;
+  private final ImuIO.ImuIOInputs imuInputs = new ImuIO.ImuIOInputs();
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
   private final SysIdRoutine sysId;
   private final Alert gyroDisconnectedAlert =
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
 
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
-  private Rotation2d rawGyroRotation = new Rotation2d();
+  private Rotation2d rawGyroRotation = Rotation2d.kZero;
   private SwerveModulePosition[] lastModulePositions = // For delta tracking
       new SwerveModulePosition[] {
         new SwerveModulePosition(),
@@ -78,33 +75,29 @@ public class Drive extends SubsystemBase {
         new SwerveModulePosition()
       };
   private SwerveDrivePoseEstimator m_PoseEstimator =
-      new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, new Pose2d());
+      new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, Pose2d.kZero);
+
+  private final ProfiledPIDController thetaController =
+      new ProfiledPIDController(
+          DrivebaseConstants.kPTheta,
+          DrivebaseConstants.kITheta,
+          DrivebaseConstants.kDTheta,
+          new TrapezoidProfile.Constraints(
+              DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
 
   // Constructor
-  public Drive() {
+  public Drive(ImuIO imuIO) {
+    this.imuIO = imuIO;
 
     switch (Constants.getSwerveType()) {
       case PHOENIX6:
         // This one is easy because it's all CTRE all the time
-        this.gyroIO = new GyroIOPigeon2();
         for (int i = 0; i < 4; i++) {
           modules[i] = new Module(new ModuleIOTalonFX(i), i);
         }
         break;
 
       case YAGSL:
-        // First, choose the Gyro
-        switch (kImuType) {
-          case "pigeon2":
-            this.gyroIO = new GyroIOPigeon2();
-            break;
-          case "navx":
-          case "navx_spi":
-            this.gyroIO = new GyroIONavX();
-            break;
-          default:
-            throw new RuntimeException("Invalid IMU type");
-        }
         // Then parse the module(s)
         Byte modType = RBSIParsing.parseModuleType();
         for (int i = 0; i < 4; i++) {
@@ -161,8 +154,7 @@ public class Drive extends SubsystemBase {
         Pathfinding.setPathfinder(new LocalADStarAK());
         PathPlannerLogging.setLogActivePathCallback(
             (activePath) -> {
-              Logger.recordOutput(
-                  "Odometry/Trajectory", activePath.toArray(new Pose2d[activePath.size()]));
+              Logger.recordOutput("Odometry/Trajectory", activePath.toArray(new Pose2d[0]));
             });
         PathPlannerLogging.setLogTargetPoseCallback(
             (targetPose) -> {
@@ -191,34 +183,29 @@ public class Drive extends SubsystemBase {
   /** Periodic function that is called each robot cycle by the command scheduler */
   @Override
   public void periodic() {
-    odometryLock.lock(); // Prevents odometry updates while reading data
-    gyroIO.updateInputs(gyroInputs);
-    Logger.processInputs("Drive/Gyro", gyroInputs);
-    for (var module : modules) {
-      module.periodic();
-    }
-    odometryLock.unlock();
+    odometryLock.lock();
 
-    // Stop moving when disabled
+    // Stop modules & log empty setpoint states if disabled
     if (DriverStation.isDisabled()) {
       for (var module : modules) {
         module.stop();
+        Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
+        Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
       }
     }
-    // Log empty setpoint states when disabled
-    if (DriverStation.isDisabled()) {
-      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
-      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
-    }
 
-    // Update odometry
-    double[] sampleTimestamps =
-        modules[0].getOdometryTimestamps(); // All signals are sampled together
+    // Update the IMU inputs — logging happens automatically
+    imuIO.updateInputs(imuInputs);
+
+    // Feed historical samples into odometry
+    double[] sampleTimestamps = modules[0].getOdometryTimestamps();
     int sampleCount = sampleTimestamps.length;
+
     for (int i = 0; i < sampleCount; i++) {
       // Read wheel positions and deltas from each module
       SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
       SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
+
       for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
         modulePositions[moduleIndex] = modules[moduleIndex].getOdometryPositions()[i];
         moduleDeltas[moduleIndex] =
@@ -229,22 +216,28 @@ public class Drive extends SubsystemBase {
         lastModulePositions[moduleIndex] = modulePositions[moduleIndex];
       }
 
-      // Update gyro angle
-      if (gyroInputs.connected) {
-        // Use the real gyro angle
-        rawGyroRotation = gyroInputs.odometryYawPositions[i];
+      // Update gyro angle for odometry
+      if (imuInputs.connected && imuInputs.odometryYawPositions.length > i) {
+        rawGyroRotation = imuInputs.odometryYawPositions[i];
       } else {
         // Use the angle delta from the kinematics and module deltas
         Twist2d twist = kinematics.toTwist2d(moduleDeltas);
         rawGyroRotation = rawGyroRotation.plus(new Rotation2d(twist.dtheta));
       }
 
-      // Apply update
+      // Apply to pose estimator
       m_PoseEstimator.updateWithTime(sampleTimestamps[i], rawGyroRotation, modulePositions);
     }
 
-    // Update gyro alert
-    gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.getMode() != Mode.SIM);
+    // Module periodic updates
+    for (var module : modules) {
+      module.periodic();
+    }
+
+    odometryLock.unlock();
+
+    // Update gyro/IMU alert
+    gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
   }
 
   /** Drive Base Action Functions ****************************************** */
@@ -311,6 +304,28 @@ public class Drive extends SubsystemBase {
     }
   }
 
+  // /** Drive Forward Command Factory **************************************** */
+  //   // Example factory method
+  //   public Command driveForwardCommand(double distance) {
+  //       // This method composes and returns a complex command object
+  //       return Commands.sequence(
+  //           // Use internal methods and sensor data to define the command logic
+  //           new DriveToPositionCommand(this, distance),
+  //           new StopDrivetrainCommand(this)
+  //       );
+  //   }
+
+  /**
+   * Reset the heading ProfiledPIDController
+   *
+   * <p>TODO: CALL THIS FUNCTION!!!
+   *
+   * <p>Call this when: (A) robot is disabled, (B) gyro is zeroed, (C) autonomous starts
+   */
+  public void resetHeadingController() {
+    thetaController.reset(getHeading().getRadians());
+  }
+
   /** SysId Characterization Routines ************************************** */
 
   /** Returns a command to run a quasistatic test in the specified direction. */
@@ -348,7 +363,7 @@ public class Drive extends SubsystemBase {
 
   /** Returns the measured chassis speeds of the robot. */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
-  private ChassisSpeeds getChassisSpeeds() {
+  public ChassisSpeeds getChassisSpeeds() {
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
@@ -359,8 +374,9 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the current odometry rotation. */
-  public Rotation2d getRotation() {
-    return getPose().getRotation();
+  public Rotation2d getHeading() {
+    imuIO.updateInputs(imuInputs);
+    return imuInputs.yawPosition;
   }
 
   /** Returns an array of module translations. */
@@ -401,15 +417,24 @@ public class Drive extends SubsystemBase {
     return getMaxLinearSpeedMetersPerSec() / kDriveBaseRadiusMeters;
   }
 
-  public Object getGyro() {
-    return gyroIO.getGyro();
-  }
-
   /* Setter Functions ****************************************************** */
 
   /** Resets the current odometry pose. */
   public void resetPose(Pose2d pose) {
     m_PoseEstimator.resetPosition(rawGyroRotation, getModulePositions(), pose);
+  }
+
+  /** Zeros the gyro based on alliance color */
+  public void zeroHeadingForAlliance() {
+    imuIO.zeroYaw(
+        DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue
+            ? Rotation2d.kZero
+            : Rotation2d.k180deg);
+  }
+
+  /** Zeros the heading */
+  public void zeroHeading() {
+    imuIO.zeroYaw(Rotation2d.kZero);
   }
 
   /** Adds a new timestamped vision measurement. */
@@ -429,6 +454,7 @@ public class Drive extends SubsystemBase {
   }
 
   /** Swerve request to apply during field-centric path following */
+  @SuppressWarnings("unused")
   private final SwerveRequest.ApplyFieldSpeeds m_pathApplyFieldSpeeds =
       new SwerveRequest.ApplyFieldSpeeds();
 
