@@ -10,7 +10,7 @@
 package frc.robot.subsystems.flywheel_example;
 
 import static frc.robot.Constants.FlywheelConstants.*;
-import static frc.robot.util.SparkUtil.*;
+import static frc.robot.Constants.RobotDevices.*;
 
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.ClosedLoopSlot;
@@ -26,8 +26,8 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import edu.wpi.first.math.util.Units;
-import frc.robot.Constants.CANandPowerPorts;
 import frc.robot.subsystems.drive.SwerveConstants;
+import frc.robot.util.SparkUtil;
 
 /**
  * NOTE: To use the Spark Flex / NEO Vortex, replace all instances of "CANSparkMax" with
@@ -37,15 +37,14 @@ public class FlywheelIOSpark implements FlywheelIO {
 
   // Define the leader / follower motors from the Ports section of RobotContainer
   private final SparkBase leader =
-      new SparkMax(CANandPowerPorts.FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
+      new SparkMax(FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
   private final SparkBase follower =
-      new SparkMax(CANandPowerPorts.FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
+      new SparkMax(FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
   private final RelativeEncoder encoder = leader.getEncoder();
   private final SparkClosedLoopController pid = leader.getClosedLoopController();
   // IMPORTANT: Include here all devices listed above that are part of this mechanism!
   public final int[] powerPorts = {
-    CANandPowerPorts.FLYWHEEL_LEADER.getPowerPort(),
-    CANandPowerPorts.FLYWHEEL_FOLLOWER.getPowerPort()
+    FLYWHEEL_LEADER.getPowerPort(), FLYWHEEL_FOLLOWER.getPowerPort()
   };
 
   public FlywheelIOSpark() {
@@ -76,13 +75,13 @@ public class FlywheelIOSpark implements FlywheelIO {
         .appliedOutputPeriodMs(20)
         .busVoltagePeriodMs(20)
         .outputCurrentPeriodMs(20);
-    tryUntilOk(
+    SparkUtil.tryUntilOk(
         leader,
         5,
         () ->
             leader.configure(
                 leaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
-    tryUntilOk(leader, 5, () -> encoder.setPosition(0.0));
+    SparkUtil.tryUntilOk(leader, 5, () -> encoder.setPosition(0.0));
   }
 
   @Override

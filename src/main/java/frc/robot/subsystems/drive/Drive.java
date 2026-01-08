@@ -9,7 +9,7 @@
 
 package frc.robot.subsystems.drive;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import choreo.trajectory.SwerveSample;
@@ -23,6 +23,7 @@ import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -34,6 +35,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -73,6 +75,14 @@ public class Drive extends SubsystemBase {
       };
   private SwerveDrivePoseEstimator m_PoseEstimator =
       new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, Pose2d.kZero);
+
+  private final ProfiledPIDController thetaController =
+      new ProfiledPIDController(
+          DrivebaseConstants.kPTheta,
+          DrivebaseConstants.kITheta,
+          DrivebaseConstants.kDTheta,
+          new TrapezoidProfile.Constraints(
+              DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
 
   // Constructor
   public Drive() {
@@ -155,8 +165,7 @@ public class Drive extends SubsystemBase {
         Pathfinding.setPathfinder(new LocalADStarAK());
         PathPlannerLogging.setLogActivePathCallback(
             (activePath) -> {
-              Logger.recordOutput(
-                  "Odometry/Trajectory", activePath.toArray(new Pose2d[activePath.size()]));
+              Logger.recordOutput("Odometry/Trajectory", activePath.toArray(new Pose2d[0]));
             });
         PathPlannerLogging.setLogTargetPoseCallback(
             (targetPose) -> {
@@ -305,6 +314,28 @@ public class Drive extends SubsystemBase {
     }
   }
 
+  // /** Drive Forward Command Factory **************************************** */
+  //   // Example factory method
+  //   public Command driveForwardCommand(double distance) {
+  //       // This method composes and returns a complex command object
+  //       return Commands.sequence(
+  //           // Use internal methods and sensor data to define the command logic
+  //           new DriveToPositionCommand(this, distance),
+  //           new StopDrivetrainCommand(this)
+  //       );
+  //   }
+
+  /**
+   * Reset the heading ProfiledPIDController
+   *
+   * <p>TODO: CALL THIS FUNCTION!!!
+   *
+   * <p>Call this when: (A) robot is disabled, (B) gyro is zeroed, (C) autonomous starts
+   */
+  public void resetHeadingController() {
+    thetaController.reset(getHeading().getRadians());
+  }
+
   /** SysId Characterization Routines ************************************** */
 
   /** Returns a command to run a quasistatic test in the specified direction. */
@@ -342,7 +373,7 @@ public class Drive extends SubsystemBase {
 
   /** Returns the measured chassis speeds of the robot. */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
-  private ChassisSpeeds getChassisSpeeds() {
+  public ChassisSpeeds getChassisSpeeds() {
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
@@ -353,7 +384,7 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the current odometry rotation. */
-  public Rotation2d getRotation() {
+  public Rotation2d getHeading() {
     return getPose().getRotation();
   }
 

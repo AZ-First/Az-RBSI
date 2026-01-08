@@ -22,6 +22,9 @@ import choreo.auto.AutoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -30,8 +33,9 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.Constants.AprilTagConstants.AprilTagLayoutType;
+import frc.robot.AprilTagLayout.AprilTagLayoutType;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
 import frc.robot.subsystems.drive.Drive;
@@ -50,6 +54,7 @@ import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSIEnum;
 import frc.robot.util.RBSIPowerMonitor;
+import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
@@ -113,14 +118,14 @@ public class RobotContainer {
               case LIMELIGHT ->
                   new Vision(
                       m_drivebase::addVisionMeasurement,
-                      new VisionIOLimelight(camera0Name, m_drivebase::getRotation),
-                      new VisionIOLimelight(camera1Name, m_drivebase::getRotation));
+                      new VisionIOLimelight(camera0Name, m_drivebase::getHeading),
+                      new VisionIOLimelight(camera1Name, m_drivebase::getHeading));
               case NONE ->
                   new Vision(
                       m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
               default -> null;
             };
-        m_accel = new Accelerometer(m_drivebase.getGyro());
+        m_accel = new Accelerometer(m_drivebase::getGyro);
         break;
 
       case SIM:
@@ -132,7 +137,7 @@ public class RobotContainer {
                 m_drivebase::addVisionMeasurement,
                 new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_drivebase::getPose),
                 new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, m_drivebase::getPose));
-        m_accel = new Accelerometer(m_drivebase.getGyro());
+        m_accel = new Accelerometer(m_drivebase::getGyro);
         break;
 
       default:
@@ -141,7 +146,7 @@ public class RobotContainer {
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =
             new Vision(m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
-        m_accel = new Accelerometer(m_drivebase.getGyro());
+        m_accel = new Accelerometer(m_drivebase::getGyro);
         break;
     }
 
@@ -152,6 +157,15 @@ public class RobotContainer {
 
     // Set up the SmartDashboard Auto Chooser based on auto type
     switch (Constants.getAutoType()) {
+      case MANUAL:
+        // This is where the "Leave Auto" will go
+        // ...
+        // Set the others to null
+        autoChooserPathPlanner = null;
+        autoChooserChoreo = null;
+        autoFactoryChoreo = null;
+        break;
+
       case PATHPLANNER:
         autoChooserPathPlanner =
             new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
@@ -208,14 +222,16 @@ public class RobotContainer {
     GetJoystickValue driveStickY;
     GetJoystickValue driveStickX;
     GetJoystickValue turnStickX;
-    if (OperatorConstants.kDriveLeftTurnRight) {
-      driveStickY = driverController::getLeftY;
-      driveStickX = driverController::getLeftX;
-      turnStickX = driverController::getRightX;
-    } else {
-      driveStickY = driverController::getRightY;
-      driveStickX = driverController::getRightX;
-      turnStickX = driverController::getLeftX;
+    switch (OperatorConstants.kDriveStyle) {
+      case GAMER:
+        driveStickY = driverController::getRightY;
+        driveStickX = driverController::getRightX;
+        turnStickX = driverController::getLeftX;
+        break;
+      default: // Includes case TANK
+        driveStickY = driverController::getLeftY;
+        driveStickX = driverController::getLeftX;
+        turnStickX = driverController::getRightX;
     }
 
     // SET STANDARD DRIVING AS DEFAULT COMMAND FOR THE DRIVEBASE
@@ -267,6 +283,42 @@ public class RobotContainer {
                 () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
                 m_flywheel::stop,
                 m_flywheel));
+
+    // Press LEFT BUMPER --> Drive to a pose 10 feet closer to the BLUE ALLIANCE wall
+    driverController
+        .leftBumper()
+        .whileTrue(
+            Commands.defer(
+                () -> {
+                  // New pose 2 feet closer to BLUE ALLIANCE wall
+                  Pose2d pose =
+                      m_drivebase
+                          .getPose()
+                          .transformBy(
+                              new Transform2d(Units.feetToMeters(-10.0), 0.0, Rotation2d.kZero));
+
+                  // Alternatively, you could define a pose in a separate module and call it here.
+                  //
+                  // Example from 2025 Reefscape:
+                  // --------
+                  // pose = ReefPoses.kBluePoleE;
+
+                  return AutopilotCommands.runAutopilot(m_drivebase, pose);
+                },
+                Set.of(m_drivebase)));
+
+    // Press POV LEFT to nudge the robot left
+    driverController
+        .povLeft()
+        .whileTrue(
+            Commands.startEnd(
+                () -> {
+                  m_drivebase.runVelocity(
+                      new ChassisSpeeds(Units.inchesToMeters(0.), Units.inchesToMeters(11.0), 0.));
+                },
+                // Stop when command ended
+                m_drivebase::stop,
+                m_drivebase));
   }
 
   /**

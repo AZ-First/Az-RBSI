@@ -1,13 +1,19 @@
 // Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
-// Use of this source code is governed by a BSD
-// license that can be found in the AdvantageKit-License.md file
-// at the root directory of this project.
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation or
+// available in the root directory of this project.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 
 package frc.robot.subsystems.accelerometer;
 
-import static frc.robot.Constants.AccelerometerConstants.*;
+import static frc.robot.Constants.RobotConstants.*;
 
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.studica.frc.AHRS;
@@ -18,6 +24,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.robot.util.VirtualSubsystem;
 import frc.robot.util.YagslConstants;
+import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -42,8 +49,13 @@ public class Accelerometer extends VirtualSubsystem {
   private Translation3d rioJerkVector;
   private Translation3d imuJerkVector;
 
-  /** Constructor method, takes the IMU accelerometer instance */
-  public Accelerometer(Object accelerometer) {
+  /** Constructor method, takes the IMU accelerometer supplier */
+  public Accelerometer(Supplier<Object> accelerometerSupplier) {
+
+    // Get the object from the supplier
+    Object accelerometer = accelerometerSupplier.get();
+
+    // Case out the type of accelerometer
     switch (Constants.getSwerveType()) {
       case PHOENIX6:
         // CTRE Tuner X drive bases must use a Pigeon2

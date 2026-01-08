@@ -13,12 +13,11 @@
 
 package frc.robot.util;
 
+import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotController;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.Constants.CANandPowerPorts;
 import frc.robot.Constants.PowerConstants;
+import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
-import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -30,107 +29,105 @@ import org.littletonrobotics.junction.Logger;
 public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
-
-  // Get the AdvantageKit conduit for pulling PDM information
-  // @SuppressWarnings("unused")
-  // private LoggedPowerDistribution loggedPowerDistribution =
-  // LoggedPowerDistribution.getInstance();
-
-  private ConduitApi conduit = ConduitApi.getInstance();
+  private final PowerDistribution m_pdm =
+      new PowerDistribution(PowerConstants.kPDMCANid, PowerDistribution.ModuleType.kRev);
 
   // Define local variables
-  private int NUM_PDH_CHANNELS = conduit.getPDPChannelCount();
-  private double[] channelCurrents = new double[NUM_PDH_CHANNELS];
+  private final LoggedTunableNumber batteryCapacityAh;
   private double totalAmpHours = 0.0;
-  private long lastTimestamp = RobotController.getFPGATime(); // In microseconds
-  private double deltaTime = 0.0; // In seconds
-  private double batteryVoltage;
-  private double totalCurrent;
-  private double driveCurrent;
-  private double steerCurrent;
-  private double subsystemCurrent;
-  private LoggedTunableNumber batteryCapacity;
-  private double batteryPercent;
+  private long lastTimestampUs = RobotController.getFPGATime(); // In microseconds
 
   // DRIVE and STEER motor power ports
   private final int[] m_drivePowerPorts = {
-    CANandPowerPorts.FL_DRIVE.getPowerPort(),
-    CANandPowerPorts.FR_DRIVE.getPowerPort(),
-    CANandPowerPorts.BL_DRIVE.getPowerPort(),
-    CANandPowerPorts.BR_DRIVE.getPowerPort()
+    RobotDevices.FL_DRIVE.getPowerPort(),
+    RobotDevices.FR_DRIVE.getPowerPort(),
+    RobotDevices.BL_DRIVE.getPowerPort(),
+    RobotDevices.BR_DRIVE.getPowerPort()
   };
   private final int[] m_steerPowerPorts = {
-    CANandPowerPorts.FL_ROTATION.getPowerPort(),
-    CANandPowerPorts.FR_ROTATION.getPowerPort(),
-    CANandPowerPorts.BL_ROTATION.getPowerPort(),
-    CANandPowerPorts.BR_ROTATION.getPowerPort()
+    RobotDevices.FL_ROTATION.getPowerPort(),
+    RobotDevices.FR_ROTATION.getPowerPort(),
+    RobotDevices.BL_ROTATION.getPowerPort(),
+    RobotDevices.BR_ROTATION.getPowerPort()
   };
 
   // Class method definition, including inputs of optional subsystems
-  public RBSIPowerMonitor(LoggedTunableNumber batteryCapacity, RBSISubsystem... subsystems) {
-    this.batteryCapacity = batteryCapacity;
+  public RBSIPowerMonitor(LoggedTunableNumber batteryCapacityAh, RBSISubsystem... subsystems) {
+    this.batteryCapacityAh = batteryCapacityAh;
     this.subsystems = subsystems;
   }
 
   /** Periodic Method */
+  @Override
   public void periodic() {
+    // --- Read voltage & total current ---
+    double voltage = m_pdm.getVoltage();
+    double totalCurrent = m_pdm.getTotalCurrent();
 
-    // Check the total robot current and individual port currents against Constants
-    batteryVoltage = conduit.getPDPVoltage();
-    totalCurrent = conduit.getPDPTotalCurrent();
+    // --- Safety alerts ---
     if (totalCurrent > PowerConstants.kTotalMaxCurrent) {
       new Alert("Total current draw exceeds limit!", AlertType.WARNING).set(true);
     }
-    for (int i = 0; i < NUM_PDH_CHANNELS; i++) {
-      channelCurrents[i] = conduit.getPDPChannelCurrent(i);
-      if (channelCurrents[i] > PowerConstants.kMotorPortMaxCurrent) {
-        new Alert("Port " + i + " current draw exceeds limit!", AlertType.WARNING).set(true);
+
+    for (int ch = 0; ch < m_pdm.getNumChannels(); ch++) {
+      double current = m_pdm.getCurrent(ch);
+      if (current > PowerConstants.kMotorPortMaxCurrent) {
+        new Alert("Port " + ch + " current exceeds limit!", AlertType.WARNING).set(true);
       }
     }
-    // Compute the total energy (charge) used in this loop
-    deltaTime =
-        (RobotController.getFPGATime() - lastTimestamp) / 1.0e6; // Time in seconds since last loop
-    lastTimestamp = RobotController.getFPGATime(); // Update timestamp
-    totalAmpHours += (totalCurrent * deltaTime / 3600.);
 
-    // Compute estimated battery life left as a percent
-    batteryPercent =
-        (batteryCapacity.getAsDouble() - totalAmpHours) / batteryCapacity.getAsDouble() * 100;
-
-    // Compute DRIVE and STEER summed currents
-    driveCurrent = 0.0;
-    steerCurrent = 0.0;
-    for (int port : m_drivePowerPorts) {
-      driveCurrent += channelCurrents[port];
+    if (voltage < PowerConstants.kVoltageWarning) {
+      new Alert("Low battery voltage!", AlertType.WARNING).set(true);
     }
-    for (int port : m_steerPowerPorts) {
-      steerCurrent += channelCurrents[port];
+    if (voltage < PowerConstants.kVoltageCritical) {
+      new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
     }
-    // Log values to AdvantageKit and to SmartDashboard
-    Logger.recordOutput("PowerMonitor/Voltage", batteryVoltage);
-    Logger.recordOutput("PowerMonitor/EstimatedBatteryPercent", batteryPercent);
-    Logger.recordOutput("PowerMonitor/AmpHoursUsed", totalAmpHours);
-    Logger.recordOutput("PowerMonitor/TotalCurrent", totalCurrent);
-    Logger.recordOutput("PowerMonitor/DriveCurrent", driveCurrent);
-    Logger.recordOutput("PowerMonitor/SteerCurrent", steerCurrent);
-    SmartDashboard.putNumber("BatteryVoltage", batteryVoltage);
-    SmartDashboard.putNumber("EstimatedBatteryPercent", batteryPercent);
-    SmartDashboard.putNumber("AmpHoursUsed", totalAmpHours);
-    SmartDashboard.putNumber("TotalCurrent", totalCurrent);
-    SmartDashboard.putNumber("DriveCurrent", driveCurrent);
-    SmartDashboard.putNumber("SteerCurrent", steerCurrent);
 
-    // Compute and log any passed-in subsystems
+    // --- Battery estimation ---
+    long nowUs = RobotController.getFPGATime();
+    double dtSec = (nowUs - lastTimestampUs) / 1e6;
+    lastTimestampUs = nowUs;
+
+    totalAmpHours += totalCurrent * dtSec / 3600.0; // accumulate amp-hours
+    double batteryPercent =
+        100.0 * (batteryCapacityAh.getAsDouble() - totalAmpHours) / batteryCapacityAh.getAsDouble();
+
+    Logger.recordOutput("Power/BatteryPercentEstimate", batteryPercent);
+    Logger.recordOutput("Power/AmpHoursUsed", totalAmpHours);
+
+    // --- Drive & Steer aggregation ---
+    logGroupCurrent("Drive", m_drivePowerPorts);
+    logGroupCurrent("Steer", m_steerPowerPorts);
+
+    // --- Subsystems ---
     for (RBSISubsystem subsystem : subsystems) {
-      subsystemCurrent = 0.0;
-      for (int port : subsystem.getPowerPorts()) {
-        subsystemCurrent += channelCurrents[port];
-      }
-      Logger.recordOutput("PowerMonitor/" + subsystem.getName() + "Current", subsystemCurrent);
-      SmartDashboard.putNumber(subsystem.getName() + "Current", subsystemCurrent);
+      logGroupCurrent(subsystem.getName(), subsystem.getPowerPorts());
     }
 
-    // TODO: Do something about setting priorities if drawing too much current
+    // --- Energy / power calculations ---
+    double totalPower = voltage * totalCurrent; // Watts
+    Logger.recordOutput("Power/TotalPower", totalPower);
+    Logger.recordOutput("Power/EnergyJoules", totalPower * dtSec);
+    Logger.recordOutput("Power/EnergyWh", totalPower * dtSec / 3600.0);
 
+    // --- Brownout prediction ---
+    boolean brownoutImminent = voltage < PowerConstants.kVoltageLimiting;
+    Logger.recordOutput("Power/BrownoutImminent", brownoutImminent);
+
+    // --- Optional hooks for current shedding ---
+    if (brownoutImminent) {
+      // TODO: implement automatic shedding: e.g., disable non-critical subsystems
+    }
   }
+
+  private void logGroupCurrent(String name, int[] ports) {
+    double sum = 0.0;
+    for (int port : ports) {
+      sum += m_pdm.getCurrent(port);
+    }
+    Logger.recordOutput("Power/Subsystems/" + name + "Current", sum);
+  }
+
+  // TODO: Do something about setting priorities if drawing too much current
+
 }

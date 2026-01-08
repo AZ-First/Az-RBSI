@@ -1,9 +1,15 @@
 // Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
 //
-// Use of this source code is governed by a BSD
-// license that can be found in the AdvantageKit-License.md file
-// at the root directory of this project.
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation or
+// available in the root directory of this project.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 //
 // Copyright (c) FIRST and other WPILib contributors.
 // Open Source Software; you can modify and/or share it under the terms of
@@ -11,37 +17,28 @@
 
 package frc.robot;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static edu.wpi.first.units.Units.*;
+import static frc.robot.util.RBSIEnum.*;
+
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
+import com.therekrab.autopilot.APConstraints;
+import com.therekrab.autopilot.APProfile;
+import com.therekrab.autopilot.Autopilot;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
-import frc.robot.Constants.AprilTagConstants.AprilTagLayoutType;
+import frc.robot.AprilTagLayout.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
-import frc.robot.util.Alert.AlertType;
-import frc.robot.util.RBSIEnum.AutoType;
-import frc.robot.util.RBSIEnum.CTREPro;
-import frc.robot.util.RBSIEnum.Mode;
-import frc.robot.util.RBSIEnum.MotorIdleMode;
-import frc.robot.util.RBSIEnum.SwerveType;
-import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
-import java.io.IOException;
-import java.nio.file.Path;
-import lombok.Getter;
 import swervelib.math.Matter;
 
 /**
@@ -67,7 +64,7 @@ public final class Constants {
   //       under strict caveat emptor -- and submit any error and bugfixes
   //       via GitHub issues.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
-  private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
+  private static CTREPro phoenixPro = CTREPro.LICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
   private static VisionType visionType = VisionType.NONE; // PHOTON, LIMELIGHT, NONE
 
@@ -101,40 +98,66 @@ public final class Constants {
 
   public static final boolean tuningMode = false;
 
+  /************************************************************************* */
   /** Physical Constants for Robot Operation ******************************* */
-  public static final class RobotPhysicalConstants {
+  public static final class RobotConstants {
 
-    public static final double kRobotMassKg = Units.lbsToKilograms(100.);
+    public static final Mass kRobotMass = Kilograms.of(100.);
     public static final Matter kChassis =
-        new Matter(new Translation3d(0, 0, Units.inchesToMeters(8)), kRobotMassKg);
+        new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kRobotMass.in(Kilograms));
     // Robot moment of intertial; this can be obtained from a CAD model of your drivetrain. Usually,
     // this is between 3 and 8 kg*m^2.
     public static final double kRobotMOI = 6.8;
 
     // Wheel coefficient of friction
     public static final double kWheelCOF = 1.2;
+
+    // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
+    // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
+    //   frame.
+    // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
+    public static final Rotation2d kRioOrientation =
+        switch (getRobot()) {
+          case COMPBOT -> Rotation2d.fromDegrees(0.);
+          case DEVBOT -> Rotation2d.fromDegrees(0.);
+          default -> Rotation2d.fromDegrees(0.);
+        };
+    // IMU can be one of Pigeon2 or NavX
+    public static final Rotation2d kIMUOrientation =
+        switch (getRobot()) {
+          case COMPBOT -> Rotation2d.fromDegrees(0.);
+          case DEVBOT -> Rotation2d.fromDegrees(0.);
+          default -> Rotation2d.fromDegrees(0.);
+        };
   }
 
-  /** Power Distribution Constants ********************************** */
+  /************************************************************************* */
+  /** Power Distribution Constants ***************************************** */
   public static final class PowerConstants {
 
     // Power Distribution Module Configuration
     public static final PowerDistribution.ModuleType kPDMType = PowerDistribution.ModuleType.kRev;
-    public static final int kPDMCANid = 0;
+    public static final int kPDMCANid = 1;
 
     // Current Limits
     public static final double kTotalMaxCurrent = 120.;
     public static final double kMotorPortMaxCurrent = 40.;
     public static final double kSmallPortMaxCurrent = 20.;
+
+    // Brownout voltage levels
+    public static final double kVoltageWarning = 7.5;
+    public static final double kVoltageLimiting = 7.0;
+    public static final double kVoltageCritical = 6.5;
   }
 
+  /************************************************************************* */
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
 
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed
     // of YOUR ROBOT, and replace the estimate here with your measured value!
-    public static final double kMaxLinearSpeed = Units.feetToMeters(18);
+    public static final double kMaxLinearSpeed = Feet.of(18).in(Meters);
 
     // Set 3/4 of a rotation per second as the max angular velocity (radians/sec)
     public static final double kMaxAngularSpeed = 1.5 * Math.PI;
@@ -142,7 +165,13 @@ public final class Constants {
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
     public static final double kMaxLinearAccel = 4.0; // m/s/s
-    public static final double kMaxAngularAccel = Units.degreesToRadians(720);
+    public static final double kMaxAngularAccel = Degrees.of(720).in(Radians);
+
+    // For Profiled PID Motion, these are the rotational PID Constants:
+    // TODO: Need tuning!
+    public static final double kPTheta = 5.0;
+    public static final double kITheta = 0.0;
+    public static final double kDTheta = 0.0;
 
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTime = 10; // seconds
@@ -153,13 +182,22 @@ public final class Constants {
     public static final double kQuasiTimeout = 5.0; // seconds
     public static final double kDynamicTimeout = 3.0; // seconds
 
-    // Not sure what to do with these, yet...
-    // kDriveF = 0.13;
-    // kDriveIZ = 0.0;
-    // kSteerF = 0.0;
-    // kSteerIZ = 0.0;
+    // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
+    // NOTE: Default values from 6328's 2025 Public Code
+    //
+    // IMPORTANT:: These values are valid only for CTRE LICENSED operation!!
+    //             Adjust these downward until your modules behave correctly
+    public static final double kDriveP = 40.0;
+    public static final double kDriveD = 0.03;
+    public static final double kDriveV = 0.83;
+    public static final double kDriveS = 0.21;
+    public static final double kDriveT =
+        SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
+    public static final double kSteerP = 400.0;
+    public static final double kSteerD = 20.0;
   }
 
+  /************************************************************************* */
   /** Example Flywheel Mechanism Constants ********************************* */
   public static final class FlywheelConstants {
 
@@ -184,34 +222,21 @@ public final class Constants {
     public static final PIDConstants pidSim = new PIDConstants(1.0, 0.0, 0.0);
   }
 
-  /** Accelerometer Constants ********************************************** */
-  public static class AccelerometerConstants {
+  /************************************************************************* */
+  /** Place Other Mechanism Constant Classes Here ************************** */
+  // public static class Mechanism1Constants {}
+  // public static class Mechanism2Constants {}
+  // ...
 
-    // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
-    // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
-    //   frame.
-    // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
-    public static final Rotation2d kRioOrientation =
-        switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
-        };
-    // IMU can be one of Pigeon2 or NavX
-    public static final Rotation2d kIMUOrientation =
-        switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
-        };
-  }
-
+  /************************************************************************* */
   /** Operator Constants *************************************************** */
   public static class OperatorConstants {
 
     // Joystick Functions
-    // Set to TRUE for Drive = Left Stick, Turn = Right Stick; else FALSE
-    public static final boolean kDriveLeftTurnRight = true;
+    // Set to TANK for Drive = Left Stick, Turn = Right Stick;
+    // Set to GAMER for Drive = Right Stick, Turn = Left Stick;
+    // NOTE: Intrepid programmers can turn this into a Dashboard-settable value
+    public static final DriveStyle kDriveStyle = DriveStyle.TANK; // TANK, GAMER
 
     // Joystick Deadbands
     public static final double kDeadband = 0.1;
@@ -237,9 +262,11 @@ public final class Constants {
     public static final int[] MULTI_TOGGLE = {4, 5};
   }
 
-  /** Autonomous Action Constants ****************************************** */
+  /************************************************************************* */
+  /** (Semi-)Autonomous Action Constants *********************************** */
   public static final class AutoConstants {
 
+    // ********** PATHPLANNER CONSTANTS *******************
     // Drive and Turn PID constants used for PathPlanner
     public static final PIDConstants kPPdrivePID = new PIDConstants(5.0, 0.0, 0.0);
     public static final PIDConstants kPPsteerPID = new PIDConstants(5.0, 0.0, 0.0);
@@ -247,12 +274,12 @@ public final class Constants {
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(
-            RobotPhysicalConstants.kRobotMassKg,
-            RobotPhysicalConstants.kRobotMOI,
+            RobotConstants.kRobotMass.in(Kilograms),
+            RobotConstants.kRobotMOI,
             new ModuleConfig(
                 SwerveConstants.kWheelRadiusMeters,
                 DrivebaseConstants.kMaxLinearSpeed,
-                RobotPhysicalConstants.kWheelCOF,
+                RobotConstants.kWheelCOF,
                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
                 SwerveConstants.kDriveSlipCurrent,
                 1),
@@ -261,11 +288,31 @@ public final class Constants {
     // Alternatively, we can build this from the PathPlanner GUI:
     // public static final RobotConfig kPathPlannerConfig = RobotConfig.fromGUISettings();
 
-    // Drive and Turn PID constants used for Chorep
+    // ********** CHOREO CONSTANTS ************************
+    // Drive and Turn PID constants used for ChoreO
     public static final PIDConstants kChoreoDrivePID = new PIDConstants(10.0, 0.0, 0.0);
     public static final PIDConstants kChoreoSteerPID = new PIDConstants(7.5, 0.0, 0.0);
+
+    // ********** AUTOPILOT CONSTANTS *********************
+    // Autopilot (Drive to Pose in Teleop) Constraints
+    // see https://therekrab.github.io/autopilot/usage.html
+
+    // Acceleration and Jerk to be applied
+    private static final APConstraints kAPConstraints =
+        new APConstraints().withAcceleration(5.0).withJerk(2.0);
+
+    // Motion profile for drive to pose
+    private static final APProfile kAPProfile =
+        new APProfile(kAPConstraints)
+            .withErrorXY(Centimeters.of(2))
+            .withErrorTheta(Degrees.of(0.5))
+            .withBeelineRadius(Centimeters.of(8));
+
+    // Autopilot object to be used for specific commands
+    public static final Autopilot kAutopilot = new Autopilot(kAPProfile);
   }
 
+  /************************************************************************* */
   /** Vision Constants (Assuming PhotonVision) ***************************** */
   public static class VisionConstants {
 
@@ -292,6 +339,7 @@ public final class Constants {
         Double.POSITIVE_INFINITY; // No rotation data available
   }
 
+  /************************************************************************* */
   /** Vision Camera Posses ************************************************* */
   public static class Cameras {
     // Camera names, must match names configured on coprocessor
@@ -315,8 +363,9 @@ public final class Constants {
         };
   }
 
-  /** List of Device CAN and Power Distribution Circuit IDs **************** */
-  public static class CANandPowerPorts {
+  /************************************************************************* */
+  /** List of Robot Device CAN and Power Distribution Circuit IDs ********** */
+  public static class RobotDevices {
 
     /* DRIVETRAIN CAN DEVICE IDS */
     // Input the correct Power Distribution Module port for each motor!!!!
@@ -372,55 +421,7 @@ public final class Constants {
     // public static final int INTAKE_SERVO = 0;
   }
 
-  /** AprilTag Field Layout ************************************************ */
-  /* SEASON SPECIFIC! -- This section is for 2025 (Reefscape) */
-  public static class AprilTagConstants {
-
-    public static final double aprilTagWidth = Units.inchesToMeters(6.50);
-    public static final String aprilTagFamily = "36h11";
-    public static final AprilTagLayoutType defaultAprilTagType = AprilTagLayoutType.OFFICIAL;
-
-    public static final AprilTagFieldLayout aprilTagLayout =
-        AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
-
-    @Getter
-    public enum AprilTagLayoutType {
-      OFFICIAL("2025-official");
-
-      // SPEAKERS_ONLY("2024-speakers"),
-      // AMPS_ONLY("2024-amps"),
-      // WPI("2024-wpi");
-
-      private AprilTagLayoutType(String name) {
-        if (Constants.disableHAL) {
-          layout = null;
-        } else {
-          try {
-            layout =
-                new AprilTagFieldLayout(
-                    Path.of(
-                        Filesystem.getDeployDirectory().getPath(), "apriltags", name + ".json"));
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        }
-        if (layout == null) {
-          layoutString = "";
-        } else {
-          try {
-            layoutString = new ObjectMapper().writeValueAsString(layout);
-          } catch (JsonProcessingException e) {
-            throw new RuntimeException(
-                "Failed to serialize AprilTag layout JSON " + toString() + "for PhotonVision");
-          }
-        }
-      }
-
-      private final AprilTagFieldLayout layout;
-      private final String layoutString;
-    }
-  }
-
+  /************************************************************************* */
   /** Deploy Directoy Location Constants *********************************** */
   public static final class DeployConstants {
     public static final String apriltagDir = "apriltags";
@@ -434,7 +435,8 @@ public final class Constants {
   /** Get the current robot */
   public static RobotType getRobot() {
     if (!disableHAL && RobotBase.isReal() && robotType == RobotType.SIMBOT) {
-      new Alert("Invalid robot selected, using competition robot as default.", AlertType.ERROR)
+      new Alert(
+              "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
           .set(true);
       robotType = RobotType.COMPBOT;
     }
@@ -471,6 +473,6 @@ public final class Constants {
 
   /** Get the current AprilTag layout type. */
   public static AprilTagLayoutType getAprilTagLayoutType() {
-    return AprilTagConstants.defaultAprilTagType;
+    return AprilTagLayout.defaultAprilTagType;
   }
 }
