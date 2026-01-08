@@ -90,8 +90,7 @@ public class Robot extends LoggedRobot {
     }
 
     // Initialize URCL
-    // TODO: Uncomment this upon succeffsul release of URCL
-    // Logger.registerURCL(URCL.startExternal());
+    Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
 
     // TODO: Uncomment this upon next release of AKit
