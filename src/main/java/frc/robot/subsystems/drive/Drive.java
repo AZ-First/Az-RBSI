@@ -202,7 +202,7 @@ public class Drive extends SubsystemBase {
       }
     }
 
-    // Update the IMU inputs — logging happens automatically
+    // Update the IMU inputs - logging happens automatically
     imuIO.updateInputs(imuInputs);
 
     // Feed historical samples into odometry

@@ -691,7 +691,7 @@ public class VisionSubsystem extends SubsystemBase {
   private void cameraTemperatureAlert(Alert alert, String cameraName, double temperature) {
     if (temperature >= BAD_CAMERA_TEMP) {
       int roundedtemp = (int) Math.round(temperature);
-      alert.setText(cameraName + " Camera temp high (" + roundedtemp + "°F)");
+      alert.setText(cameraName + " Camera temp high (" + roundedtemp + "deg F)");
       alert.set(true);
     } else {
       alert.set(false);

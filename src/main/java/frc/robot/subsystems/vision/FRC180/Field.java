@@ -33,7 +33,7 @@ public abstract class Field {
   // center)."
   public static final Distance REEF_BRANCH_SEPARATION = Inches.of(13);
 
-  // Game Manual Page 33 - "A CORAL is a 11 ⅞ in. long (~30 cm) piece of..."
+  // Game Manual Page 33 - "A CORAL is a 11 7/8 in. long (~30 cm) piece of..."
   public static final Distance CORAL_LENGTH = Centimeters.of(30);
 
   public static void init() {
