@@ -140,12 +140,15 @@ jobs:
           git fetch origin "$target_branch"
           git reset --hard origin/"$target_branch"
 
-          # Initialize commit summary
+          # Initialize summaries
           commit_summary=""
+          skipped_commits=""
           newest_commit=""
+          applied_count=0
+
           commit_list=$(echo "${{ steps.commits.outputs.new_commits }}" | tr -d '\r')
 
-          # Cherry-pick each commit safely
+          # Cherry-pick each commit, skipping workflow changes
           while IFS= read -r commit_sha; do
             [ -z "$commit_sha" ] && continue
 
@@ -153,28 +156,40 @@ jobs:
             commit_msg=$(git log -1 --pretty=%B "$commit_sha")
             first_line=${commit_msg%%$'\n'*}
 
-            # Add only once to the summary
-            commit_summary+="- $short_sha: $first_line"$'\n'
+            # Skip commits that modify workflows
+            if git diff-tree --no-commit-id --name-only -r "$commit_sha" | grep -q '^.github/workflows/'; then
+              echo "Skipping workflow-modifying commit $short_sha"
+              skipped_commits+="- $short_sha: $first_line"$'\n'
+              continue
+            fi
 
-            # Cherry-pick without committing yet
+            # Apply commit
+            commit_summary+="- $short_sha: $first_line"$'\n'
             git cherry-pick --no-commit "$commit_sha"
             newest_commit="$commit_sha"
+            applied_count=$((applied_count + 1))
+
           done <<< "$commit_list"
 
-          # Squash all cherry-picked commits into a single commit
+          # If nothing was applied, exit cleanly
+          if [ "$applied_count" -eq 0 ]; then
+            echo "No applicable commits after filtering. Exiting."
+            exit 0
+          fi
+
+          # Squash all applied commits into one
           git commit -m "Template Sync Updates"$'\n\n'"$commit_summary"
 
-          # Update TEMPLATE_ORIGIN.txt (with new Recorded At)
-          if [ -n "$newest_commit" ]; then
-            {
-              echo "Template: ${{ steps.template.outputs.template_repo }}"
-              echo "Template Branch: ${{ steps.template.outputs.template_branch }}"
-              echo "Template Commit: $newest_commit"
-              echo "Recorded At (UTC): $timestamp"
-            } > TEMPLATE_ORIGIN.txt
-            git add TEMPLATE_ORIGIN.txt
-            git commit --amend --no-edit
-          fi
+          # Update TEMPLATE_ORIGIN.txt
+          {
+            echo "Template: ${{ steps.template.outputs.template_repo }}"
+            echo "Template Branch: ${{ steps.template.outputs.template_branch }}"
+            echo "Template Commit: $newest_commit"
+            echo "Recorded At (UTC): $timestamp"
+          } > TEMPLATE_ORIGIN.txt
+
+          git add TEMPLATE_ORIGIN.txt
+          git commit --amend --no-edit
 
           # Push changes
           git push origin "$branch_name" -f
@@ -184,17 +199,19 @@ jobs:
             gh label create template-sync --color BC8F8F --description "Updates synced from template repository"
           fi
 
-          # Build PR title with date and non-merge commit count
-          pr_count="${{ steps.commits.outputs.commit_count }}"
-          [ -z "$pr_count" ] && pr_count=0
+          # Build PR title
           plural="s"
-          [ "$pr_count" -eq 1 ] && plural=""
-          pr_title="Sync Template Updates ($pr_count commit$plural, $sync_date)"
+          [ "$applied_count" -eq 1 ] && plural=""
+          pr_title="Sync Template Updates ($applied_count commit$plural, $sync_date)"
 
-          # Build PR body with summary + source info
-          pr_body=$(printf "Template Sync Commit Summary:\n\n%s\n_Synced from:_ [%s](https://github.com/%s/tree/%s) at commit \`%s\`\n\n_Last recorded at (UTC): %s_" \
-            "$commit_summary" \
-            "${{ steps.template.outputs.template_repo }}" \
+          # Build PR body
+          pr_body=$(printf "### Template Sync Commit Summary:\n\n%s\n" "$commit_summary")
+
+          if [ -n "$skipped_commits" ]; then
+            pr_body+=$(printf "\n\n### ⚠️ Skipped workflow-related commits (require manual review):\n\n%s\n" "$skipped_commits")
+          fi
+
+          pr_body+=$(printf "\n\n\n_Synced from:_ https://github.com/%s/tree/%s at commit \`%s\`\n\n_Last recorded at (UTC): %s_" \
             "${{ steps.template.outputs.template_repo }}" \
             "${{ steps.template.outputs.template_branch }}" \
             "$newest_commit" \
