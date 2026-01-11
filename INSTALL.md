@@ -94,7 +94,7 @@ steps you need to complete:
 
 **NOTE:** If you have any other combination of hardware (including REV NEOs,
 NavX IMU, etc.) you will need to use the [YAGSL Swerve Configurator](
-https://broncbotz3481.github.io/YAGSL-Example/) to configure the inputs for
+https://yet-another-software-suite.github.io/YAGSL/config_generator/) to configure the inputs for
 your robot.  **Since the reference build recommends an all-CTRE swerve base**,
 this functionality has not been extensively tested.  Any teams that adopt this
 method are encouraged to submit bug reports and code fixes to the [Az-RBSI
