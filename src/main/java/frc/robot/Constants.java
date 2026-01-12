@@ -308,6 +308,11 @@ public final class Constants {
     // Mechanism motor gear ratio
     public static final double kFlywheelGearRatio = 1.5;
 
+    // Flywheel motor open-loop and closed-loop ramp periods for current smoothing
+    //   Time from from 0 -> full duty
+    public static final double kFlywheelClosedLoopRampPeriod = 0.15; // seconds
+    public static final double kFlywheelOpenLoopRampPeriod = 0.25; // seconds
+
     // MODE == REAL / REPLAY
     // Feedforward constants
     public static final double kStaticGainReal = 0.1;

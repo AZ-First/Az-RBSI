@@ -26,6 +26,8 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import edu.wpi.first.math.util.Units;
+import frc.robot.Constants;
+import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.SparkUtil;
 
@@ -63,18 +65,22 @@ public class FlywheelIOSpark implements FlywheelIO {
     leaderConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(0.0, 0.0, 0.0)
+        .pid(pidReal.kP, pidReal.kI, pidReal.kD)
         .feedForward
-        .kV(0.0);
+        .kS(kStaticGainReal)
+        .kV(kVelocityGainReal);
     leaderConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
         .primaryEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .primaryEncoderVelocityAlwaysOn(true)
-        .primaryEncoderVelocityPeriodMs(20)
-        .appliedOutputPeriodMs(20)
-        .busVoltagePeriodMs(20)
-        .outputCurrentPeriodMs(20);
+        .primaryEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+    leaderConfig
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
     SparkUtil.tryUntilOk(
         leader,
         5,
@@ -127,4 +133,10 @@ public class FlywheelIOSpark implements FlywheelIO {
     // pid.setD(kD, 0);
     // pid.setFF(0, 0);
   }
+
+  @Override
+  public void configureFF(double kS, double kV) {}
+
+  @Override
+  public void configureFF(double kS, double kV, double kA) {}
 }

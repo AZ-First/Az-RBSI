@@ -30,4 +30,10 @@ public interface FlywheelIO extends RBSIIO {
 
   /** Set velocity PID constants. */
   public default void configurePID(double kP, double kI, double kD) {}
+
+  /** Set velocity FeedForward constants. */
+  public default void configureFF(double kS, double kV) {}
+
+  /** Set velocity FeedForward constants. */
+  public default void configureFF(double kS, double kV, double kA) {}
 }
