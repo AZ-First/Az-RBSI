@@ -274,6 +274,14 @@ public final class Constants {
     public static final double kQuasiTimeout = 5.0; // seconds
     public static final double kDynamicTimeout = 3.0; // seconds
 
+    // Drive motor open-loop and closed-loop ramp periods for current smoothing
+    //   Time from from 0 -> full duty
+    public static final double kDriveClosedLoopRampPeriod = 0.15; // seconds
+    public static final double kDriveOpenLoopRampPeriod = 0.25; // seconds
+
+    public static final double kOptimalVoltage = 12.0; // Volts
+    public static final double kNominalFFVolts = 2.0; // Volts
+
     // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
     // NOTE: Default values from 6328's 2025 Public Code
     //
@@ -282,6 +290,7 @@ public final class Constants {
     public static final double kDriveP = 40.0;
     public static final double kDriveD = 0.03;
     public static final double kDriveV = 0.83;
+    public static final double kDriveA = 0.0;
     public static final double kDriveS = 0.21;
     public static final double kDriveT =
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
