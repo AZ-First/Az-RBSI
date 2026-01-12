@@ -310,7 +310,7 @@ public class ModuleIOTalonFXS implements ModuleIO {
   public void setDriveOpenLoop(double output) {
     // Scale by actual battery voltage to keep full output consistent
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * 12.0 / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
 
     driveTalon.setControl(
         switch (m_DriveMotorClosedLoopOutput) {

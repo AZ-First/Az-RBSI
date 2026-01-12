@@ -294,7 +294,7 @@ public class ModuleIOTalonFX implements ModuleIO {
   public void setDriveOpenLoop(double output) {
     // Scale by actual battery voltage to keep full output consistent
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * 12.0 / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
 
     driveTalon.setControl(
         switch (m_DriveMotorClosedLoopOutput) {
@@ -323,6 +323,7 @@ public class ModuleIOTalonFX implements ModuleIO {
           case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(scaledOutput);
         });
 
+    // Log output and battery
     Logger.recordOutput("Swerve/Turn/OpenLoopOutput", scaledOutput);
     Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
   }
@@ -381,8 +382,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     double busVoltage = RobotController.getBatteryVoltage();
 
     // Scale feedforward voltage by battery voltage
-    double nominalFFVolts =
-        DrivebaseConstants.kNominalFFVolts; // replace with your feedforward calculation if needed
+    double nominalFFVolts = DrivebaseConstants.kNominalFFVolts;
     double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
 
     turnTalon.setControl(

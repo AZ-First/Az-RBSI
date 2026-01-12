@@ -52,7 +52,6 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
-import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.SparkUtil;
@@ -238,10 +237,7 @@ public class ModuleIOBlended implements ModuleIO {
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
-        .pid(
-            AutoConstants.kPPsteerPID.kP,
-            AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD)
+        .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
         .kV(0.0);
     turnConfig
@@ -249,10 +245,13 @@ public class ModuleIOBlended implements ModuleIO {
         .absoluteEncoderPositionAlwaysOn(true)
         .absoluteEncoderPositionPeriodMs((int) (1000.0 / kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
-        .absoluteEncoderVelocityPeriodMs(20)
-        .appliedOutputPeriodMs(20)
-        .busVoltagePeriodMs(20)
-        .outputCurrentPeriodMs(20);
+        .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+    turnConfig
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
 
     // Configure CANCoder
     CANcoderConfiguration cancoderConfig = constants.EncoderInitialConfigs;
@@ -352,7 +351,7 @@ public class ModuleIOBlended implements ModuleIO {
   public void setDriveOpenLoop(double output) {
     // Scale by actual battery voltage to keep full output consistent
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * 12.0 / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
 
     driveTalon.setControl(
         switch (m_DriveMotorClosedLoopOutput) {
@@ -372,7 +371,13 @@ public class ModuleIOBlended implements ModuleIO {
    */
   @Override
   public void setTurnOpenLoop(double output) {
-    turnSpark.setVoltage(output);
+    double busVoltage = RobotController.getBatteryVoltage();
+    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    turnSpark.setVoltage(scaledOutput);
+
+    // Log output and battery
+    Logger.recordOutput("Swerve/Turn/OpenLoopOutput", scaledOutput);
+    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
   }
 
   /**
