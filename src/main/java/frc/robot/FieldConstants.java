@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import lombok.Getter;
 
-public class AprilTagLayout {
+public class FieldConstants {
 
   /** AprilTag Field Layout ************************************************ */
   public static final double aprilTagWidth = Inches.of(6.50).in(Meters);

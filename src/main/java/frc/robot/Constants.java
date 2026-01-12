@@ -34,7 +34,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
-import frc.robot.AprilTagLayout.AprilTagLayoutType;
+import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
@@ -473,6 +473,6 @@ public final class Constants {
 
   /** Get the current AprilTag layout type. */
   public static AprilTagLayoutType getAprilTagLayoutType() {
-    return AprilTagLayout.defaultAprilTagType;
+    return FieldConstants.defaultAprilTagType;
   }
 }
