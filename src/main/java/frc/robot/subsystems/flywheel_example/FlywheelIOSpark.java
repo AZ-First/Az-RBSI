@@ -3,22 +3,27 @@
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// Use of this source code is governed by a BSD
-// license that can be found in the AdvantageKit-License.md file
-// at the root directory of this project.
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation or
+// available in the root directory of this project.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 
 package frc.robot.subsystems.flywheel_example;
 
 import static frc.robot.Constants.FlywheelConstants.*;
 import static frc.robot.Constants.RobotDevices.*;
 
+import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.ClosedLoopSlot;
 import com.revrobotics.spark.FeedbackSensor;
-import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkBase.ControlType;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkClosedLoopController.ArbFFUnits;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -28,6 +33,7 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 import edu.wpi.first.math.util.Units;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.SparkUtil;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * NOTE: To use the Spark Flex / NEO Vortex, replace all instances of "CANSparkMax" with
@@ -35,11 +41,11 @@ import frc.robot.util.SparkUtil;
  */
 public class FlywheelIOSpark implements FlywheelIO {
 
-  // Define the leader / follower motors from the Ports section of RobotContainer
-  private final SparkBase leader =
+  // Define the leader / follower motors from the RobotDevices section of RobotContainer
+  private final SparkMax leader =
       new SparkMax(FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
-  private final SparkBase follower =
-      new SparkMax(FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
+  private final SparkMax follower =
+      new SparkMax(FLYWHEEL_FOLLOWER.getDeviceNumber(), MotorType.kBrushless);
   private final RelativeEncoder encoder = leader.getEncoder();
   private final SparkClosedLoopController pid = leader.getClosedLoopController();
   // IMPORTANT: Include here all devices listed above that are part of this mechanism!
@@ -91,6 +97,13 @@ public class FlywheelIOSpark implements FlywheelIO {
         Units.rotationsPerMinuteToRadiansPerSecond(encoder.getVelocity() / kFlywheelGearRatio);
     inputs.appliedVolts = leader.getAppliedOutput() * leader.getBusVoltage();
     inputs.currentAmps = new double[] {leader.getOutputCurrent(), follower.getOutputCurrent()};
+
+    // AdvantageKit logging
+    Logger.recordOutput("Flywheel/PositionRad", inputs.positionRad);
+    Logger.recordOutput("Flywheel/VelocityRadPerSec", inputs.velocityRadPerSec);
+    Logger.recordOutput("Flywheel/AppliedVolts", inputs.appliedVolts);
+    Logger.recordOutput("Flywheel/LeaderCurrent", inputs.currentAmps[0]);
+    Logger.recordOutput("Flywheel/FollowerCurrent", inputs.currentAmps[1]);
   }
 
   @Override
