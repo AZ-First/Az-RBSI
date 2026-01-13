@@ -1,21 +1,19 @@
 The hardware-specific IO files included here are a baseline for what we expect
 teams to use.  If, however, you are using a different combination of hardware,
-you will need to create a new ``ModuleIO*.java`` or ``GyroIO*.java`` file.  We
-encourage you to submit a PR to the Az-RBSI repositiory with your new hardware
-file if you feel other teams may benefit from its inclusion.  Additionally, the
-instantiation logic in ``Drive.java`` will need to be extended to include the
-new module type.
+you will need to create a new ``ModuleIO*.java`` file.  We encourage you to
+submit a PR to the Az-RBSI repositiory with your new hardware file if you feel
+other teams may benefit from its inclusion.  Additionally, the instantiation
+logic in ``Drive.java`` will need to be extended to include the new module
+type.
 
 Existing IO files:
 
-  - ``GyroIOPigeon2.java``: CTRE Pigeon2 as the swerve IMU
-  - ``GyroIONavX.java``: NavX as the swerve IMU, connected via SPI
-
   - ``ModuleIOTalonFX.java``: 2x TalonFX motors + CANcoder
+  - ``ModuleIOTalonFXS.java``: 2x TalonFXS motors + CANcoder
   - ``ModuleIOSpark.java``: 2x Rev NEO motors + analog absolute encoder connected to the RIO
   - ``ModuleIOSparkCANcoder.java``: 2x Rv NEO motors + CANcoder
   - ``ModuleIOBlended.java``: TalonFX drive, Rev NEO steer motors + CANcoder
 
 
 --------------------
-Last Modified: 2 Jan 2025, TPEB
+Last Modified: 12 Jan 2026, TPEB
