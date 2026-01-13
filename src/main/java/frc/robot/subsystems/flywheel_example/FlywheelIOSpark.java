@@ -60,7 +60,7 @@ public class FlywheelIOSpark implements FlywheelIO {
               case BRAKE -> IdleMode.kBrake;
             })
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     leaderConfig.encoder.uvwMeasurementPeriod(10).uvwAverageDepth(2);
     leaderConfig
         .closedLoop

@@ -225,7 +225,7 @@ public class ModuleIOBlended implements ModuleIO {
         .inverted(constants.SteerMotorInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(constants.EncoderInverted)

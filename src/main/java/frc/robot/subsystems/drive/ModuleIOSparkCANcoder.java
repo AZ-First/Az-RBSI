@@ -151,7 +151,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     driveConfig
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) kDriveCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     driveConfig
         .encoder
         .positionConversionFactor(driveEncoderPositionFactor)
@@ -188,7 +188,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         .inverted(turnInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(turnEncoderInverted)

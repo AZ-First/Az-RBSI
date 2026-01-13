@@ -170,7 +170,7 @@ public class ModuleIOSpark implements ModuleIO {
         .inverted(turnInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(turnEncoderInverted)
