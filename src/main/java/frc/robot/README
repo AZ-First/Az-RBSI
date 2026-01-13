@@ -6,10 +6,6 @@ robot.  The files that should exist in this directory are listed below, along
 with a brief description of their contents and which files MUST be edited to
 include information about the specific robot being controlled.
 
-AprilTagLayout.java
-    The year-specific AprilTag and field layout file.  Teams may modify this
-    file to include additional information specific for their needs.
-
 BuildConstants.java
     Not tracked by git, used by the build system to record information about
     the latest build of the code.  This file should NOT be altered, and will be
@@ -22,12 +18,24 @@ Constants.java
     importing only the constants needed for a particular software module.  This
     file MUST be modified to include the proper robot constants in the code.
 
+FieldConstants.java
+    The year-specific AprilTag and field layout file.  Teams may modify the
+    file to include additional information specific for their needs.
+
+FieldState.java
+    For 2026 - REBUILT, the field produces information that affects gameplay,
+    namely which HUB is active at different times during the match.  The file
+    converts data from the FMS into data that can be used by teams for scoring
+    control.
+
 Main.java
-    This is the file run by the RoboRIO virtual machine.  Do NOT alter this
-    file.
+    The file run by the RoboRIO virtual machine.  Do NOT alter this file.
+
+README
+    This file.
 
 Robot.java
-    This file is called by ``Main.java`` and directs the operation of the robot
+    The file called by ``Main.java`` and which directs the operation of the robot
     according to the currently commanded mode (disabled, autonomous, teleop,
     test, and simulation).  Care must be taken when modifying this module to
     ensure proper operation of the robot.  One section that would be useful to
@@ -76,4 +84,4 @@ util/
 
 
 --------------------
-Last Modified: 06 Jan 2026, TPEB
+Last Modified: 12 Jan 2026, TPEB
