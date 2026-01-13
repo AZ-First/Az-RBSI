@@ -1,0 +1,14 @@
+The hardware-specific IO files included here are a baseline for what we expect
+teams to use.  If, however, you are using a different combination of hardware,
+you will need to create a new ``GyroIO*.java`` file.  We encourage you to
+submit a PR to the Az-RBSI repositiory with your new hardware file if you feel
+other teams may benefit from its inclusion.
+
+Existing IO files:
+
+  - ``GyroIOPigeon2.java``: CTRE Pigeon2 as the swerve IMU
+  - ``GyroIONavX.java``: NavX as the swerve IMU, connected via SPI
+
+
+--------------------
+Last Modified: 12 Jan 2026, TPEB

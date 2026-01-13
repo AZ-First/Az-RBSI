@@ -1,5 +1,7 @@
 // Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
+// Copyright (c) 2025-2026 Littleton Robotics
+// http://github.com/Mechanical-Advantage
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -28,12 +30,21 @@ import java.io.IOException;
 import java.nio.file.Path;
 import lombok.Getter;
 
-public class AprilTagLayout {
+/**
+ * Contains various field dimensions and useful reference points. All units are in meters and poses
+ * have a blue alliance origin.
+ */
+public class FieldConstants {
 
   /** AprilTag Field Layout ************************************************ */
   public static final double aprilTagWidth = Inches.of(6.50).in(Meters);
 
   public static final String aprilTagFamily = "36h11";
+
+  public static final double fieldLength = AprilTagLayoutType.OFFICIAL.getLayout().getFieldLength();
+  public static final double fieldWidth = AprilTagLayoutType.OFFICIAL.getLayout().getFieldWidth();
+
+  public static final int aprilTagCount = AprilTagLayoutType.OFFICIAL.getLayout().getTags().size();
   public static final AprilTagLayoutType defaultAprilTagType = AprilTagLayoutType.OFFICIAL;
 
   public static final AprilTagFieldLayout aprilTagLayout =
@@ -42,34 +53,26 @@ public class AprilTagLayout {
   @Getter
   public enum AprilTagLayoutType {
     OFFICIAL("2026-official"),
-
+    NONE("2026-none"),
     REEFSCAPE("2025-official");
 
-    // SPEAKERS_ONLY("2024-speakers"),
-    // AMPS_ONLY("2024-amps"),
-    // WPI("2024-wpi");
-
-    private AprilTagLayoutType(String name) {
-      if (Constants.disableHAL) {
-        layout = null;
-      } else {
-        try {
-          layout =
-              new AprilTagFieldLayout(
-                  Path.of(Filesystem.getDeployDirectory().getPath(), "apriltags", name + ".json"));
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
+    AprilTagLayoutType(String name) {
+      try {
+        layout =
+            new AprilTagFieldLayout(
+                Constants.disableHAL
+                    ? Path.of("src", "main", "deploy", "apriltags", name + ".json")
+                    : Path.of(
+                        Filesystem.getDeployDirectory().getPath(), "apriltags", name + ".json"));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
-      if (layout == null) {
-        layoutString = "";
-      } else {
-        try {
-          layoutString = new ObjectMapper().writeValueAsString(layout);
-        } catch (JsonProcessingException e) {
-          throw new RuntimeException(
-              "Failed to serialize AprilTag layout JSON " + toString() + "for PhotonVision");
-        }
+
+      try {
+        layoutString = new ObjectMapper().writeValueAsString(layout);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(
+            "Failed to serialize AprilTag layout JSON " + toString() + "for PhotonVision");
       }
     }
 

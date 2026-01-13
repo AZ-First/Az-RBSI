@@ -14,7 +14,8 @@ import static frc.robot.Constants.RobotDevices.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
+import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.VelocityVoltage;
@@ -27,6 +28,7 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.util.PhoenixUtil;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
 
@@ -46,8 +48,9 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private final StatusSignal<Current> leaderCurrent = leader.getSupplyCurrent();
   private final StatusSignal<Current> followerCurrent = follower.getSupplyCurrent();
 
+  private final TalonFXConfiguration config = new TalonFXConfiguration();
+
   public FlywheelIOTalonFX() {
-    var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 30.0;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.MotorOutput.NeutralMode =
@@ -55,6 +58,19 @@ public class FlywheelIOTalonFX implements FlywheelIO {
           case COAST -> NeutralModeValue.Coast;
           case BRAKE -> NeutralModeValue.Brake;
         };
+    // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
+    OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
+    openRamps.DutyCycleOpenLoopRampPeriod = kFlywheelOpenLoopRampPeriod;
+    openRamps.VoltageOpenLoopRampPeriod = kFlywheelOpenLoopRampPeriod;
+    openRamps.TorqueOpenLoopRampPeriod = kFlywheelOpenLoopRampPeriod;
+    ClosedLoopRampsConfigs closedRamps = new ClosedLoopRampsConfigs();
+    closedRamps.DutyCycleClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
+    closedRamps.VoltageClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
+    closedRamps.TorqueClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
+    // Apply the open- and closed-loop ramp configuration for current smoothing
+    config.withClosedLoopRamps(closedRamps).withOpenLoopRamps(openRamps);
+
+    // Apply the configurations to the flywheel motors
     leader.getConfigurator().apply(config);
     follower.getConfigurator().apply(config);
     // If follower rotates in the opposite direction, set "MotorAlignmentValue" to Opposed
@@ -94,12 +110,45 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     leader.stopMotor();
   }
 
+  /**
+   * Set the PID portion of the Slot0 closed-loop configuration
+   *
+   * @param kP Proportional gain
+   * @param kI Integral gain
+   * @param kD Differential gain
+   */
   @Override
   public void configurePID(double kP, double kI, double kD) {
-    var config = new Slot0Configs();
-    config.kP = kP;
-    config.kI = kI;
-    config.kD = kD;
-    leader.getConfigurator().apply(config);
+    config.Slot0.kP = kP;
+    config.Slot0.kI = kI;
+    config.Slot0.kD = kD;
+    PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
+  }
+
+  /**
+   * Set the FeedForward portion of the Slot0 closed-loop configuration
+   *
+   * @param kS Static gain
+   * @param kV Velocity gain
+   */
+  @Override
+  public void configureFF(double kS, double kV) {
+    config.Slot0.kS = kS;
+    config.Slot0.kV = kV;
+    PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
+  }
+
+  /**
+   * Set the FeedForward portion of the Slot0 closed-loop configuration
+   *
+   * @param kS Static gain
+   * @param kV Velocity gain
+   * @param kA Acceleration gain
+   */
+  public void configureFF(double kS, double kV, double kA) {
+    config.Slot0.kS = kS;
+    config.Slot0.kV = kV;
+    config.Slot0.kA = kA;
+    PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
   }
 }

@@ -12,13 +12,13 @@ package frc.robot.subsystems.drive;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import com.revrobotics.AbsoluteEncoder;
+import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
+import com.revrobotics.ResetMode;
 import com.revrobotics.spark.ClosedLoopSlot;
 import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkBase.ControlType;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkClosedLoopController.ArbFFUnits;
 import com.revrobotics.spark.SparkFlex;
@@ -30,10 +30,13 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Rotation2d;
-import frc.robot.Constants.AutoConstants;
+import edu.wpi.first.wpilibj.RobotController;
+import frc.robot.Constants;
+import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.SparkUtil;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Module IO implementation for Spark Flex drive motor controller, Spark Max turn motor controller,
@@ -60,9 +63,18 @@ public class ModuleIOSpark implements ModuleIO {
   private final Queue<Double> turnPositionQueue;
 
   // Connection debouncers
-  private final Debouncer driveConnectedDebounce = new Debouncer(0.5);
-  private final Debouncer turnConnectedDebounce = new Debouncer(0.5);
+  private final Debouncer driveConnectedDebounce =
+      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+  private final Debouncer turnConnectedDebounce =
+      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
 
+  // Values used for calculating feedforward from kS, kV, and kA
+  private double lastVelocityRotPerSec = 0.0;
+  private long lastTimestampNano = System.nanoTime();
+
+  /*
+   * SparkI/O
+   */
   public ModuleIOSpark(int module) {
     zeroRotation =
         switch (module) {
@@ -118,7 +130,7 @@ public class ModuleIOSpark implements ModuleIO {
     driveConfig
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) kDriveCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     driveConfig
         .encoder
         .positionConversionFactor(driveEncoderPositionFactor)
@@ -128,21 +140,22 @@ public class ModuleIOSpark implements ModuleIO {
     driveConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(
-            AutoConstants.kPPdrivePID.kP,
-            AutoConstants.kPPdrivePID.kI,
-            AutoConstants.kPPdrivePID.kD)
+        .pid(DrivebaseConstants.kDriveP, 0.0, DrivebaseConstants.kDriveD)
         .feedForward
-        .kV(0.0);
+        .kV(DrivebaseConstants.kDriveV)
+        .kS(DrivebaseConstants.kDriveS);
     driveConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
         .primaryEncoderPositionPeriodMs((int) (1000.0 / kOdometryFrequency))
         .primaryEncoderVelocityAlwaysOn(true)
-        .primaryEncoderVelocityPeriodMs(20)
-        .appliedOutputPeriodMs(20)
-        .busVoltagePeriodMs(20)
-        .outputCurrentPeriodMs(20);
+        .primaryEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+    driveConfig
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
     SparkUtil.tryUntilOk(
         driveSpark,
         5,
@@ -157,7 +170,7 @@ public class ModuleIOSpark implements ModuleIO {
         .inverted(turnInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(12.0);
+        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(turnEncoderInverted)
@@ -169,10 +182,7 @@ public class ModuleIOSpark implements ModuleIO {
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
-        .pid(
-            AutoConstants.kPPsteerPID.kP,
-            AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD)
+        .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
         .kV(0.0);
     turnConfig
@@ -180,10 +190,13 @@ public class ModuleIOSpark implements ModuleIO {
         .absoluteEncoderPositionAlwaysOn(true)
         .absoluteEncoderPositionPeriodMs((int) (1000.0 / kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
-        .absoluteEncoderVelocityPeriodMs(20)
-        .appliedOutputPeriodMs(20)
-        .busVoltagePeriodMs(20)
-        .outputCurrentPeriodMs(20);
+        .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+    turnConfig
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
     SparkUtil.tryUntilOk(
         turnSpark,
         5,
@@ -245,29 +258,76 @@ public class ModuleIOSpark implements ModuleIO {
     turnPositionQueue.clear();
   }
 
+  /**
+   * Set the drive motor to an open-loop voltage, scaled to battery voltage
+   *
+   * @param output Specified open-loop voltage requested
+   */
   @Override
   public void setDriveOpenLoop(double output) {
     driveSpark.setVoltage(output);
+
+    // Log output and battery
+    Logger.recordOutput("Swerve/Drive/OpenLoopOutput", output);
   }
 
+  /**
+   * Set the turn motor to an open-loop voltage, scaled to battery voltage
+   *
+   * @param output Specified open-loop voltage requested
+   */
   @Override
   public void setTurnOpenLoop(double output) {
     turnSpark.setVoltage(output);
+
+    // Log output and battery
+    Logger.recordOutput("Swerve/Turn/OpenLoopOutput", output);
   }
 
+  /**
+   * Set the velocity of the module
+   *
+   * @param velocityRadPerSec Requested module drive velocity in radians per second
+   */
   @Override
   public void setDriveVelocity(double velocityRadPerSec) {
-    double ffVolts =
-        SwerveConstants.kDriveFrictionVoltage * Math.signum(velocityRadPerSec)
-            + driveKv * velocityRadPerSec;
+    // Compute acceleration for feedforward
+    long currentTimeNano = System.nanoTime();
+    double deltaTimeSec = (currentTimeNano - lastTimestampNano) * 1e-9;
+    double accelerationRadPerSec2 =
+        deltaTimeSec > 0 ? (velocityRadPerSec - lastVelocityRotPerSec) / deltaTimeSec : 0.0;
+
+    lastVelocityRotPerSec = velocityRadPerSec;
+    lastTimestampNano = currentTimeNano;
+
+    // Feedforward using kS, kV, kA
+    double nominalFFVolts =
+        Math.signum(velocityRadPerSec) * DrivebaseConstants.kDriveS
+            + DrivebaseConstants.kDriveV * velocityRadPerSec
+            + DrivebaseConstants.kDriveA * accelerationRadPerSec2;
+
+    double busVoltage = RobotController.getBatteryVoltage();
+    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+
     driveController.setSetpoint(
         velocityRadPerSec,
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
-        ffVolts,
+        scaledFFVolts,
         ArbFFUnits.kVoltage);
+
+    // Logging
+    Logger.recordOutput("Swerve/Drive/ClosedLoopVelocityRadPerSec", velocityRadPerSec);
+    Logger.recordOutput("Swerve/Drive/ClosedLoopAccelRadPerSec2", accelerationRadPerSec2);
+    Logger.recordOutput("Swerve/Drive/ClosedLoopFFVolts", scaledFFVolts);
+    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
   }
 
+  /**
+   * Set the turn position of the module
+   *
+   * @param rotation Requested module Rotation2d position
+   */
   @Override
   public void setTurnPosition(Rotation2d rotation) {
     double setpoint =

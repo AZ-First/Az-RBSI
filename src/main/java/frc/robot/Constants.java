@@ -34,7 +34,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
-import frc.robot.AprilTagLayout.AprilTagLayoutType;
+import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
@@ -274,6 +274,14 @@ public final class Constants {
     public static final double kQuasiTimeout = 5.0; // seconds
     public static final double kDynamicTimeout = 3.0; // seconds
 
+    // Drive motor open-loop and closed-loop ramp periods for current smoothing
+    //   Time from from 0 -> full duty
+    public static final double kDriveClosedLoopRampPeriod = 0.15; // seconds
+    public static final double kDriveOpenLoopRampPeriod = 0.25; // seconds
+
+    public static final double kOptimalVoltage = 12.0; // Volts
+    public static final double kNominalFFVolts = 2.0; // Volts
+
     // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
     // NOTE: Default values from 6328's 2025 Public Code
     //
@@ -282,6 +290,7 @@ public final class Constants {
     public static final double kDriveP = 40.0;
     public static final double kDriveD = 0.03;
     public static final double kDriveV = 0.83;
+    public static final double kDriveA = 0.0;
     public static final double kDriveS = 0.21;
     public static final double kDriveT =
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
@@ -298,6 +307,11 @@ public final class Constants {
 
     // Mechanism motor gear ratio
     public static final double kFlywheelGearRatio = 1.5;
+
+    // Flywheel motor open-loop and closed-loop ramp periods for current smoothing
+    //   Time from from 0 -> full duty
+    public static final double kFlywheelClosedLoopRampPeriod = 0.15; // seconds
+    public static final double kFlywheelOpenLoopRampPeriod = 0.25; // seconds
 
     // MODE == REAL / REPLAY
     // Feedforward constants
@@ -473,6 +487,6 @@ public final class Constants {
 
   /** Get the current AprilTag layout type. */
   public static AprilTagLayoutType getAprilTagLayoutType() {
-    return AprilTagLayout.defaultAprilTagType;
+    return FieldConstants.defaultAprilTagType;
   }
 }
