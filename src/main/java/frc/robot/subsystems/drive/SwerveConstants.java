@@ -44,7 +44,6 @@ public class SwerveConstants {
   public static final double kSteerCurrentLimit;
   public static final double kDriveCurrentLimit;
   public static final double kDriveSlipCurrent;
-  public static final double kOptimalVoltage;
   public static final int kFLDriveMotorId;
   public static final int kFLSteerMotorId;
   public static final int kFLEncoderId;
@@ -126,7 +125,6 @@ public class SwerveConstants {
         kSteerCurrentLimit = 40.0; // Example from CTRE documentation
         kDriveCurrentLimit = 120.0; // Example from CTRE documentation
         kDriveSlipCurrent = TunerConstants.FrontLeft.SlipCurrent;
-        kOptimalVoltage = 12.0; // Assumed Ideal
         // Front Left
         kFLDriveMotorId = TunerConstants.FrontLeft.DriveMotorId;
         kFLSteerMotorId = TunerConstants.FrontLeft.SteerMotorId;
@@ -212,7 +210,6 @@ public class SwerveConstants {
         kSteerCurrentLimit = YagslConstants.kSteerCurrentLimit;
         kDriveCurrentLimit = YagslConstants.kDriveCurrentLimit;
         kDriveSlipCurrent = 120.0;
-        kOptimalVoltage = YagslConstants.kOptimalVoltage;
         // Front Left
         kFLDriveMotorId = YagslConstants.kFrontLeftDriveMotorId;
         kFLSteerMotorId = YagslConstants.kFrontLeftSteerMotorId;
