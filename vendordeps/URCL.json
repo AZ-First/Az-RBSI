@@ -2,7 +2,7 @@
   "fileName": "URCL.json",
   "name": "URCL",
   "version": "2026.0.0",
-  "frcYear": "2026beta",
+  "frcYear": "2026",
   "uuid": "84246d17-a797-4d1e-bd9f-c59cd8d2477c",
   "mavenUrls": [
     "https://frcmaven.wpi.edu/artifactory/littletonrobotics-mvn-release/"

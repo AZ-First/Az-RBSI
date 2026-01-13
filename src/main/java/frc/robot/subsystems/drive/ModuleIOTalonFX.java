@@ -15,6 +15,8 @@ import static frc.robot.subsystems.drive.SwerveConstants.*;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
+import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
+import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionTorqueCurrentFOC;
@@ -40,6 +42,7 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerConstants;
@@ -115,6 +118,10 @@ public class ModuleIOTalonFX implements ModuleIO {
   private final TalonFXConfiguration driveConfig = new TalonFXConfiguration();
   private final TalonFXConfiguration turnConfig = new TalonFXConfiguration();
 
+  // Values used for calculating feedforward from kS, kV, and kA
+  private double lastVelocityRotPerSec = 0.0;
+  private long lastTimestampNano = System.nanoTime();
+
   /*
    * TalonFX I/O
    */
@@ -140,17 +147,30 @@ public class ModuleIOTalonFX implements ModuleIO {
             .withKI(0.0)
             .withKD(DrivebaseConstants.kDriveD)
             .withKS(DrivebaseConstants.kDriveS)
-            .withKV(DrivebaseConstants.kDriveV);
+            .withKV(DrivebaseConstants.kDriveV)
+            .withKA(DrivebaseConstants.kDriveA);
     driveConfig.Feedback.SensorToMechanismRatio = SwerveConstants.kDriveGearRatio;
     driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = SwerveConstants.kDriveSlipCurrent;
     driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -SwerveConstants.kDriveSlipCurrent;
     driveConfig.CurrentLimits.StatorCurrentLimit = SwerveConstants.kDriveCurrentLimit;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
-    driveConfig.ClosedLoopRamps.TorqueClosedLoopRampPeriod = Constants.loopPeriodSecs;
+    // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
+    OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
+    openRamps.DutyCycleOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
+    openRamps.VoltageOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
+    openRamps.TorqueOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
+    ClosedLoopRampsConfigs closedRamps = new ClosedLoopRampsConfigs();
+    closedRamps.DutyCycleClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
+    closedRamps.VoltageClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
+    closedRamps.TorqueClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
+    // Apply the open- and closed-loop ramp configuration for current smoothing
+    driveConfig.withClosedLoopRamps(closedRamps).withOpenLoopRamps(openRamps);
+    // Set motor inversions
     driveConfig.MotorOutput.Inverted =
         constants.DriveMotorInverted
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
+    // Apply everything to the motor controllers
     PhoenixUtil.tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
     PhoenixUtil.tryUntilOk(5, () -> driveTalon.setPosition(0.0, 0.25));
 
@@ -265,22 +285,47 @@ public class ModuleIOTalonFX implements ModuleIO {
     turnPositionQueue.clear();
   }
 
+  /**
+   * Set the drive motor to an open-loop voltage, scaled to battery voltage
+   *
+   * @param output Specified open-loop voltage requested
+   */
   @Override
   public void setDriveOpenLoop(double output) {
+    // Scale by actual battery voltage to keep full output consistent
+    double busVoltage = RobotController.getBatteryVoltage();
+    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+
     driveTalon.setControl(
         switch (m_DriveMotorClosedLoopOutput) {
-          case Voltage -> voltageRequest.withOutput(output);
-          case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(output);
+          case Voltage -> voltageRequest.withOutput(scaledOutput);
+          case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(scaledOutput);
         });
+
+    // Log output and battery
+    Logger.recordOutput("Swerve/Drive/OpenLoopOutput", scaledOutput);
+    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
   }
 
+  /**
+   * Set the turn motor to an open-loop voltage, scaled to battery voltage
+   *
+   * @param output Specified open-loop voltage requested
+   */
   @Override
   public void setTurnOpenLoop(double output) {
+    double busVoltage = RobotController.getBatteryVoltage();
+    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+
     turnTalon.setControl(
         switch (m_SteerMotorClosedLoopOutput) {
-          case Voltage -> voltageRequest.withOutput(output);
-          case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(output);
+          case Voltage -> voltageRequest.withOutput(scaledOutput);
+          case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(scaledOutput);
         });
+
+    // Log output and battery
+    Logger.recordOutput("Swerve/Turn/OpenLoopOutput", scaledOutput);
+    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
   }
 
   /**
@@ -291,31 +336,67 @@ public class ModuleIOTalonFX implements ModuleIO {
   @Override
   public void setDriveVelocity(double velocityRadPerSec) {
     double velocityRotPerSec = Units.radiansToRotations(velocityRadPerSec);
-    Logger.recordOutput("DriveBaseTuning/closedloop", m_DriveMotorClosedLoopOutput);
-    Logger.recordOutput("DriveBaseTuning/wheelradius_inches", SwerveConstants.kWheelRadiusInches);
-    Logger.recordOutput("DriveBaseTuning/talon_vradpersec", velocityRadPerSec);
-    Logger.recordOutput("DriveBaseTuning/talon_vrotpersec", velocityRotPerSec);
-    Logger.recordOutput("DriveBaseTuning/kDriveP", driveConfig.Slot0.kP);
-    Logger.recordOutput("DriveBaseTuning/kDriveD", driveConfig.Slot0.kD);
-    Logger.recordOutput("DriveBaseTuning/kSteerP", turnConfig.Slot0.kP);
-    Logger.recordOutput("DriveBaseTuning/kSteerD", turnConfig.Slot0.kD);
+    double busVoltage = RobotController.getBatteryVoltage();
 
+    // Compute the Feedforward voltage for CTRE UNLICENSED operation *****
+    // Compute acceleration
+    long currentTimeNano = System.nanoTime();
+    double deltaTimeSec = (currentTimeNano - lastTimestampNano) * 1e-9;
+    double accelerationRotPerSec2 =
+        deltaTimeSec > 0 ? (velocityRotPerSec - lastVelocityRotPerSec) / deltaTimeSec : 0.0;
+    // Update last values for next loop
+    lastVelocityRotPerSec = velocityRotPerSec;
+    lastTimestampNano = currentTimeNano;
+    // Compute feedforward voltage: kS + kV*v + kA*a
+    double nominalFFVolts =
+        Math.signum(velocityRotPerSec) * DrivebaseConstants.kDriveS
+            + DrivebaseConstants.kDriveV * velocityRotPerSec
+            + DrivebaseConstants.kDriveA * accelerationRotPerSec2;
+    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+
+    // Set the drive motor control based on CTRE LICENSED status
     driveTalon.setControl(
         switch (m_DriveMotorClosedLoopOutput) {
-          case Voltage -> velocityVoltageRequest.withVelocity(velocityRotPerSec);
+          case Voltage ->
+              velocityVoltageRequest.withVelocity(velocityRotPerSec).withFeedForward(scaledFFVolts);
           case TorqueCurrentFOC ->
               velocityTorqueCurrentRequest.withVelocity(RotationsPerSecond.of(velocityRotPerSec));
         });
+
+    // AdvantageKit logging
+    Logger.recordOutput("Swerve/Drive/VelocityRadPerSec", velocityRadPerSec);
+    Logger.recordOutput("Swerve/Drive/VelocityRotPerSec", velocityRotPerSec);
+    Logger.recordOutput("Swerve/Drive/AccelerationRotPerSec2", accelerationRotPerSec2);
+    Logger.recordOutput("Swerve/Drive/FeedForwardVolts", scaledFFVolts);
+    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/Drive/ClosedLoopMode", m_DriveMotorClosedLoopOutput);
   }
 
+  /**
+   * Set the turn position of the module
+   *
+   * @param rotation Requested module Rotation2d position
+   */
   @Override
   public void setTurnPosition(Rotation2d rotation) {
+    double busVoltage = RobotController.getBatteryVoltage();
+
+    // Scale feedforward voltage by battery voltage
+    double nominalFFVolts = DrivebaseConstants.kNominalFFVolts;
+    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+
     turnTalon.setControl(
         switch (m_SteerMotorClosedLoopOutput) {
-          case Voltage -> positionVoltageRequest.withPosition(rotation.getRotations());
+          case Voltage ->
+              positionVoltageRequest
+                  .withPosition(rotation.getRotations())
+                  .withFeedForward(scaledFFVolts);
           case TorqueCurrentFOC ->
               positionTorqueCurrentRequest.withPosition(rotation.getRotations());
         });
+
+    Logger.recordOutput("Swerve/Turn/TargetRotations", rotation.getRotations());
+    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
   }
 
   @Override
