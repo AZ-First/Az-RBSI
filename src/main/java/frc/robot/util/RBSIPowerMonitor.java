@@ -76,12 +76,12 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
       }
     }
 
-    if (voltage < PowerConstants.kVoltageWarning) {
-      new Alert("Low battery voltage!", AlertType.WARNING).set(true);
-    }
-    if (voltage < PowerConstants.kVoltageCritical) {
-      new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
-    }
+    // if (voltage < PowerConstants.kVoltageWarning) {
+    //   new Alert("Low battery voltage!", AlertType.WARNING).set(true);
+    // }
+    // if (voltage < PowerConstants.kVoltageCritical) {
+    //   new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
+    // }
 
     // --- Battery estimation ---
     long nowUs = RobotController.getFPGATime();
