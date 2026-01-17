@@ -89,49 +89,61 @@ public class Drive extends SubsystemBase {
   public Drive(ImuIO imuIO) {
     this.imuIO = imuIO;
 
-    switch (Constants.getSwerveType()) {
-      case PHOENIX6:
-        // This one is easy because it's all CTRE all the time
-        for (int i = 0; i < 4; i++) {
-          modules[i] = new Module(new ModuleIOTalonFX(i), i);
-        }
-        break;
+    if (Constants.getMode() == Mode.REAL) {
 
-      case YAGSL:
-        // Then parse the module(s)
-        Byte modType = RBSIParsing.parseModuleType();
-        for (int i = 0; i < 4; i++) {
-          switch (modType) {
-            case 0b00000000: // ALL-CTRE
-              if (kImuType == "navx" || kImuType == "navx_spi") {
-                modules[i] = new Module(new ModuleIOTalonFX(i), i);
-              } else {
-                throw new RuntimeException(
-                    "For an all-CTRE drive base, use Phoenix Tuner X Swerve Generator instead of YAGSL!");
-              }
-            case 0b00010000: // Blended Talon Drive / NEO Steer
-              modules[i] = new Module(new ModuleIOBlended(i), i);
-              break;
-            case 0b01010000: // NEO motors + CANcoder
-              modules[i] = new Module(new ModuleIOSparkCANcoder(i), i);
-              break;
-            case 0b01010100: // NEO motors + analog encoder
-              modules[i] = new Module(new ModuleIOSpark(i), i);
-              break;
-            default:
-              throw new RuntimeException("Invalid swerve module combination");
+      // Case out the swerve types because Az-RBSI supports a lot
+      switch (Constants.getSwerveType()) {
+        case PHOENIX6:
+          // This one is easy because it's all CTRE all the time
+          for (int i = 0; i < 4; i++) {
+            modules[i] = new Module(new ModuleIOTalonFX(i), i);
           }
-        }
+          break;
 
-      default:
-        throw new RuntimeException("Invalid Swerve Drive Type");
+        case YAGSL:
+          // Then parse the module(s)
+          Byte modType = RBSIParsing.parseModuleType();
+          for (int i = 0; i < 4; i++) {
+            switch (modType) {
+              case 0b00000000: // ALL-CTRE
+                if (kImuType == "navx" || kImuType == "navx_spi") {
+                  modules[i] = new Module(new ModuleIOTalonFX(i), i);
+                } else {
+                  throw new RuntimeException(
+                      "For an all-CTRE drive base, use Phoenix Tuner X Swerve Generator instead of YAGSL!");
+                }
+              case 0b00010000: // Blended Talon Drive / NEO Steer
+                modules[i] = new Module(new ModuleIOBlended(i), i);
+                break;
+              case 0b01010000: // NEO motors + CANcoder
+                modules[i] = new Module(new ModuleIOSparkCANcoder(i), i);
+                break;
+              case 0b01010100: // NEO motors + analog encoder
+                modules[i] = new Module(new ModuleIOSpark(i), i);
+                break;
+              default:
+                throw new RuntimeException("Invalid swerve module combination");
+            }
+          }
+          break;
+
+        default:
+          throw new RuntimeException("Invalid Swerve Drive Type");
+      }
+      // Start odometry thread (for the real robot)
+
+      PhoenixOdometryThread.getInstance().start();
+
+    } else {
+
+      // If SIM, just order up some SIM modules!
+      for (int i = 0; i < 4; i++) {
+        modules[i] = new Module(new ModuleIOSim(), i);
+      }
     }
 
     // Usage reporting for swerve template
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_AdvantageKit);
-
-    // Start odometry thread
-    PhoenixOdometryThread.getInstance().start();
 
     // Configure Autonomous Path Building for PathPlanner based on `AutoType`
     switch (Constants.getAutoType()) {
@@ -238,6 +250,21 @@ public class Drive extends SubsystemBase {
 
     // Update gyro/IMU alert
     gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
+  }
+
+  /** Simulation Periodic Method */
+  @Override
+  public void simulationPeriodic() {
+    // 1) Advance module physics
+    for (Module module : modules) {
+      module.simulationPeriodic();
+    }
+
+    // 2) Compute chassis speeds from modules (already updated)
+    ChassisSpeeds speeds = getChassisSpeeds();
+
+    // 3) Advance IMU using resulting motion
+    imuIO.simulationPeriodic(speeds);
   }
 
   /** Drive Base Action Functions ****************************************** */

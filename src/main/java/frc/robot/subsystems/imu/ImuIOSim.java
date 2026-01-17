@@ -17,18 +17,22 @@
 
 package frc.robot.subsystems.imu;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Timer;
 import java.util.LinkedList;
 import java.util.Queue;
+import org.littletonrobotics.junction.Logger;
 
 /** Simulated IMU for full robot simulation & replay logging */
 public class ImuIOSim implements ImuIO {
 
-  private double yawDeg = 0.0;
-  private double yawRateDps = 0.0;
+  private Rotation2d yaw = Rotation2d.kZero;
+  private double yawRateRadPerSec = 0.0;
   private Translation3d linearAccel = Translation3d.kZero;
 
   private final Queue<Double> odomTimestamps = new LinkedList<>();
@@ -41,17 +45,26 @@ public class ImuIOSim implements ImuIO {
   }
 
   @Override
+  public void simulationPeriodic(ChassisSpeeds speeds) {
+    yawRateRadPerSec = speeds.omegaRadiansPerSecond;
+    yaw = yaw.plus(new Rotation2d(yawRateRadPerSec * loopPeriodSecs));
+
+    Logger.recordOutput("IMU/Yaw", yaw);
+    Logger.recordOutput("IMU/YawRateDps", Units.radiansToDegrees(yawRateRadPerSec));
+  }
+
+  @Override
   public void updateInputs(ImuIOInputs inputs) {
     // Populate raw IMU readings
     inputs.connected = true;
-    inputs.yawPosition = Rotation2d.fromDegrees(yawDeg);
-    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateDps);
+    inputs.yawPosition = yaw;
+    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateRadPerSec);
     inputs.linearAccel = linearAccel;
 
     // Maintain odometry history for latency/logging
-    double now = System.currentTimeMillis() / 1000.0;
+    double now = Timer.getFPGATimestamp();
     odomTimestamps.add(now);
-    odomYaws.add(yawDeg);
+    odomYaws.add(yaw.getDegrees());
 
     while (odomTimestamps.size() > 50) odomTimestamps.poll();
     while (odomYaws.size() > 50) odomYaws.poll();
@@ -64,24 +77,19 @@ public class ImuIOSim implements ImuIO {
 
   @Override
   public void zeroYaw(Rotation2d yaw) {
-    yawDeg = yaw.getDegrees();
+    this.yaw = yaw;
   }
 
   // --- Simulation helpers to update the IMU state ---
   public void setYawDeg(double deg) {
-    yawDeg = deg;
+    yaw = Rotation2d.fromDegrees(deg);
   }
 
   public void setYawRateDps(double dps) {
-    yawRateDps = dps;
+    yawRateRadPerSec = Units.degreesToRadians(dps);
   }
 
   public void setLinearAccel(Translation3d accelMps2) {
     linearAccel = accelMps2;
-  }
-
-  /** Optional: integrate yaw from yawRate over loop period */
-  public void integrateYaw() {
-    yawDeg += yawRateDps * loopPeriodSecs;
   }
 }

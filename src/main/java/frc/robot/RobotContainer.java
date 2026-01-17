@@ -402,6 +402,11 @@ public class RobotContainer {
     }
   }
 
+  /** Drivetrain getter method */
+  public Drive getDrivebase() {
+    return m_drivebase;
+  }
+
   /**
    * Set up the SysID routines from AdvantageKit
    *
