@@ -80,6 +80,15 @@ public class ImuIOSim implements ImuIO {
     this.yaw = yaw;
   }
 
+  /**
+   * YAW Getter function
+   *
+   * @return The current Rotation2d YAW
+   */
+  public Rotation2d getYaw() {
+    return yaw;
+  }
+
   // --- Simulation helpers to update the IMU state ---
   public void setYawDeg(double deg) {
     yaw = Rotation2d.fromDegrees(deg);

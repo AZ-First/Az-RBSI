@@ -28,7 +28,6 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
@@ -47,6 +46,7 @@ import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.subsystems.imu.ImuIO;
+import frc.robot.subsystems.imu.ImuIOSim;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
@@ -67,7 +67,7 @@ public class Drive extends SubsystemBase {
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
 
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
-  private Rotation2d rawGyroRotation = Rotation2d.kZero;
+  private Rotation2d rawGyroRotation = imuInputs.yawPosition;
   private SwerveModulePosition[] lastModulePositions = // For delta tracking
       new SwerveModulePosition[] {
         new SwerveModulePosition(),
@@ -210,36 +210,36 @@ public class Drive extends SubsystemBase {
     // Update the IMU inputs — logging happens automatically
     imuIO.updateInputs(imuInputs);
 
-    // Feed historical samples into odometry
-    double[] sampleTimestamps = modules[0].getOdometryTimestamps();
-    int sampleCount = sampleTimestamps.length;
+    // Feed historical samples into odometry if REAL robot
+    if (Constants.getMode() != Mode.SIM) {
+      double[] sampleTimestamps = modules[0].getOdometryTimestamps();
+      int sampleCount = sampleTimestamps.length;
 
-    for (int i = 0; i < sampleCount; i++) {
-      // Read wheel positions and deltas from each module
-      SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
-      SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
+      for (int i = 0; i < sampleCount; i++) {
+        // Read wheel positions and deltas from each module
+        SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
+        SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
 
-      for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
-        modulePositions[moduleIndex] = modules[moduleIndex].getOdometryPositions()[i];
-        moduleDeltas[moduleIndex] =
-            new SwerveModulePosition(
-                modulePositions[moduleIndex].distanceMeters
-                    - lastModulePositions[moduleIndex].distanceMeters,
-                modulePositions[moduleIndex].angle);
-        lastModulePositions[moduleIndex] = modulePositions[moduleIndex];
+        for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
+          modulePositions[moduleIndex] = modules[moduleIndex].getOdometryPositions()[i];
+          moduleDeltas[moduleIndex] =
+              new SwerveModulePosition(
+                  modulePositions[moduleIndex].distanceMeters
+                      - lastModulePositions[moduleIndex].distanceMeters,
+                  modulePositions[moduleIndex].angle);
+          lastModulePositions[moduleIndex] = modulePositions[moduleIndex];
+        }
+
+        // Update gyro angle for odometry
+        Rotation2d yaw =
+            imuInputs.connected && imuInputs.odometryYawPositions.length > i
+                ? imuInputs.odometryYawPositions[i]
+                : imuInputs.yawPosition;
+
+        // Apply to pose estimator
+        m_PoseEstimator.updateWithTime(sampleTimestamps[i], yaw, modulePositions);
       }
-
-      // Update gyro angle for odometry
-      if (imuInputs.connected && imuInputs.odometryYawPositions.length > i) {
-        rawGyroRotation = imuInputs.odometryYawPositions[i];
-      } else {
-        // Use the angle delta from the kinematics and module deltas
-        Twist2d twist = kinematics.toTwist2d(moduleDeltas);
-        rawGyroRotation = rawGyroRotation.plus(new Rotation2d(twist.dtheta));
-      }
-
-      // Apply to pose estimator
-      m_PoseEstimator.updateWithTime(sampleTimestamps[i], rawGyroRotation, modulePositions);
+      Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
     }
 
     // Module periodic updates
@@ -254,28 +254,28 @@ public class Drive extends SubsystemBase {
   }
 
   /** Simulation Periodic Method */
+  @Override
   public void simulationPeriodic() {
-    // --- 1️⃣ Advance module physics first ---
-    for (Module module : modules) {
-      module.simulationPeriodic();
-    }
+    // Advance module physics
+    for (Module module : modules) module.simulationPeriodic();
 
-    // --- 2️⃣ Compute chassis speeds from updated module states ---
-    // This uses the module states (velocities + angles) to get robot-relative motion
+    // Compute chassis speeds
     SwerveModuleState[] moduleStates =
         Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
     ChassisSpeeds chassisSpeeds = kinematics.toChassisSpeeds(moduleStates);
 
-    // --- 3️⃣ Update simulated IMU ---
-    // Feed it the chassis angular velocity so yaw stays consistent with module rotations
+    // Update simulated IMU
     imuIO.simulationPeriodic(chassisSpeeds);
 
-    // --- 4️⃣ Update odometry ---
+    // Update odometry (physics-step only)
     SwerveModulePosition[] modulePositions =
         Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
-    m_PoseEstimator.update(imuInputs.yawPosition, modulePositions);
 
-    // --- 5️⃣ Logging for AdvantageScope ---
+    Rotation2d yaw = (imuIO instanceof ImuIOSim sim) ? sim.getYaw() : imuInputs.yawPosition;
+
+    m_PoseEstimator.update(yaw, modulePositions);
+
+    // Logging
     Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
     Logger.recordOutput("Drive/ChassisSpeeds", chassisSpeeds);
   }
