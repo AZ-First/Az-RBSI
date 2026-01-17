@@ -28,6 +28,7 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
@@ -271,30 +272,38 @@ public class Drive extends SubsystemBase {
       module.simulationPeriodic();
     }
 
-    // 2️⃣ Observe module states
-    SwerveModuleState[] states =
+    // 2️⃣ Observe module states from the modules (authoritative)
+    SwerveModuleState[] moduleStates =
         Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
 
     // 3️⃣ Integrate authoritative physics (linear + angular)
-    simPhysics.update(states, dt);
+    simPhysics.update(moduleStates, dt);
 
-    // 4️⃣ Feed IMU from physics (authoritative)
+    // 4️⃣ Feed IMU from authoritative physics
     imuIO.simulationSetYaw(simPhysics.getYaw());
     imuIO.simulationSetOmega(simPhysics.getOmegaRadPerSec());
+    imuIO.setLinearAccel(
+        new Translation3d(
+            simPhysics.getLinearAccel().getX(), simPhysics.getLinearAccel().getY(), 0.0));
 
-    // 5️⃣ Feed PoseEstimator from authoritative physics
-    // SIM-only: ignore kinematics-based deltas; just trust DriveSimPhysics pose
+    // 5️⃣ Feed PoseEstimator with authoritative yaw and module positions
     SwerveModulePosition[] modulePositions =
         Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
 
-    m_PoseEstimator.resetPosition(simPhysics.getYaw(), modulePositions, simPhysics.getPose());
+    // Reset PoseEstimator to match SIM pose perfectly
+    m_PoseEstimator.resetPosition(
+        simPhysics.getYaw(), // gyro reading (authoritative)
+        modulePositions, // wheel positions
+        simPhysics.getPose() // pose is authoritative
+        );
 
-    // 6️⃣ Optional: inject vision measurement (e.g., photon vision)
+    // 6️⃣ Optional: inject vision measurement if available
     // m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
 
     // 7️⃣ Logging
     Logger.recordOutput("Sim/Pose", simPhysics.getPose());
     Logger.recordOutput("Sim/Yaw", simPhysics.getYaw());
+    Logger.recordOutput("Sim/LinearAccel", simPhysics.getLinearAccel());
   }
 
   /** Drive Base Action Functions ****************************************** */

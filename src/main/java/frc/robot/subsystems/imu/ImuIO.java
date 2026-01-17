@@ -61,4 +61,6 @@ public interface ImuIO {
   default void simulationSetYaw(Rotation2d yaw) {}
 
   default void simulationSetOmega(double omegaRadPerSec) {}
+
+  default void setLinearAccel(Translation3d accelMps2) {}
 }

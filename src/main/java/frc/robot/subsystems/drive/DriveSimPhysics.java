@@ -61,16 +61,17 @@ public class DriveSimPhysics {
     Translation2d fieldVelocity =
         new Translation2d(chassis.vxMetersPerSecond, chassis.vyMetersPerSecond);
 
-    // Finite-difference linear acceleration for IMU simulation
+    // Compute finite-difference acceleration
     linearAccel = fieldVelocity.minus(prevVelocity).div(dtSeconds);
     prevVelocity = fieldVelocity;
 
+    // Integrate translation
     Translation2d newTranslation = pose.getTranslation().plus(fieldVelocity.times(dtSeconds));
 
     // ------------------ ANGULAR ------------------
     double commandedOmega = chassis.omegaRadiansPerSecond;
 
-    // Convert commanded angular velocity to torque (simple capped model)
+    // Convert to torque (simple model) and clamp
     double torque =
         MathUtil.clamp(commandedOmega * moiKgMetersSq / dtSeconds, -maxTorqueNm, maxTorqueNm);
 
