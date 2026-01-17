@@ -304,17 +304,6 @@ public class Drive extends SubsystemBase {
     }
   }
 
-  // /** Drive Forward Command Factory **************************************** */
-  //   // Example factory method
-  //   public Command driveForwardCommand(double distance) {
-  //       // This method composes and returns a complex command object
-  //       return Commands.sequence(
-  //           // Use internal methods and sensor data to define the command logic
-  //           new DriveToPositionCommand(this, distance),
-  //           new StopDrivetrainCommand(this)
-  //       );
-  //   }
-
   /**
    * Reset the heading ProfiledPIDController
    *
@@ -353,6 +342,7 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the module positions (turn angles and drive positions) for all of the modules. */
+  @AutoLogOutput(key = "SwerveStates/Positions")
   private SwerveModulePosition[] getModulePositions() {
     SwerveModulePosition[] states = new SwerveModulePosition[4];
     for (int i = 0; i < 4; i++) {
@@ -374,8 +364,8 @@ public class Drive extends SubsystemBase {
   }
 
   /** Returns the current odometry rotation. */
+  @AutoLogOutput(key = "Odometry/Yaw")
   public Rotation2d getHeading() {
-    imuIO.updateInputs(imuInputs);
     return imuInputs.yawPosition;
   }
 

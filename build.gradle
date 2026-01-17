@@ -1,10 +1,10 @@
 plugins {
     id "java"
-    id "edu.wpi.first.GradleRIO" version "2026.1.1"
+    id "edu.wpi.first.GradleRIO" version "2026.2.1"
     id "com.peterabeles.gversion" version "1.10.3"
-    id "com.diffplug.spotless" version "8.0.+"
-    id "io.freefair.lombok" version "9.1.+"
-    id "com.google.protobuf" version "0.9.+"
+    id "com.diffplug.spotless" version "8.1.0"
+    id "io.freefair.lombok" version "9.2.0"
+    id "com.google.protobuf" version "0.9.6"
 }
 
 java {

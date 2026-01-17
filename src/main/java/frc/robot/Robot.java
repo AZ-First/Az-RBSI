@@ -153,6 +153,10 @@ public class Robot extends LoggedRobot {
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
     switch (Constants.getAutoType()) {
+      case MANUAL:
+        CommandScheduler.getInstance().schedule(m_robotContainer.getManualAuto());
+        break;
+
       case PATHPLANNER:
         m_autoCommandPathPlanner = m_robotContainer.getAutonomousCommandPathPlanner();
         // schedule the autonomous command
@@ -160,6 +164,7 @@ public class Robot extends LoggedRobot {
           CommandScheduler.getInstance().schedule(m_autoCommandPathPlanner);
         }
         break;
+
       case CHOREO:
         m_robotContainer.getAutonomousCommandChoreo();
         break;
@@ -186,6 +191,9 @@ public class Robot extends LoggedRobot {
       CommandScheduler.getInstance().cancelAll();
     }
     m_robotContainer.setMotorBrake(true);
+
+    // In case this got set in sequential practice sessions or whatever
+    FieldState.wonAuto = null;
   }
 
   /** This function is called periodically during operator control. */

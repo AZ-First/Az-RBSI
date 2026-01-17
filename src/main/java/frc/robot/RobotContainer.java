@@ -346,6 +346,22 @@ public class RobotContainer {
   }
 
   /**
+   * Use this to pass the MANUAL SHOOT FUEL command to the main {@link Robot} class.
+   *
+   * @return the command to run in autonomous
+   */
+  public Command getManualAuto() {
+    // NOTE:
+    //
+    // For teams not using PathPlanner, this auto may be used to simply shoot the pre-loaded fuel
+    // into the HUB during AUTO.  Since shooters are beyond the scope of Az-RBSI, you will have to
+    // write your own command and call it here.
+
+    // Replace Commands.none() with your command that shoots fuel into the HUB.
+    return Commands.none();
+  }
+
+  /**
    * Use this to pass the autonomous command to the main {@link Robot} class.
    *
    * @return the command to run in autonomous
