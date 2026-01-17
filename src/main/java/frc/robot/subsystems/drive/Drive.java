@@ -50,6 +50,7 @@ import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
+import java.util.Arrays;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -253,18 +254,30 @@ public class Drive extends SubsystemBase {
   }
 
   /** Simulation Periodic Method */
-  @Override
   public void simulationPeriodic() {
-    // 1) Advance module physics
+    // --- 1️⃣ Advance module physics first ---
     for (Module module : modules) {
       module.simulationPeriodic();
     }
 
-    // 2) Compute chassis speeds from modules (already updated)
-    ChassisSpeeds speeds = getChassisSpeeds();
+    // --- 2️⃣ Compute chassis speeds from updated module states ---
+    // This uses the module states (velocities + angles) to get robot-relative motion
+    SwerveModuleState[] moduleStates =
+        Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
+    ChassisSpeeds chassisSpeeds = kinematics.toChassisSpeeds(moduleStates);
 
-    // 3) Advance IMU using resulting motion
-    imuIO.simulationPeriodic(speeds);
+    // --- 3️⃣ Update simulated IMU ---
+    // Feed it the chassis angular velocity so yaw stays consistent with module rotations
+    imuIO.simulationPeriodic(chassisSpeeds);
+
+    // --- 4️⃣ Update odometry ---
+    SwerveModulePosition[] modulePositions =
+        Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
+    m_PoseEstimator.update(imuInputs.yawPosition, modulePositions);
+
+    // --- 5️⃣ Logging for AdvantageScope ---
+    Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
+    Logger.recordOutput("Drive/ChassisSpeeds", chassisSpeeds);
   }
 
   /** Drive Base Action Functions ****************************************** */
