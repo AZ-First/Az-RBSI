@@ -149,7 +149,7 @@ public class Drive extends SubsystemBase {
       simPhysics =
           new DriveSimPhysics(
               kinematics,
-              6.0, // kg·m² (swerve typical)
+              6.0, // kg m^2 (swerve typical)
               120.0); // Nm
     }
 
@@ -217,7 +217,7 @@ public class Drive extends SubsystemBase {
       }
     }
 
-    // Update the IMU inputs — logging happens automatically
+    // Update the IMU inputs -- logging happens automatically
     imuIO.updateInputs(imuInputs);
 
     // Feed historical samples into odometry if REAL robot
@@ -268,26 +268,26 @@ public class Drive extends SubsystemBase {
   public void simulationPeriodic() {
     final double dt = Constants.loopPeriodSecs;
 
-    // 1️⃣ Advance module wheel physics
+    // 1) Advance module wheel physics
     for (Module module : modules) {
       module.simulationPeriodic();
     }
 
-    // 2️⃣ Get module states from modules (authoritative)
+    // 2) Get module states from modules (authoritative)
     SwerveModuleState[] moduleStates =
         Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
 
-    // 3️⃣ Update SIM physics (linear + angular)
+    // 3) Update SIM physics (linear + angular)
     simPhysics.update(moduleStates, dt);
 
-    // 4️⃣ Feed IMU from authoritative physics
+    // 4) Feed IMU from authoritative physics
     imuIO.simulationSetYaw(simPhysics.getYaw());
     imuIO.simulationSetOmega(simPhysics.getOmegaRadPerSec());
     imuIO.setLinearAccel(
         new Translation3d(
             simPhysics.getLinearAccel().getX(), simPhysics.getLinearAccel().getY(), 0.0));
 
-    // 5️⃣ Feed PoseEstimator with authoritative yaw and module positions
+    // 5) Feed PoseEstimator with authoritative yaw and module positions
     SwerveModulePosition[] modulePositions =
         Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
 
@@ -297,7 +297,7 @@ public class Drive extends SubsystemBase {
         simPhysics.getPose() // pose is authoritative
         );
 
-    // 6️⃣ Optional: inject vision measurement in SIM
+    // 6) Optional: inject vision measurement in SIM
     if (simulatedVisionAvailable) {
       Pose2d visionPose = getSimulatedVisionPose();
       double visionTimestamp = Timer.getFPGATimestamp();
@@ -305,7 +305,7 @@ public class Drive extends SubsystemBase {
       m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
     }
 
-    // 7️⃣ Logging
+    // 7) Logging
     Logger.recordOutput("Sim/Pose", simPhysics.getPose());
     Logger.recordOutput("Sim/Yaw", simPhysics.getYaw());
     Logger.recordOutput("Sim/LinearAccel", simPhysics.getLinearAccel());
@@ -574,8 +574,8 @@ public class Drive extends SubsystemBase {
   private boolean simulatedVisionAvailable = true;
 
   // Maximum simulated noise in meters/radians
-  private static final double SIM_VISION_POS_NOISE_M = 0.02; // ±2cm
-  private static final double SIM_VISION_YAW_NOISE_RAD = Math.toRadians(2); // ±2 degrees
+  private static final double SIM_VISION_POS_NOISE_M = 0.02; // +/- 2cm
+  private static final double SIM_VISION_YAW_NOISE_RAD = Math.toRadians(2); // +/- 2 degrees
 
   /**
    * Returns a simulated Pose2d for vision in field coordinates. Adds a small random jitter to

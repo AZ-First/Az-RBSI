@@ -92,7 +92,7 @@ public class ModuleIOSim implements ModuleIO {
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
-    // Convert rotor → mechanism
+    // Convert rotor -> mechanism
     double mechanismPositionRad = driveSim.getAngularPositionRad();
     double mechanismVelocityRadPerSec = driveSim.getAngularVelocityRadPerSec();
 
@@ -137,7 +137,7 @@ public class ModuleIOSim implements ModuleIO {
   public void setDriveVelocity(double wheelRadPerSec) {
     driveClosedLoop = true;
 
-    // Convert wheel → rotor
+    // Convert wheel -> rotor
     double rotorRadPerSec = wheelRadPerSec * SwerveConstants.kDriveGearRatio;
 
     // Feedforward should also be in rotor units

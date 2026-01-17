@@ -50,7 +50,7 @@ public class Robot extends LoggedRobot {
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
 
-  // 1️⃣ Define simulation fields here
+  // Define simulation fields here
   private VisionSystemSim visionSim;
 
   /**
@@ -214,7 +214,7 @@ public class Robot extends LoggedRobot {
 
     // For 2026 - REBUILT, the alliance will be provided as a single character
     //   representing the color of the alliance whose goal will go inactive
-    //   first (i.e. ‘R’ = red, ‘B’ = blue). This alliance’s goal will be
+    //   first (i.e. 'R' = red, 'B' = blue). This alliance's goal will be
     //   active in Shifts 2 and 4.
     //
     // https://docs.wpilib.org/en/stable/docs/yearly-overview/2026-game-data.html
@@ -284,7 +284,8 @@ public class Robot extends LoggedRobot {
 
   /** This function is called periodically whilst in simulation. */
   @Override
-  public void simulationPeriodic() { // 3️⃣ Update sim each sim tick
+  public void simulationPeriodic() { 
+    // Update sim each sim tick
     visionSim.update(m_robotContainer.getDrivebase().getPose());
   }
 }
