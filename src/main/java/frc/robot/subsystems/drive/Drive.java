@@ -40,6 +40,7 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -272,11 +273,11 @@ public class Drive extends SubsystemBase {
       module.simulationPeriodic();
     }
 
-    // 2️⃣ Observe module states from the modules (authoritative)
+    // 2️⃣ Get module states from modules (authoritative)
     SwerveModuleState[] moduleStates =
         Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
 
-    // 3️⃣ Integrate authoritative physics (linear + angular)
+    // 3️⃣ Update SIM physics (linear + angular)
     simPhysics.update(moduleStates, dt);
 
     // 4️⃣ Feed IMU from authoritative physics
@@ -290,15 +291,19 @@ public class Drive extends SubsystemBase {
     SwerveModulePosition[] modulePositions =
         Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
 
-    // Reset PoseEstimator to match SIM pose perfectly
     m_PoseEstimator.resetPosition(
         simPhysics.getYaw(), // gyro reading (authoritative)
         modulePositions, // wheel positions
         simPhysics.getPose() // pose is authoritative
         );
 
-    // 6️⃣ Optional: inject vision measurement if available
-    // m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
+    // 6️⃣ Optional: inject vision measurement in SIM
+    if (simulatedVisionAvailable) {
+      Pose2d visionPose = getSimulatedVisionPose();
+      double visionTimestamp = Timer.getFPGATimestamp();
+      var visionStdDevs = getSimulatedVisionStdDevs();
+      m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
+    }
 
     // 7️⃣ Logging
     Logger.recordOutput("Sim/Pose", simPhysics.getPose());
@@ -561,5 +566,45 @@ public class Drive extends SubsystemBase {
 
     // Apply the generated speeds
     runVelocity(speeds);
+  }
+
+  // ---------------- SIM VISION ----------------
+
+  // Vision measurement enabled in simulation
+  private boolean simulatedVisionAvailable = true;
+
+  // Maximum simulated noise in meters/radians
+  private static final double SIM_VISION_POS_NOISE_M = 0.02; // ±2cm
+  private static final double SIM_VISION_YAW_NOISE_RAD = Math.toRadians(2); // ±2 degrees
+
+  /**
+   * Returns a simulated Pose2d for vision in field coordinates. Adds a small random jitter to
+   * simulate measurement error.
+   */
+  private Pose2d getSimulatedVisionPose() {
+    Pose2d truePose = simPhysics.getPose(); // authoritative pose
+
+    // Add small random noise
+    double dx = (Math.random() * 2 - 1) * SIM_VISION_POS_NOISE_M;
+    double dy = (Math.random() * 2 - 1) * SIM_VISION_POS_NOISE_M;
+    double dTheta = (Math.random() * 2 - 1) * SIM_VISION_YAW_NOISE_RAD;
+
+    return new Pose2d(
+        truePose.getX() + dx,
+        truePose.getY() + dy,
+        truePose.getRotation().plus(new Rotation2d(dTheta)));
+  }
+
+  /**
+   * Returns the standard deviations for the simulated vision measurement. These values are used by
+   * the PoseEstimator to weight vision updates.
+   */
+  private edu.wpi.first.math.Matrix<N3, N1> getSimulatedVisionStdDevs() {
+    edu.wpi.first.math.Matrix<N3, N1> stdDevs =
+        new edu.wpi.first.math.Matrix<>(N3.instance, N1.instance);
+    stdDevs.set(0, 0, 0.02); // X standard deviation (meters)
+    stdDevs.set(1, 0, 0.02); // Y standard deviation (meters)
+    stdDevs.set(2, 0, Math.toRadians(2)); // rotation standard deviation (radians)
+    return stdDevs;
   }
 }
