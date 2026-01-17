@@ -21,7 +21,6 @@ import static edu.wpi.first.units.Units.*;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.units.measure.AngularVelocity;
 import org.littletonrobotics.junction.AutoLog;
 
@@ -58,6 +57,8 @@ public interface ImuIO {
   /** Zero the yaw to a known field-relative angle */
   default void zeroYaw(Rotation2d yaw) {}
 
-  /** Simulation-only update hook */
-  default void simulationPeriodic(ChassisSpeeds speeds) {}
+  /** Simulation-only update hooks */
+  default void simulationSetYaw(Rotation2d yaw) {}
+
+  default void simulationSetOmega(double omegaRadPerSec) {}
 }

@@ -156,7 +156,7 @@ public class RobotContainer {
 
       case SIM:
         // Sim robot, instantiate physics sim IO implementations
-        m_imu = new ImuIOSim(Constants.loopPeriodSecs);
+        m_imu = new ImuIOSim();
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim() {});
         m_vision =
@@ -169,7 +169,7 @@ public class RobotContainer {
 
       default:
         // Replayed robot, disable IO implementations
-        m_imu = new ImuIOSim(Constants.loopPeriodSecs);
+        m_imu = new ImuIOSim();
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =

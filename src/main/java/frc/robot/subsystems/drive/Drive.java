@@ -46,7 +46,6 @@ import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.subsystems.imu.ImuIO;
-import frc.robot.subsystems.imu.ImuIOSim;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
@@ -85,6 +84,8 @@ public class Drive extends SubsystemBase {
           DrivebaseConstants.kDTheta,
           new TrapezoidProfile.Constraints(
               DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
+
+  private DriveSimPhysics simPhysics;
 
   // Constructor
   public Drive(ImuIO imuIO) {
@@ -141,6 +142,13 @@ public class Drive extends SubsystemBase {
       for (int i = 0; i < 4; i++) {
         modules[i] = new Module(new ModuleIOSim(), i);
       }
+
+      // Load the physics simulator
+      simPhysics =
+          new DriveSimPhysics(
+              kinematics,
+              6.0, // kg·m² (swerve typical)
+              120.0); // Nm
     }
 
     // Usage reporting for swerve template
@@ -256,28 +264,37 @@ public class Drive extends SubsystemBase {
   /** Simulation Periodic Method */
   @Override
   public void simulationPeriodic() {
-    // Advance module physics
-    for (Module module : modules) module.simulationPeriodic();
+    final double dt = Constants.loopPeriodSecs;
 
-    // Compute chassis speeds
-    SwerveModuleState[] moduleStates =
+    // 1️⃣ Advance module wheel physics
+    for (Module module : modules) {
+      module.simulationPeriodic();
+    }
+
+    // 2️⃣ Observe module states
+    SwerveModuleState[] states =
         Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
-    ChassisSpeeds chassisSpeeds = kinematics.toChassisSpeeds(moduleStates);
 
-    // Update simulated IMU
-    imuIO.simulationPeriodic(chassisSpeeds);
+    // 3️⃣ Integrate authoritative physics (linear + angular)
+    simPhysics.update(states, dt);
 
-    // Update odometry (physics-step only)
+    // 4️⃣ Feed IMU from physics (authoritative)
+    imuIO.simulationSetYaw(simPhysics.getYaw());
+    imuIO.simulationSetOmega(simPhysics.getOmegaRadPerSec());
+
+    // 5️⃣ Feed PoseEstimator from authoritative physics
+    // SIM-only: ignore kinematics-based deltas; just trust DriveSimPhysics pose
     SwerveModulePosition[] modulePositions =
         Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
 
-    Rotation2d yaw = (imuIO instanceof ImuIOSim sim) ? sim.getYaw() : imuInputs.yawPosition;
+    m_PoseEstimator.resetPosition(simPhysics.getYaw(), modulePositions, simPhysics.getPose());
 
-    m_PoseEstimator.update(yaw, modulePositions);
+    // 6️⃣ Optional: inject vision measurement (e.g., photon vision)
+    // m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
 
-    // Logging
-    Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
-    Logger.recordOutput("Drive/ChassisSpeeds", chassisSpeeds);
+    // 7️⃣ Logging
+    Logger.recordOutput("Sim/Pose", simPhysics.getPose());
+    Logger.recordOutput("Sim/Yaw", simPhysics.getYaw());
   }
 
   /** Drive Base Action Functions ****************************************** */
@@ -400,12 +417,18 @@ public class Drive extends SubsystemBase {
   /** Returns the current odometry pose. */
   @AutoLogOutput(key = "Odometry/Robot")
   public Pose2d getPose() {
+    if (Constants.getMode() == Mode.SIM) {
+      return simPhysics.getPose();
+    }
     return m_PoseEstimator.getEstimatedPosition();
   }
 
   /** Returns the current odometry rotation. */
   @AutoLogOutput(key = "Odometry/Yaw")
   public Rotation2d getHeading() {
+    if (Constants.getMode() == Mode.SIM) {
+      return simPhysics.getYaw();
+    }
     return imuInputs.yawPosition;
   }
 
