@@ -47,6 +47,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
@@ -149,8 +150,8 @@ public class Drive extends SubsystemBase {
       simPhysics =
           new DriveSimPhysics(
               kinematics,
-              6.0, // kg m^2 (swerve typical)
-              120.0); // Nm
+              RobotConstants.kRobotMOI, // kg m^2
+              RobotConstants.kMaxWheelTorque); // Nm
     }
 
     // Usage reporting for swerve template

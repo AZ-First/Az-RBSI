@@ -102,7 +102,7 @@ public final class Constants {
   /** Physical Constants for Robot Operation ******************************* */
   public static final class RobotConstants {
 
-    public static final Mass kRobotMass = Kilograms.of(100.);
+    public static final Mass kRobotMass = Pounds.of(100.);
     public static final Matter kChassis =
         new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kRobotMass.in(Kilograms));
     // Robot moment of intertial; this can be obtained from a CAD model of your drivetrain. Usually,
@@ -111,6 +111,10 @@ public final class Constants {
 
     // Wheel coefficient of friction
     public static final double kWheelCOF = 1.2;
+
+    // Maximum torque applied by wheel
+    // Kraken X60 stall torque ~7.09 Nm; MK4i L3 gear ratio 6.12:1
+     public static final double kMaxWheelTorque = 43.4; // Nm
 
     // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
