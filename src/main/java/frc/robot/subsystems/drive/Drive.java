@@ -466,6 +466,31 @@ public class Drive extends SubsystemBase {
     return values;
   }
 
+  /**
+   * Returns the measured chassis speeds in FIELD coordinates.
+   *
+   * <p>+X = field forward +Y = field left CCW+ = counterclockwise
+   */
+  @AutoLogOutput(key = "SwerveChassisSpeeds/FieldMeasured")
+  public ChassisSpeeds getFieldRelativeSpeeds() {
+    // Robot-relative measured speeds from modules
+    ChassisSpeeds robotRelative = getChassisSpeeds();
+
+    // Convert to field-relative using authoritative yaw
+    return ChassisSpeeds.fromRobotRelativeSpeeds(robotRelative, getHeading());
+  }
+
+  /**
+   * Returns the FIELD-relative linear velocity of the robot's center.
+   *
+   * <p>+X = field forward +Y = field left
+   */
+  @AutoLogOutput(key = "Drive/FieldLinearVelocity")
+  public Translation2d getFieldLinearVelocity() {
+    ChassisSpeeds fieldSpeeds = getFieldRelativeSpeeds();
+    return new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
+  }
+
   /** Returns the average velocity of the modules in rotations/sec (Phoenix native units). */
   public double getFFCharacterizationVelocity() {
     double output = 0.0;

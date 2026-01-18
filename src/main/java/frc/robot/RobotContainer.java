@@ -23,17 +23,21 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.SimCameras;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
@@ -47,6 +51,7 @@ import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIONavX;
 import frc.robot.subsystems.imu.ImuIOPigeon2;
 import frc.robot.subsystems.imu.ImuIOSim;
+import frc.robot.subsystems.vision.CameraSweepEvaluator;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
@@ -61,6 +66,9 @@ import frc.robot.util.RBSIEnum;
 import frc.robot.util.RBSIPowerMonitor;
 import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
+import org.photonvision.PhotonCamera;
+import org.photonvision.simulation.PhotonCameraSim;
+import org.photonvision.simulation.VisionSystemSim;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
 public class RobotContainer {
@@ -71,6 +79,10 @@ public class RobotContainer {
 
   final CommandXboxController operatorController = new CommandXboxController(1); // Second Operator
   final OverrideSwitches overrides = new OverrideSwitches(2); // Console toggle switches
+
+  // These two are needed for the Sweep evaluator for camera FOV simulation
+  final CommandJoystick joystick3 = new CommandJoystick(3); //  Joystick for CamersSweepEvaluator
+  private final CameraSweepEvaluator sweep;
 
   /** Declare the robot subsystems here ************************************ */
   // These are the "Active Subsystems" that the robot controls
@@ -152,6 +164,7 @@ public class RobotContainer {
               default -> null;
             };
         m_accel = new Accelerometer(m_imu);
+        sweep = null;
         break;
 
       case SIM:
@@ -165,6 +178,27 @@ public class RobotContainer {
                 new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_drivebase::getPose),
                 new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, m_drivebase::getPose));
         m_accel = new Accelerometer(m_imu);
+
+        // CameraSweepEvaluator Construct
+        // 1) Create the vision simulation world
+        VisionSystemSim visionSim = new VisionSystemSim("CameraSweepWorld");
+        // 2) Add AprilTags (field layout)
+        visionSim.addAprilTags(FieldConstants.aprilTagLayout);
+        // 3) Create two simulated cameras
+        // Create PhotonCamera objects (names must match VisionIOPhotonVisionSim)
+        PhotonCamera camera1 = new PhotonCamera(camera0Name);
+        PhotonCamera camera2 = new PhotonCamera(camera1Name);
+
+        // Wrap them with simulation + properties (2026 API)
+        PhotonCameraSim cam1 = new PhotonCameraSim(camera1, SimCameras.kSimCamera1Props);
+        PhotonCameraSim cam2 = new PhotonCameraSim(camera2, SimCameras.kSimCamera2Props);
+
+        // 4) Register cameras with the sim
+        visionSim.addCamera(cam1, Transform3d.kZero);
+        visionSim.addCamera(cam2, Transform3d.kZero);
+        // 5) Create the sweep evaluator
+        sweep = new CameraSweepEvaluator(visionSim, cam1, cam2);
+
         break;
 
       default:
@@ -175,6 +209,7 @@ public class RobotContainer {
         m_vision =
             new Vision(m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
         m_accel = new Accelerometer(m_imu);
+        sweep = null;
         break;
     }
 
@@ -343,6 +378,25 @@ public class RobotContainer {
                 // Stop when command ended
                 m_drivebase::stop,
                 m_drivebase));
+
+    // Double-press the A button on Joystick3 to run the CameraSweepEvaluator
+    // Use WPILib's built-in double-press binding
+    joystick3
+        .button(1)
+        .multiPress(2, 0.2)
+        .onTrue(
+            Commands.runOnce(
+                () -> {
+                  try {
+                    sweep.runFullSweep(
+                        Filesystem.getOperatingDirectory()
+                            .toPath()
+                            .resolve("camera_sweep.csv")
+                            .toString());
+                  } catch (Exception e) {
+                    e.printStackTrace();
+                  }
+                }));
   }
 
   /**
