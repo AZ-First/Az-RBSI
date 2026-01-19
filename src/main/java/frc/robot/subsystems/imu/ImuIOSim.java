@@ -17,71 +17,77 @@
 
 package frc.robot.subsystems.imu;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.wpilibj.Timer;
 import java.util.LinkedList;
 import java.util.Queue;
+import org.littletonrobotics.junction.Logger;
 
 /** Simulated IMU for full robot simulation & replay logging */
 public class ImuIOSim implements ImuIO {
 
-  private double yawDeg = 0.0;
-  private double yawRateDps = 0.0;
+  // --- AUTHORITATIVE SIM STATE ---
+  private Rotation2d yaw = Rotation2d.kZero;
+  private double yawRateRadPerSec = 0.0;
   private Translation3d linearAccel = Translation3d.kZero;
 
+  // --- ODOMETRY HISTORY FOR LOGGING/LATENCY ---
   private final Queue<Double> odomTimestamps = new LinkedList<>();
-  private final Queue<Double> odomYaws = new LinkedList<>();
+  private final Queue<Rotation2d> odomYaws = new LinkedList<>();
 
-  private final double loopPeriodSecs;
+  public ImuIOSim() {}
 
-  public ImuIOSim(double loopPeriodSecs) {
-    this.loopPeriodSecs = loopPeriodSecs;
+  // ---------------- SIMULATION INPUTS (PUSH) ----------------
+
+  /** Set yaw from authoritative physics */
+  public void simulationSetYaw(Rotation2d yaw) {
+    this.yaw = yaw;
   }
 
+  /** Set angular velocity from authoritative physics */
+  public void simulationSetOmega(double omegaRadPerSec) {
+    this.yawRateRadPerSec = omegaRadPerSec;
+  }
+
+  /** Set linear acceleration from physics (optional) */
+  public void setLinearAccel(Translation3d accelMps2) {
+    this.linearAccel = accelMps2;
+  }
+
+  // ---------------- IO UPDATE (PULL) ----------------
+
+  /** Populate the IMUIOInputs object with the current SIM state */
   @Override
   public void updateInputs(ImuIOInputs inputs) {
-    // Populate raw IMU readings
     inputs.connected = true;
-    inputs.yawPosition = Rotation2d.fromDegrees(yawDeg);
-    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateDps);
+
+    // Authoritative physics
+    inputs.yawPosition = yaw;
+    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateRadPerSec);
     inputs.linearAccel = linearAccel;
 
-    // Maintain odometry history for latency/logging
-    double now = System.currentTimeMillis() / 1000.0;
+    // Maintain odometry history for logging / latency purposes
+    double now = Timer.getFPGATimestamp();
     odomTimestamps.add(now);
-    odomYaws.add(yawDeg);
+    odomYaws.add(yaw);
 
     while (odomTimestamps.size() > 50) odomTimestamps.poll();
     while (odomYaws.size() > 50) odomYaws.poll();
 
-    // Fill the provided inputs object
     inputs.odometryYawTimestamps = odomTimestamps.stream().mapToDouble(d -> d).toArray();
-    inputs.odometryYawPositions =
-        odomYaws.stream().map(d -> Rotation2d.fromDegrees(d)).toArray(Rotation2d[]::new);
+    inputs.odometryYawPositions = odomYaws.toArray(Rotation2d[]::new);
+
+    // Logging for SIM analysis
+    Logger.recordOutput("IMU/Yaw", yaw);
+    Logger.recordOutput("IMU/YawRateDps", Math.toDegrees(yawRateRadPerSec));
   }
 
   @Override
   public void zeroYaw(Rotation2d yaw) {
-    yawDeg = yaw.getDegrees();
-  }
-
-  // --- Simulation helpers to update the IMU state ---
-  public void setYawDeg(double deg) {
-    yawDeg = deg;
-  }
-
-  public void setYawRateDps(double dps) {
-    yawRateDps = dps;
-  }
-
-  public void setLinearAccel(Translation3d accelMps2) {
-    linearAccel = accelMps2;
-  }
-
-  /** Optional: integrate yaw from yawRate over loop period */
-  public void integrateYaw() {
-    yawDeg += yawRateDps * loopPeriodSecs;
+    this.yaw = yaw;
+    this.yawRateRadPerSec = 0.0;
   }
 }

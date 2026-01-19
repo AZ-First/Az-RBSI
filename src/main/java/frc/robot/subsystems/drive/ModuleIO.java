@@ -60,4 +60,7 @@ public interface ModuleIO {
 
   /** Set P, I, and D gains for closed-loop control on turn motor */
   public default void setTurnPID(double kP, double kI, double kD) {}
+
+  /** Simulation-only update hook */
+  default void simulationPeriodic() {}
 }
