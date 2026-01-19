@@ -13,16 +13,23 @@ already have a GitHub account where you will store your 2026 FRC robot code.
 
 ### Creating a 2026 FRC project from the Az-RBSI Template
 
-From the [Az-RBSI GiuHub page](https://github.com/AZ-First/Az-RBSI/), click the "Use this template" button in the upper right corner of the page.
+From the [Az-RBSI GiuHub page](https://github.com/AZ-First/Az-RBSI/), click the
+"Use this template" button in the upper right corner of the page.
 
 In the page that opens, select the Owner (most likely your team's account) and
-Repository name (*e.g.*, "FRC-2026" or "REBUILT Robot Code" or whatever your team's naming convention
-is) into which the create the new robot project.  Optionally, include a
-description of the repository for your reference.  Select "public" or "private"
-repository based on the usual practices of your team.
+Repository name (*e.g.*, "FRC-2026" or "REBUILT Robot Code" or whatever your
+team's naming convention is) into which the create the new robot project.
+Optionally, include a description of the repository for your reference.  Select
+"public" or "private" repository based on the usual practices of your team.
 
 The latest release of Az-RBSI is in the `main` (default) branch, so it is
 recommended to **not** select the "Include all branches" checkbox.
+
+If you want to keep caught up on dependencies, you will need to ENABLE the
+Dependency Graph selection under the "Advanced Security" tab of the repository
+Settings.
+
+<img src="dependency_enable.png" alt="Enable Dependency Graph" width="50%" />
 
 --------
 
@@ -32,22 +39,22 @@ The Az-RBSI requires the [2026 WPILib Installer](
 https://github.com/wpilibsuite/allwpilib/releases) (VSCode and associated
 tools), 2026 firmware installed on all hardware (motors, encoders, power
 distribution, etc.), the [2026 NI FRC Game Tools](
-https://github.com/wpilibsuite/2026Beta)
+https://www.ni.com/en/support/downloads/drivers/download.frc-game-tools.html)
 (Driver Station and associated tools), and the [2026 CTRE Phoenix Tuner X](
 https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html).  Take a
-moment to update all software and firmware before attempting to load your new
-robot project.
+moment to update all software and firmware to the latest versions before
+attempting to load your new robot project.
 
 Please note that you need these _minimum_ versions of the following components:
 
-* WPILib ` v2026.1.1-beta-1`
+* WPILib ` v2026.2.1`
 * RoboRIO image `FRC_roboRIO_2026_v1.2`
 
 --------
 
 ### Setting up your new project
 
-When your new robot code respository is created, it will have a single commit
+When your new robot code repository is created, it will have a single commit
 that contains the entire Az-RBSI template for the current release.  (See the
 [Az-RBSI Releases page](https://github.com/AZ-First/Az-RBSI/releases) for more
 information about the latest release.)
@@ -100,6 +107,12 @@ this functionality has not been extensively tested.  Any teams that adopt this
 method are encouraged to submit bug reports and code fixes to the [Az-RBSI
 repository](https://github.com/AZ-First/Az-RBSI).
 
+
+--------
+
+### Getting Started with your Robot Code
+
+See the Az-RBSI [Getting Started Guide](RBSI-GSG.md) for next steps.
 
 --------
 
