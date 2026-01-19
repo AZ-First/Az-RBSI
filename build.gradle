@@ -3,7 +3,7 @@ plugins {
     id "edu.wpi.first.GradleRIO" version "2026.2.1"
     id "com.peterabeles.gversion" version "1.10.3"
     id "com.diffplug.spotless" version "8.0.+"
-    id "io.freefair.lombok" version "9.1.+"
+    id "io.freefair.lombok" version "9.2.+"
     id "com.google.protobuf" version "0.9.+"
 }
 
