@@ -56,4 +56,11 @@ public interface ImuIO {
 
   /** Zero the yaw to a known field-relative angle */
   default void zeroYaw(Rotation2d yaw) {}
+
+  /** Simulation-only update hooks */
+  default void simulationSetYaw(Rotation2d yaw) {}
+
+  default void simulationSetOmega(double omegaRadPerSec) {}
+
+  default void setLinearAccel(Translation3d accelMps2) {}
 }

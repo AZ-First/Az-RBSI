@@ -41,10 +41,16 @@ modifications to extant RBSI code will be done to files within the
 
 ### Tuning constants for optimal performance
 
-4. HHHH
+4. Over the course of your robot project, you will need to tune PID parameters
+   for both your drivebase and any mechanisms you build to play the game.
+   AdvantageKit includes detailed instructions for how to tune the various
+   portions of your drivetrain, and we **STRONGLY RECOMMEND** you work through
+   these steps **BEFORE** running your robot.
 
+   * [Tuning for drivebase with CTRE components](https://docs.advantagekit.org/getting-started/template-projects/talonfx-swerve-template#tuning)
+   * [Tuning for drivebase with REV components](https://docs.advantagekit.org/getting-started/template-projects/spark-swerve-template/#tuning)
 
-
+   Similar tuning can be done with subsystem components (flywheel, intake, etc.).
 
 5. Power monitoring by subsystem is included in the Az-RBSI.  In order to
    properly match subsystems to ports on your Power Distribution Module,
@@ -55,12 +61,17 @@ modifications to extant RBSI code will be done to files within the
    instantiation](
    https://github.com/AZ-First/Az-RBSI/blob/38f6391cb70c4caa90502710f591682815064677/src/main/java/frc/robot/RobotContainer.java#L154-L157) in the `RobotContainer.java` file.
 
-6. All of the constants for needed for tuning your robot should be in the
-   `Constants.java` file in the `src/main/java/frc/robot` directory.  This file
-   should be thoroughly edited to match the particulars of your robot.  Be sure
-   to work through each section of this file and include the proper values for
-   your robot.
-
+6. In the `Constants.java` file, the classes following `RobotDevices` contain
+   individual containers for robot subsystems and interaction methods.  The
+   `OperatorConstants` class determines how the OPERATOR interacts with the
+   robot.  `DriveBaseConstants` and `FlywheelConstants` (and additional classes
+   you add for your own mechanisms) contain human-scale conversions and limits
+   for the subsystem (_e.g._, maximum speed, gear ratios, PID constants, etc.).
+   `AutoConstants` contains the values needed for your autonomous period method
+   of choice (currently supported are MANUAL -- you write your own code;
+   PATHPLANNER, and CHOREO).  The next two are related to robot vision, where
+   the vision system constants are contained in `VisionConstants`, and the
+   physical properties (location, FOV, etc.) of the cameras are in `Cameras`.
 
 --------
 

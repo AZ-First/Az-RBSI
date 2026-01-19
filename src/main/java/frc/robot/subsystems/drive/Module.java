@@ -128,6 +128,11 @@ public class Module {
     return inputs.odometryTimestamps;
   }
 
+  /** Forwards the simulation periodic call to the IO layer */
+  public void simulationPeriodic() {
+    io.simulationPeriodic();
+  }
+
   /** Returns the module position in radians. */
   public double getWheelRadiusCharacterizationPosition() {
     return inputs.drivePositionRad;
