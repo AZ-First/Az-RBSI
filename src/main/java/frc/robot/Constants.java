@@ -18,7 +18,6 @@
 package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
-import static frc.robot.util.RBSIEnum.*;
 
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
@@ -39,7 +38,15 @@ import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
+import frc.robot.util.RBSIEnum.AutoType;
+import frc.robot.util.RBSIEnum.CTREPro;
+import frc.robot.util.RBSIEnum.DriveStyle;
+import frc.robot.util.RBSIEnum.Mode;
+import frc.robot.util.RBSIEnum.MotorIdleMode;
+import frc.robot.util.RBSIEnum.SwerveType;
+import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
+import org.photonvision.simulation.SimCameraProperties;
 import swervelib.math.Matter;
 
 /**
@@ -65,7 +72,7 @@ public final class Constants {
   //       under strict caveat emptor -- and submit any error and bugfixes
   //       via GitHub issues.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
-  private static CTREPro phoenixPro = CTREPro.LICENSED; // LICENSED, UNLICENSED
+  private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
   private static VisionType visionType = VisionType.NONE; // PHOTON, LIMELIGHT, NONE
 
@@ -103,7 +110,7 @@ public final class Constants {
   /** Physical Constants for Robot Operation ******************************* */
   public static final class RobotConstants {
 
-    public static final Mass kRobotMass = Kilograms.of(100.);
+    public static final Mass kRobotMass = Pounds.of(100.);
     public static final Matter kChassis =
         new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kRobotMass.in(Kilograms));
     // Robot moment of intertial; this can be obtained from a CAD model of your drivetrain. Usually,
@@ -112,6 +119,10 @@ public final class Constants {
 
     // Wheel coefficient of friction
     public static final double kWheelCOF = 1.2;
+
+    // Maximum torque applied by wheel
+    // Kraken X60 stall torque ~7.09 Nm; MK4i L3 gear ratio 6.12:1
+    public static final double kMaxWheelTorque = 43.4; // Nm
 
     // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
@@ -463,10 +474,14 @@ public final class Constants {
 
     // Robot to camera transforms
     // (ONLY USED FOR PHOTONVISION -- Limelight: configure in web UI instead)
+    // Example Camera are mounted on the frame perimeter, 18" up from the floor, centered
+    // side-to-side
     public static Transform3d robotToCamera0 =
-        new Transform3d(0.2, 0.0, 0.2, new Rotation3d(0.0, -0.4, 0.0));
+        new Transform3d(
+            Inches.of(13.0), Inches.of(0), Inches.of(18.0), new Rotation3d(0.0, 0.0, 0.0));
     public static Transform3d robotToCamera1 =
-        new Transform3d(-0.2, 0.0, 0.2, new Rotation3d(0.0, -0.4, Math.PI));
+        new Transform3d(
+            Inches.of(-13.0), Inches.of(0), Inches.of(18.0), new Rotation3d(0.0, 0.0, Math.PI));
 
     // Standard deviation multipliers for each camera
     // (Adjust to trust some cameras more than others)
@@ -474,6 +489,32 @@ public final class Constants {
         new double[] {
           1.0, // Camera 0
           1.0 // Camera 1
+        };
+  }
+
+  /************************************************************************* */
+  /** Simulation Camera Properties ***************************************** */
+  public static class SimCameras {
+    public static final SimCameraProperties kSimCamera1Props =
+        new SimCameraProperties() {
+          {
+            setCalibration(1280, 800, Rotation2d.fromDegrees(90));
+            setCalibError(0.25, 0.08);
+            setFPS(30);
+            setAvgLatencyMs(20);
+            setLatencyStdDevMs(5);
+          }
+        };
+
+    public static final SimCameraProperties kSimCamera2Props =
+        new SimCameraProperties() {
+          {
+            setCalibration(1280, 800, Rotation2d.fromDegrees(90));
+            setCalibError(0.25, 0.08);
+            setFPS(30);
+            setAvgLatencyMs(20);
+            setLatencyStdDevMs(5);
+          }
         };
   }
 
