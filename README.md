@@ -9,8 +9,8 @@ Arizona's Reference Build and Software Implementation for FRC Robots (read: "A-Z
 
 ## Installation
 
-Installation instructions are found in the [INSTALL.md](INSTALL.md) file, and the [Getting
-Started Guide](RBSI-GSG.md) includes the steps you'll need to do before taking your robot
+Installation instructions are found in the [INSTALL.md](doc/INSTALL.md) file, and the [Getting
+Started Guide](doc/RBSI-GSG.md) includes the steps you'll need to do before taking your robot
 out for a spin.  See the [Releases Page](https://github.com/AZ-First/Az-RBSI/releases) for
 details on the latest release, including restrictions and cautions.
 
@@ -29,7 +29,7 @@ The purpose of Az-RBSI is to help Arizona FRC teams with:
 ## Design Philosophy
 
 The Az-RBSI is centered around a "Reference Build" robot that allows for teams
-to communicate quickly and effectivly with each other about gameplay strategy
+to communicate quickly and effectively with each other about gameplay strategy
 and troubleshooting.  Additionally, the consolidation around a standard robot
 design allows for easier swapping of spare parts and programming modules.
 
@@ -44,11 +44,11 @@ effective logging for troubleshooting.
 
 * [WPILib](https://docs.wpilib.org/en/stable/index.html) -- FIRST basic libraries
 * [AdvantageKit](
-   https://github.com/Mechanical-Advantage/AdvantageKit/blob/main/docs/WHAT-IS-ADVANTAGEKIT.md)
+   https://docs.advantagekit.org/getting-start ed/what-is-advantagekit/)
    -- Logging
 * [CTRE Phoenix6](
   https://v6.docs.ctr-electronics.com/en/stable/docs/api-reference/mechanisms/swerve/swerve-overview.html)
-  / [YAGSL](https://yagsl.gitbook.io/yagsl) -- Swerve drive library
+  / [YAGSL](https://docs.yagsl.com/) -- Swerve drive library
 * [PathPlanner](https://pathplanner.dev/home.html) / [Choreo](
   https://sleipnirgroup.github.io/Choreo/) -- Autonomous path planning
 * [PhotonVision](https://docs.photonvision.org/en/latest/) / [Limelight](
