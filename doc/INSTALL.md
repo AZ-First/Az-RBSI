@@ -1,5 +1,21 @@
 # Az-RBSI Installation Instructions
 
+### Pre install
+Before you even think about Az-RBSI,  you need these _minimum_ versions of the following components on your laptop and devices. 
+
+* WPILib ` v2026.2.1`
+* RoboRIO image `FRC_roboRIO_2026_v1.2` (comes from game tools from national instruments)
+* Driver Station `Version 26.0` (comes from game tools from national instruments)
+* CTRE Tunner X `26.2.4.0`, with all devices running `26.0` or newer. This includes the motors, canivore, pidgeon 2.0, and the cancoders!
+* Rev Hardware Client `2.0`, with the pdh and all spark max's, and other devices on `26.1` or newer.
+* Vivid hosting Radio `2.0` or newer is required for competition this year.
+* Photon Vision (orange pi or other device) running `26.1` or newer (Make sure you are not acidentially running 25.3). We HIGHLY recomend downloading the image and re imaging the sd to your co-processor instead of trying to upgrade it. 
+
+It is highly recommmended to update all you devices, and label what can id's or ip adresses and firmware versions they are running. This helps your team, and the FRC field staff quickly identify issues.
+
+--------
+
+### Getting Az-RBSI
 The Az-RBSI is available as a [Template Repository](
 https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)
 for teams to use for creating their own 2026 FRC robot code.  These instructions
@@ -29,11 +45,13 @@ If you want to keep caught up on dependencies, you will need to ENABLE the
 Dependency Graph selection under the "Advanced Security" tab of the repository
 Settings.
 
+* If you are struggling with this step, you may need the mentor or teacher that owns your github org to to it.
+
 <img src="dependency_enable.png" alt="Enable Dependency Graph" width="50%" />
 
 --------
 
-### Software Requirements
+### Software Requirements (Update Everything to 2026!)
 
 The Az-RBSI requires the [2026 WPILib Installer](
 https://github.com/wpilibsuite/allwpilib/releases) (VSCode and associated
@@ -45,10 +63,7 @@ https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html).  Take a
 moment to update all software and firmware to the latest versions before
 attempting to load your new robot project.
 
-Please note that you need these _minimum_ versions of the following components:
 
-* WPILib ` v2026.2.1`
-* RoboRIO image `FRC_roboRIO_2026_v1.2`
 
 --------
 

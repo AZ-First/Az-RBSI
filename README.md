@@ -44,13 +44,11 @@ effective logging for troubleshooting.
 
 * [WPILib](https://docs.wpilib.org/en/stable/index.html) -- FIRST basic libraries
 * [AdvantageKit](
-   https://docs.advantagekit.org/getting-start ed/what-is-advantagekit/)
+   https://docs.advantagekit.org/getting-started/what-is-advantagekit/)
    -- Logging
 * [CTRE Phoenix6](
-  https://v6.docs.ctr-electronics.com/en/stable/docs/api-reference/mechanisms/swerve/swerve-overview.html)
-  / [YAGSL](https://docs.yagsl.com/) -- Swerve drive library
-* [PathPlanner](https://pathplanner.dev/home.html) / [Choreo](
-  https://sleipnirgroup.github.io/Choreo/) -- Autonomous path planning
+  https://v6.docs.ctr-electronics.com/en/stable/docs/api-reference/mechanisms/swerve/swerve-overview.html) -- Swerve drive library
+* [PathPlanner](https://pathplanner.dev/home.html) -- Autonomous path planning
 * [PhotonVision](https://docs.photonvision.org/en/latest/) / [Limelight](
   https://docs.limelightvision.io/docs/docs-limelight/getting-started/summary)
   -- Robot vision / tracking
