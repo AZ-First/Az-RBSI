@@ -54,6 +54,15 @@ effective logging for troubleshooting.
   -- Robot vision / tracking
 * [Autopilot](https://therekrab.github.io/autopilot/index.html) -- Drive-to-Pose semi-autonomous movements
 
+## 2026 Kickoff Slides
+
+Google Drive links for our 2026 Kickoff Workshops:
+
+* [AZ RBSI and Advantage Kit
+](https://docs.google.com/presentation/d/1KOfODbdGbk8L_G25i7iYnaahoKr_Tzg54LJYN4yax_4/edit?usp=sharing)
+* [Know Where You Are: PhotonVision for Alignment and Odometry
+](https://docs.google.com/presentation/d/1JWYmwpZYA2zBuNIj9kKBUC_O-i0d1-SW_6qsVxgPdCA/edit?usp=sharing)
+
 ## Further Reading
 
 For tips on command-based programming, see this post:
