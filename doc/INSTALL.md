@@ -1,15 +1,24 @@
 # Az-RBSI Installation Instructions
 
 ### Pre install
-Before you even think about Az-RBSI,  you need these _minimum_ versions of the following components on your laptop and devices. 
+Before you even think about Az-RBSI,  you need these _minimum_ versions of the
+following components on your laptop and devices.
 
 * WPILib ` v2026.2.1`
-* RoboRIO image `FRC_roboRIO_2026_v1.2` (comes from game tools from national instruments)
-* Driver Station `Version 26.0` (comes from game tools from national instruments)
-* CTRE Tunner X `26.2.4.0`, with all devices running `26.0` or newer. This includes the motors, canivore, pidgeon 2.0, and the cancoders!
-* Rev Hardware Client `2.0`, with the pdh and all spark max's, and other devices on `26.1` or newer.
-* Vivid hosting Radio `2.0` or newer is required for competition this year.
-* Photon Vision (orange pi or other device) running `26.1` or newer (Make sure you are not acidentially running 25.3). We HIGHLY recomend downloading the image and re imaging the sd to your co-processor instead of trying to upgrade it. 
+* RoboRIO image `FRC_roboRIO_2026_v1.2` (comes with the FRC Game Tools from
+  National Instruments)
+* Driver Station `Version 26.0` (comes with the FRC Game Tools from National
+  Instruments)
+* CTRE Tunner X `26.2.4.0`, with all devices running firmware  `26.0` or newer.
+  This includes all motors, CANivore, Pigeon 2.0, and all CANcoders!
+* Rev Hardware Client `2.0`, with the PDH and all SparkMax's, and other devices
+  running firmware `26.1` or newer.
+* Vivid Hosting Radio firmware `2.0` or newer is required for competition this
+  year.
+* Photon Vision ([Orange Pi or other device](https://docs.photonvision.org/en/latest/docs/quick-start/quick-install.html))
+  **running `26.1` or newer** (make sure you are **not** acidentially running
+  `25.3`).  We HIGHLY recomend downloading the image and re-imaging the SD Card
+  in your co-processor instead of trying to upgrade it.
 
 It is highly recommmended to update all you devices, and label what can id's or ip adresses and firmware versions they are running. This helps your team, and the FRC field staff quickly identify issues.
 
