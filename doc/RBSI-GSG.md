@@ -117,14 +117,16 @@ section of [each release](https://github.com/AZ-First/Az-RBSI/releases).
    * 4x [M2.5x20mm Female-Female Hex Standoff](https://www.amazon.com/gp/product/B08F2HZN4R) (atop the upper Pi)
    * 8x [M2.5x8mm Machine Screws](https://www.amazon.com/gp/product/B07MLB1627) (through case and into standoffs)
    * 2x [Cooling Fan 40mm 5V DC + Grill](https://www.amazon.com/gp/product/B08R1CXGCJ) (attaches to side of case)
-   * 2x [90-Degree USB-C to 2 Pin Bare Wire Open End Power Cord, 10 inch](https://www.amazon.com/gp/product/B0CY2J5H3K) (for powering Pi's)
-   * 1x [Pololu 5V, 5.5A Step-Down Voltage Regulator](https://www.pololu.com/product/4091) (Power regulation for the Pi's)
+   * 1x [Redux Robotics Zinc-V Regulator](https://shop.reduxrobotics.com/products/zinc-v) OR [Pololu 5V, 5.5A Step-Down Voltage Regulator](https://www.pololu.com/product/4091) OR [Pololu 5V, 3A Step-Up/Step-Down Voltage Regulator](https://www.pololu.com/product/4082) (Power regulation for the Pi's)
+   * 2x [90-Degree USB-C to USB-C Cable, 10 inch](https://www.amazon.com/dp/B0CG1PZMVG) for ZINC-V or [90-Degree USB-C to 2 Pin Bare Wire, 10 inch](https://www.amazon.com/gp/product/B0CY2J5H3K) for Pololu (for powering Pi's)
    * 3x [M2x8mm Machine Screws](https://www.amazon.com/gp/product/B07M6RTWCC) (for attaching the Pololu to the lid)
 
-   Power to the case can be 18/2 AWG black/red wire directly from the PDP to the
-   Pololu w/o or w/out intermediate connectors.
+   **NOTE: Powering the case with a Pololu requires soldering the USB-C cables
+   and the 18/2 AWG wires to the Pololu.**  This requires patience.  Using the
+   Zinc-V requires no soldering, but introduces an extra USB-C connection.
 
-   **NOTE: Powering the case in this way requires soldering the USB-C cables and the
-   18/2 AWG wires to the Pololu.**  This requires patience.
+   See the [PhotonVision Wiring documentation
+   ](https://docs.photonvision.org/en/latest/docs/quick-start/wiring.html) for
+   more details.
 
    Mounting the case to the robot requires 4x 10-32 nylock nuts + 4x 10-32 bolts.
