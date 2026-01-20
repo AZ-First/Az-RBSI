@@ -108,8 +108,9 @@ section of [each release](https://github.com/AZ-First/Az-RBSI/releases).
 
 * The [Orange Pi Double Case](https://github.com/AZ-First/Az-RBSI/releases/download/v26.0.0-rc2/Orange.Pi.Double.case.STL)
   and [Lid](https://github.com/AZ-First/Az-RBSI/releases/download/v26.0.0-rc2/Orange.Pi.Double.case.lid.STL)
-  are designed to hold two [Orange Pi 5](https://www.amazon.com/dp/B0BN17PWWB)'s
-  (not **B** or **Pro** or **Max**) (and connect up to 4 cameras).  Also requires:
+  are designed to hold one or two [Orange Pi 5](https://www.amazon.com/dp/B0BN17PWWB)'s
+  (not **B** or **Pro** or **Max**) (and connect up to 4 cameras).  If only using one
+  Orange Pi, mount it in the "upper" position for airflow.  Also requires:
 
    * 2x [128 GB micro SD card](https://www.amazon.com/dp/B0B7NTY2S6)
    * 4x [M2.5x6mm+6mm Male-Female Hex Standoff](https://www.amazon.com/gp/product/B08F2F96HM) (under the bottom Pi)
@@ -129,4 +130,5 @@ section of [each release](https://github.com/AZ-First/Az-RBSI/releases).
    ](https://docs.photonvision.org/en/latest/docs/quick-start/wiring.html) for
    more details.
 
-   Mounting the case to the robot requires 4x 10-32 nylock nuts + 4x 10-32 bolts.
+   Mounting the case to the robot requires 4x #10-32 nylock nuts (placed in the
+   hex-shaped mounts inside the case) and 4x #10-32 bolts.
