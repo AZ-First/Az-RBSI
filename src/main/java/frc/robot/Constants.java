@@ -432,14 +432,19 @@ public final class Constants {
 
     // Robot to camera transforms
     // (ONLY USED FOR PHOTONVISION -- Limelight: configure in web UI instead)
-    // Example Camera are mounted on the frame perimeter, 18" up from the floor, centered
-    // side-to-side
+    // Example Cameras are mounted in the back corners, 18" up from the floor, facing sideways
     public static Transform3d robotToCamera0 =
         new Transform3d(
-            Inches.of(13.0), Inches.of(0), Inches.of(18.0), new Rotation3d(0.0, 0.0, 0.0));
+            Inches.of(-13.0),
+            Inches.of(13.0),
+            Inches.of(12.0),
+            new Rotation3d(0.0, 0.0, Math.PI / 2));
     public static Transform3d robotToCamera1 =
         new Transform3d(
-            Inches.of(-13.0), Inches.of(0), Inches.of(18.0), new Rotation3d(0.0, 0.0, Math.PI));
+            Inches.of(-13.0),
+            Inches.of(-13.0),
+            Inches.of(12.0),
+            new Rotation3d(0.0, 0.0, -Math.PI / 2));
 
     // Standard deviation multipliers for each camera
     // (Adjust to trust some cameras more than others)
@@ -456,7 +461,7 @@ public final class Constants {
     public static final SimCameraProperties kSimCamera1Props =
         new SimCameraProperties() {
           {
-            setCalibration(1280, 800, Rotation2d.fromDegrees(90));
+            setCalibration(1280, 800, Rotation2d.fromDegrees(120));
             setCalibError(0.25, 0.08);
             setFPS(30);
             setAvgLatencyMs(20);
@@ -467,7 +472,7 @@ public final class Constants {
     public static final SimCameraProperties kSimCamera2Props =
         new SimCameraProperties() {
           {
-            setCalibration(1280, 800, Rotation2d.fromDegrees(90));
+            setCalibration(1280, 800, Rotation2d.fromDegrees(120));
             setCalibError(0.25, 0.08);
             setFPS(30);
             setAvgLatencyMs(20);
