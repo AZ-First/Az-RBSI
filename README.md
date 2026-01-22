@@ -54,14 +54,24 @@ effective logging for troubleshooting.
   -- Robot vision / tracking
 * [Autopilot](https://therekrab.github.io/autopilot/index.html) -- Drive-to-Pose semi-autonomous movements
 
-## 2026 Kickoff Slides
+## FRC Kickoff Workshop Slides
 
-Google Drive links for our 2026 Kickoff Workshops:
+### 2026 - REBUILT
+
+Google Drive links for our 30-minute 2026 Kickoff Workshops:
 
 * [AZ RBSI and Advantage Kit
 ](https://docs.google.com/presentation/d/1KOfODbdGbk8L_G25i7iYnaahoKr_Tzg54LJYN4yax_4/edit?usp=sharing)
 * [Know Where You Are: PhotonVision for Alignment and Odometry
 ](https://docs.google.com/presentation/d/1JWYmwpZYA2zBuNIj9kKBUC_O-i0d1-SW_6qsVxgPdCA/edit?usp=sharing)
+
+
+### 2025 - Reefscape
+
+Google Drive link for our 2-hour 2025 Kickoff Workshop introducing Az-RBSI:
+
+* [AZ Liftoff RBSI](https://docs.google.com/presentation/d/1c8A5RlPeEvKcj9yC66Ffvh5Os6jWyZiACoSRjDDETUs/edit?usp=sharing)
+
 
 ## Further Reading
 
