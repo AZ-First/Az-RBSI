@@ -62,7 +62,8 @@ import frc.robot.util.Alert.AlertType;
 import frc.robot.util.GetJoystickValue;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
-import frc.robot.util.RBSIEnum;
+import frc.robot.util.RBSIEnum.AutoType;
+import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIPowerMonitor;
 import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -379,24 +380,27 @@ public class RobotContainer {
                 m_drivebase::stop,
                 m_drivebase));
 
-    // Double-press the A button on Joystick3 to run the CameraSweepEvaluator
-    // Use WPILib's built-in double-press binding
-    joystick3
-        .button(1)
-        .multiPress(2, 0.2)
-        .onTrue(
-            Commands.runOnce(
-                () -> {
-                  try {
-                    sweep.runFullSweep(
-                        Filesystem.getOperatingDirectory()
-                            .toPath()
-                            .resolve("camera_sweep.csv")
-                            .toString());
-                  } catch (Exception e) {
-                    e.printStackTrace();
-                  }
-                }));
+    if (Constants.getMode() == Mode.SIM) {
+      // IN SIMULATION ONLY:
+      // Double-press the A button on Joystick3 to run the CameraSweepEvaluator
+      // Use WPILib's built-in double-press binding
+      joystick3
+          .button(1)
+          .multiPress(2, 0.2)
+          .onTrue(
+              Commands.runOnce(
+                  () -> {
+                    try {
+                      sweep.runFullSweep(
+                          Filesystem.getOperatingDirectory()
+                              .toPath()
+                              .resolve("camera_sweep.csv")
+                              .toString());
+                    } catch (Exception e) {
+                      e.printStackTrace();
+                    }
+                  }));
+    }
   }
 
   /**
@@ -467,7 +471,7 @@ public class RobotContainer {
    * <p>NOTE: These are currently only accessible with Constants.AutoType.PATHPLANNER
    */
   private void definesysIdRoutines() {
-    if (Constants.getAutoType() == RBSIEnum.AutoType.PATHPLANNER) {
+    if (Constants.getAutoType() == AutoType.PATHPLANNER) {
       // Drivebase characterization
       autoChooserPathPlanner.addOption(
           "Drive Wheel Radius Characterization",
