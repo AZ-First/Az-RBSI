@@ -61,8 +61,9 @@ public class Flywheel extends RBSISubsystem {
             new SysIdRoutine.Mechanism((voltage) -> runVolts(voltage.in(Volts)), null, this));
   }
 
+  /** Periodic function -- inherits timing logic from RBSISubsystem */
   @Override
-  public void periodic() {
+  public void rbsiPeriodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Flywheel", inputs);
   }
