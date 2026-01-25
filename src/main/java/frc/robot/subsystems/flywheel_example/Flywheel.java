@@ -12,7 +12,6 @@ package frc.robot.subsystems.flywheel_example;
 import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.Constants.FlywheelConstants.*;
 
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -24,7 +23,6 @@ import org.littletonrobotics.junction.Logger;
 public class Flywheel extends RBSISubsystem {
   private final FlywheelIO io;
   private final FlywheelIOInputsAutoLogged inputs = new FlywheelIOInputsAutoLogged();
-  private final SimpleMotorFeedforward ffModel;
   private final SysIdRoutine sysId;
 
   /** Creates a new Flywheel. */
@@ -36,17 +34,11 @@ public class Flywheel extends RBSISubsystem {
     switch (Constants.getMode()) {
       case REAL:
       case REPLAY:
-        ffModel = new SimpleMotorFeedforward(kStaticGainReal, kVelocityGainReal);
-        io.configurePID(pidReal.kP, pidReal.kI, pidReal.kD);
-        io.configureFF(kStaticGainReal, kVelocityGainReal);
+        io.configureGains(kPreal, 0.0, kDreal, kSreal, kVreal, kAreal);
         break;
       case SIM:
-        ffModel = new SimpleMotorFeedforward(kStaticGainSim, kVelocityGainSim);
-        io.configurePID(pidSim.kP, pidSim.kI, pidSim.kD);
-        io.configureFF(kStaticGainSim, kVelocityGainSim);
-        break;
       default:
-        ffModel = new SimpleMotorFeedforward(0.0, 0.0);
+        io.configureGains(kPsim, 0.0, kDsim, kSsim, kVsim, kAsim);
         break;
     }
 
@@ -76,7 +68,7 @@ public class Flywheel extends RBSISubsystem {
   /** Run closed loop at the specified velocity. */
   public void runVelocity(double velocityRPM) {
     var velocityRadPerSec = Units.rotationsPerMinuteToRadiansPerSecond(velocityRPM);
-    io.setVelocity(velocityRadPerSec, ffModel.calculate(velocityRadPerSec));
+    io.setVelocity(velocityRadPerSec);
 
     // Log flywheel setpoint
     Logger.recordOutput("Flywheel/SetpointRPM", velocityRPM);

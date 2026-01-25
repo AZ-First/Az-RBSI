@@ -28,6 +28,7 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.Constants.PowerConstants;
 import frc.robot.util.PhoenixUtil;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
@@ -51,7 +52,7 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private final TalonFXConfiguration config = new TalonFXConfiguration();
 
   public FlywheelIOTalonFX() {
-    config.CurrentLimits.SupplyCurrentLimit = 30.0;
+    config.CurrentLimits.SupplyCurrentLimit = PowerConstants.kMotorPortMaxCurrent;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.MotorOutput.NeutralMode =
         switch (kFlywheelIdleMode) {
@@ -101,7 +102,7 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   }
 
   @Override
-  public void setVelocity(double velocityRadPerSec, double ffVolts) {
+  public void setVelocity(double velocityRadPerSec) {
     leader.setControl(new VelocityVoltage(Units.radiansToRotations(velocityRadPerSec)));
   }
 
@@ -111,41 +112,40 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   }
 
   /**
-   * Set the PID portion of the Slot0 closed-loop configuration
+   * Set the gains of the Slot0 closed-loop configuration
    *
    * @param kP Proportional gain
    * @param kI Integral gain
    * @param kD Differential gain
-   */
-  @Override
-  public void configurePID(double kP, double kI, double kD) {
-    config.Slot0.kP = kP;
-    config.Slot0.kI = kI;
-    config.Slot0.kD = kD;
-    PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
-  }
-
-  /**
-   * Set the FeedForward portion of the Slot0 closed-loop configuration
-   *
    * @param kS Static gain
    * @param kV Velocity gain
    */
   @Override
-  public void configureFF(double kS, double kV) {
+  public void configureGains(double kP, double kI, double kD, double kS, double kV) {
+    config.Slot0.kP = kP;
+    config.Slot0.kI = kI;
+    config.Slot0.kD = kD;
     config.Slot0.kS = kS;
     config.Slot0.kV = kV;
+    config.Slot0.kA = 0.0;
     PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
   }
 
   /**
-   * Set the FeedForward portion of the Slot0 closed-loop configuration
+   * Set the gains of the Slot0 closed-loop configuration
    *
+   * @param kP Proportional gain
+   * @param kI Integral gain
+   * @param kD Differential gain
    * @param kS Static gain
    * @param kV Velocity gain
    * @param kA Acceleration gain
    */
-  public void configureFF(double kS, double kV, double kA) {
+  @Override
+  public void configureGains(double kP, double kI, double kD, double kS, double kV, double kA) {
+    config.Slot0.kP = kP;
+    config.Slot0.kI = kI;
+    config.Slot0.kD = kD;
     config.Slot0.kS = kS;
     config.Slot0.kV = kV;
     config.Slot0.kA = kA;

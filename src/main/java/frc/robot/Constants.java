@@ -334,17 +334,21 @@ public final class Constants {
 
     // MODE == REAL / REPLAY
     // Feedforward constants
-    public static final double kStaticGainReal = 0.1;
-    public static final double kVelocityGainReal = 0.05;
+    public static final double kSreal = 0.1;
+    public static final double kVreal = 0.05;
+    public static final double kAreal = 0.0;
     // Feedback (PID) constants
-    public static final PIDConstants pidReal = new PIDConstants(1.0, 0.0, 0.0);
+    public static final double kPreal = 1.0;
+    public static final double kDreal = 0.0;
 
     // MODE == SIM
     // Feedforward constants
-    public static final double kStaticGainSim = 0.0;
-    public static final double kVelocityGainSim = 0.03;
+    public static final double kSsim = 0.0;
+    public static final double kVsim = 0.03;
+    public static final double kAsim = 0.0;
     // Feedback (PID) constants
-    public static final PIDConstants pidSim = new PIDConstants(1.0, 0.0, 0.0);
+    public static final double kPsim = 0.0;
+    public static final double kDsim = 0.0;
   }
 
   /************************************************************************* */
