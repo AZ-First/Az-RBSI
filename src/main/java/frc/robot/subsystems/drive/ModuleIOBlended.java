@@ -10,6 +10,7 @@
 package frc.robot.subsystems.drive;
 
 import static edu.wpi.first.units.Units.RotationsPerSecond;
+import static frc.robot.Constants.DrivebaseConstants.*;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
@@ -199,8 +200,8 @@ public class ModuleIOBlended implements ModuleIO {
             .withKV(DrivebaseConstants.kDriveV)
             .withKA(DrivebaseConstants.kDriveA);
     driveConfig.Feedback.SensorToMechanismRatio = SwerveConstants.kDriveGearRatio;
-    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = SwerveConstants.kDriveSlipCurrent;
-    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -SwerveConstants.kDriveSlipCurrent;
+    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DrivebaseConstants.kSlipCurrent;
+    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DrivebaseConstants.kSlipCurrent;
     driveConfig.CurrentLimits.StatorCurrentLimit = SwerveConstants.kDriveCurrentLimit;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing

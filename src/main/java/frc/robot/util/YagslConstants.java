@@ -91,8 +91,6 @@ public class YagslConstants {
       physicalPropertiesJson.conversionFactors.drive.gearRatio;
   public static final double kSteerGearRatio =
       physicalPropertiesJson.conversionFactors.angle.gearRatio;
-  public static final double kWheelRadiusInches =
-      physicalPropertiesJson.conversionFactors.drive.diameter / 2.0;
 
   public static final String kCANbusName = swerveDriveJson.imu.canbus;
   public static final int kPigeonId = swerveDriveJson.imu.id;

@@ -147,7 +147,7 @@ public class ModuleIOTalonFXS implements ModuleIO {
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
     driveConfig.Slot0 = constants.DriveMotorGains;
     driveConfig.ExternalFeedback.SensorToMechanismRatio = constants.DriveMotorGearRatio;
-    driveConfig.CurrentLimits.StatorCurrentLimit = constants.SlipCurrent;
+    driveConfig.CurrentLimits.StatorCurrentLimit = DrivebaseConstants.kSlipCurrent;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
     OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();

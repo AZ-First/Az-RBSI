@@ -64,7 +64,6 @@ import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.Mode;
-import frc.robot.util.RBSIPowerMonitor;
 import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.photonvision.PhotonCamera;
@@ -98,8 +97,8 @@ public class RobotContainer {
   @SuppressWarnings("unused")
   private final Accelerometer m_accel;
 
-  @SuppressWarnings("unused")
-  private final RBSIPowerMonitor m_power;
+  // @SuppressWarnings("unused")
+  // private final RBSIPowerMonitor m_power;
 
   @SuppressWarnings("unused")
   private final Vision m_vision;
@@ -217,7 +216,7 @@ public class RobotContainer {
     // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
     // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
     // include ``m_drivebase``, as that is automatically monitored.
-    m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
+    // m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
 
     // Set up the SmartDashboard Auto Chooser based on auto type
     switch (Constants.getAutoType()) {

@@ -32,8 +32,6 @@ public class SwerveConstants {
   public static final double kCoupleRatio;
   public static final double kDriveGearRatio;
   public static final double kSteerGearRatio;
-  public static final double kWheelRadiusInches;
-  public static final double kWheelRadiusMeters;
   public static final String kCANbusName;
   public static final CANBus kCANBus;
   public static final int kPigeonId;
@@ -43,7 +41,6 @@ public class SwerveConstants {
   public static final double kDriveFrictionVoltage;
   public static final double kSteerCurrentLimit;
   public static final double kDriveCurrentLimit;
-  public static final double kDriveSlipCurrent;
   public static final int kFLDriveMotorId;
   public static final int kFLSteerMotorId;
   public static final int kFLEncoderId;
@@ -113,8 +110,6 @@ public class SwerveConstants {
         kCoupleRatio = TunerConstants.FrontLeft.CouplingGearRatio;
         kDriveGearRatio = TunerConstants.FrontLeft.DriveMotorGearRatio;
         kSteerGearRatio = TunerConstants.FrontLeft.SteerMotorGearRatio;
-        kWheelRadiusMeters = TunerConstants.FrontLeft.WheelRadius;
-        kWheelRadiusInches = Units.metersToInches(kWheelRadiusMeters);
         kCANbusName = TunerConstants.DrivetrainConstants.CANBusName;
         kCANBus = new CANBus(TunerConstants.DrivetrainConstants.CANBusName);
         kPigeonId = TunerConstants.DrivetrainConstants.Pigeon2Id;
@@ -124,7 +119,6 @@ public class SwerveConstants {
         kDriveFrictionVoltage = 0.1;
         kSteerCurrentLimit = 40.0; // Example from CTRE documentation
         kDriveCurrentLimit = 120.0; // Example from CTRE documentation
-        kDriveSlipCurrent = TunerConstants.FrontLeft.SlipCurrent;
         // Front Left
         kFLDriveMotorId = TunerConstants.FrontLeft.DriveMotorId;
         kFLSteerMotorId = TunerConstants.FrontLeft.SteerMotorId;
@@ -198,8 +192,6 @@ public class SwerveConstants {
         kCoupleRatio = YagslConstants.kCoupleRatio;
         kDriveGearRatio = YagslConstants.kDriveGearRatio;
         kSteerGearRatio = YagslConstants.kSteerGearRatio;
-        kWheelRadiusInches = YagslConstants.kWheelRadiusInches;
-        kWheelRadiusMeters = Units.inchesToMeters(kWheelRadiusInches);
         kCANbusName = YagslConstants.kCANbusName;
         kCANBus = new CANBus(YagslConstants.kCANbusName);
         kPigeonId = YagslConstants.kPigeonId;
@@ -209,7 +201,6 @@ public class SwerveConstants {
         kDriveFrictionVoltage = YagslConstants.kDriveFrictionVoltage;
         kSteerCurrentLimit = YagslConstants.kSteerCurrentLimit;
         kDriveCurrentLimit = YagslConstants.kDriveCurrentLimit;
-        kDriveSlipCurrent = 120.0;
         // Front Left
         kFLDriveMotorId = YagslConstants.kFrontLeftDriveMotorId;
         kFLSteerMotorId = YagslConstants.kFrontLeftSteerMotorId;

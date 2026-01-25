@@ -265,6 +265,13 @@ public final class Constants {
     // Set 3/4 of a rotation per second as the max angular velocity (radians/sec)
     public static final double kMaxAngularSpeed = 1.5 * Math.PI;
 
+    // Slip Current -- the current draw when the wheels start to slip
+    // Measure this against a wall.  CHECK WITH THE CARPET AT AN ACTUAL EVENT!!!
+    public static final double kSlipCurrent = 17.0; // Amps
+
+    // Characterized Wheel Radius (using the "Drive Wheel Radius Characterization" auto routine)
+    public static final double kWheelRadiusMeters = Inches.of(1.900).in(Meters);
+
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
     public static final double kMaxLinearAccel = 4.0; // m/s/s
@@ -360,11 +367,11 @@ public final class Constants {
             RobotConstants.kRobotMass.in(Kilograms),
             RobotConstants.kRobotMOI,
             new ModuleConfig(
-                SwerveConstants.kWheelRadiusMeters,
+                DrivebaseConstants.kWheelRadiusMeters,
                 DrivebaseConstants.kMaxLinearSpeed,
                 RobotConstants.kWheelCOF,
                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
-                SwerveConstants.kDriveSlipCurrent,
+                DrivebaseConstants.kSlipCurrent,
                 1),
             Drive.getModuleTranslations());
 
