@@ -277,11 +277,16 @@ public final class Constants {
     public static final double kMaxLinearAccel = 4.0; // m/s/s
     public static final double kMaxAngularAccel = Degrees.of(720).in(Radians);
 
-    // For Profiled PID Motion, these are the rotational PID Constants:
-    // TODO: Need tuning!
-    public static final double kPTheta = 5.0;
-    public static final double kITheta = 0.0;
-    public static final double kDTheta = 0.0;
+    // For Profiled PID Motion -- NEED TUNING!
+    // Used in a variety of contexts, including PathPlanner and AutoPilot
+    // Chassis (not module) across-the-field strafing motion
+    public static final double kPStrafe = 5.0;
+    public static final double kIStrafe = 0.0;
+    public static final double kDStrafe = 0.0;
+    // Chassis (not module) solid-body rotation
+    public static final double kPSPin = 5.0;
+    public static final double kISPin = 0.0;
+    public static final double kDSpin = 0.0;
 
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTime = 10; // seconds
@@ -357,10 +362,6 @@ public final class Constants {
   public static final class AutoConstants {
 
     // ********** PATHPLANNER CONSTANTS *******************
-    // Drive and Turn PID constants used for PathPlanner
-    public static final PIDConstants kPPdrivePID = new PIDConstants(5.0, 0.0, 0.0);
-    public static final PIDConstants kPPsteerPID = new PIDConstants(5.0, 0.0, 0.0);
-
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(

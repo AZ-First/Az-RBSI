@@ -441,11 +441,6 @@ public class RobotContainer {
     RobotModeTriggers.autonomous().whileTrue(autoChooserChoreo.selectedCommandScheduler());
   }
 
-  /** Set the motor neutral mode to BRAKE / COAST for T/F */
-  public void setMotorBrake(boolean brake) {
-    m_drivebase.setMotorBrake(brake);
-  }
-
   /** Updates the alerts. */
   public void updateAlerts() {
     // AprilTag layout alert
@@ -459,7 +454,7 @@ public class RobotContainer {
     }
   }
 
-  /** Drivetrain getter method */
+  /** Drivetrain getter method for use with Robot.java */
   public Drive getDrivebase() {
     return m_drivebase;
   }

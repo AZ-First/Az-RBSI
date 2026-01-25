@@ -140,7 +140,8 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledInit() {
     // Set the brakes to stop robot motion
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
     m_disabledTimer.reset();
     m_disabledTimer.start();
   }
@@ -150,7 +151,7 @@ public class Robot extends LoggedRobot {
   public void disabledPeriodic() {
     // After WHEEL_LOCK_TIME has elapsed, release the drive brakes
     if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTime)) {
-      m_robotContainer.setMotorBrake(false);
+      m_robotContainer.getDrivebase().setMotorBrake(false);
       m_disabledTimer.stop();
     }
   }
@@ -161,7 +162,8 @@ public class Robot extends LoggedRobot {
 
     // Just in case, cancel all running commands
     CommandScheduler.getInstance().cancelAll();
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
     switch (Constants.getAutoType()) {
@@ -202,7 +204,8 @@ public class Robot extends LoggedRobot {
     } else {
       CommandScheduler.getInstance().cancelAll();
     }
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
 
     // In case this got set in sequential practice sessions or whatever
     FieldState.wonAuto = null;
@@ -246,6 +249,7 @@ public class Robot extends LoggedRobot {
   public void testInit() {
     // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
+    m_robotContainer.getDrivebase().resetHeadingController();
   }
 
   /** This function is called periodically during test mode. */

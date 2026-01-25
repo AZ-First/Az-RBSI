@@ -9,14 +9,13 @@
 
 package frc.robot.subsystems.drive;
 
-import static frc.robot.Constants.DrivebaseConstants.*;
-
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
+import frc.robot.Constants.DrivebaseConstants;
 import org.littletonrobotics.junction.Logger;
 
 public class Module {
@@ -53,7 +52,8 @@ public class Module {
     int sampleCount = inputs.odometryTimestamps.length; // All signals are sampled together
     odometryPositions = new SwerveModulePosition[sampleCount];
     for (int i = 0; i < sampleCount; i++) {
-      double positionMeters = inputs.odometryDrivePositionsRad[i] * kWheelRadiusMeters;
+      double positionMeters =
+          inputs.odometryDrivePositionsRad[i] * DrivebaseConstants.kWheelRadiusMeters;
       Rotation2d angle = inputs.odometryTurnPositions[i];
       odometryPositions[i] = new SwerveModulePosition(positionMeters, angle);
     }
@@ -71,7 +71,7 @@ public class Module {
     state.cosineScale(inputs.turnPosition);
 
     // Apply setpoints
-    io.setDriveVelocity(state.speedMetersPerSecond / kWheelRadiusMeters);
+    io.setDriveVelocity(state.speedMetersPerSecond / DrivebaseConstants.kWheelRadiusMeters);
     io.setTurnPosition(state.angle);
   }
 
@@ -100,12 +100,12 @@ public class Module {
 
   /** Returns the current drive position of the module in meters. */
   public double getPositionMeters() {
-    return inputs.drivePositionRad * kWheelRadiusMeters;
+    return inputs.drivePositionRad * DrivebaseConstants.kWheelRadiusMeters;
   }
 
   /** Returns the current drive velocity of the module in meters per second. */
   public double getVelocityMetersPerSec() {
-    return inputs.driveVelocityRadPerSec * kWheelRadiusMeters;
+    return inputs.driveVelocityRadPerSec * DrivebaseConstants.kWheelRadiusMeters;
   }
 
   /** Returns the module position (turn angle and drive position). */
