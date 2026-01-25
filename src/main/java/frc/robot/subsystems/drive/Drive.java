@@ -96,7 +96,7 @@ public class Drive extends SubsystemBase {
             DrivebaseConstants.kISPin,
             DrivebaseConstants.kDSpin,
             new TrapezoidProfile.Constraints(
-                DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
+                getMaxAngularSpeedRadPerSec(), getMaxLinearAccelMetersPerSecPerSec()));
     angleController.enableContinuousInput(-Math.PI, Math.PI);
 
     // If REAL (i.e., NOT simulation), parse out the module types
@@ -368,7 +368,7 @@ public class Drive extends SubsystemBase {
     // Calculate module setpoints
     ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, Constants.loopPeriodSecs);
     SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(discreteSpeeds);
-    SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, DrivebaseConstants.kMaxLinearSpeed);
+    SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, getMaxLinearSpeedMetersPerSec());
 
     // Log unoptimized setpoints and setpoint speeds
     Logger.recordOutput("SwerveStates/Setpoints", setpointStates);
@@ -525,6 +525,16 @@ public class Drive extends SubsystemBase {
   /** Returns the maximum angular speed in radians per sec. */
   public double getMaxAngularSpeedRadPerSec() {
     return getMaxLinearSpeedMetersPerSec() / kDriveBaseRadiusMeters;
+  }
+
+  /** Returns the maximum linear acceleration in meters per sec per sec. */
+  public double getMaxLinearAccelMetersPerSecPerSec() {
+    return DrivebaseConstants.kMaxLinearAccel;
+  }
+
+  /** Returns the maximum angular acceleration in radians per sec per sec */
+  public double getMaxAngularAccelRadPerSecPerSec() {
+    return getMaxLinearAccelMetersPerSecPerSec() / kDriveBaseRadiusMeters;
   }
 
   /* Setter Functions ****************************************************** */

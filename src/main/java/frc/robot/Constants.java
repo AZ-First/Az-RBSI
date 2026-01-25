@@ -262,9 +262,6 @@ public final class Constants {
     // of YOUR ROBOT, and replace the estimate here with your measured value!
     public static final double kMaxLinearSpeed = Feet.of(18).in(Meters);
 
-    // Set 3/4 of a rotation per second as the max angular velocity (radians/sec)
-    public static final double kMaxAngularSpeed = 1.5 * Math.PI;
-
     // Slip Current -- the current draw when the wheels start to slip
     // Measure this against a wall.  CHECK WITH THE CARPET AT AN ACTUAL EVENT!!!
     public static final double kSlipCurrent = 20.0; // Amps
@@ -275,7 +272,6 @@ public final class Constants {
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
     public static final double kMaxLinearAccel = 4.0; // m/s/s
-    public static final double kMaxAngularAccel = Degrees.of(720).in(Radians);
 
     // For Profiled PID Motion -- NEED TUNING!
     // Used in a variety of contexts, including PathPlanner and AutoPilot
