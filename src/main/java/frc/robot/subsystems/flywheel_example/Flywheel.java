@@ -63,7 +63,7 @@ public class Flywheel extends RBSISubsystem {
 
   /** Periodic function -- inherits timing logic from RBSISubsystem */
   @Override
-  public void rbsiPeriodic() {
+  protected void rbsiPeriodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Flywheel", inputs);
   }

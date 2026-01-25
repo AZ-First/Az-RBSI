@@ -267,10 +267,10 @@ public final class Constants {
 
     // Slip Current -- the current draw when the wheels start to slip
     // Measure this against a wall.  CHECK WITH THE CARPET AT AN ACTUAL EVENT!!!
-    public static final double kSlipCurrent = 17.0; // Amps
+    public static final double kSlipCurrent = 20.0; // Amps
 
     // Characterized Wheel Radius (using the "Drive Wheel Radius Characterization" auto routine)
-    public static final double kWheelRadiusMeters = Inches.of(1.900).in(Meters);
+    public static final double kWheelRadiusMeters = Inches.of(2.000).in(Meters);
 
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
