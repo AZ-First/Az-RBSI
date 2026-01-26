@@ -13,11 +13,12 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
+import org.littletonrobotics.conduit.ConduitApi;
+import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -29,8 +30,9 @@ import org.littletonrobotics.junction.Logger;
 public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
-  private final PowerDistribution m_pdm =
-      new PowerDistribution(PowerConstants.kPDMCANid, PowerDistribution.ModuleType.kRev);
+  private final LoggedPowerDistribution m_pdm =
+      LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+  ConduitApi conduit = ConduitApi.getInstance();
 
   // Define local variables
   private final LoggedTunableNumber batteryCapacityAh;
@@ -61,16 +63,16 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   @Override
   public void periodic() {
     // --- Read voltage & total current ---
-    double voltage = m_pdm.getVoltage();
-    double totalCurrent = m_pdm.getTotalCurrent();
+    double voltage = conduit.getPDPVoltage();
+    double totalCurrent = conduit.getPDPTotalCurrent();
 
     // --- Safety alerts ---
     if (totalCurrent > PowerConstants.kTotalMaxCurrent) {
       new Alert("Total current draw exceeds limit!", AlertType.WARNING).set(true);
     }
 
-    for (int ch = 0; ch < m_pdm.getNumChannels(); ch++) {
-      double current = m_pdm.getCurrent(ch);
+    for (int ch = 0; ch < conduit.getPDPChannelCount(); ch++) {
+      double current = conduit.getPDPChannelCurrent(ch);
       if (current > PowerConstants.kMotorPortMaxCurrent) {
         new Alert("Port " + ch + " current exceeds limit!", AlertType.WARNING).set(true);
       }
@@ -123,7 +125,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private void logGroupCurrent(String name, int[] ports) {
     double sum = 0.0;
     for (int port : ports) {
-      sum += m_pdm.getCurrent(port);
+      sum += conduit.getPDPChannelCurrent(port);
     }
     Logger.recordOutput("Power/Subsystems/" + name + "Current", sum);
   }
