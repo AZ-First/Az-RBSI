@@ -18,8 +18,9 @@ import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.VelocityVoltage;
-import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.controls.MotionMagicDutyCycle;
+import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -28,8 +29,10 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.Constants;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.PhoenixUtil;
+import frc.robot.util.RBSIEnum.CTREPro;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
 
@@ -50,6 +53,7 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private final StatusSignal<Current> followerCurrent = follower.getSupplyCurrent();
 
   private final TalonFXConfiguration config = new TalonFXConfiguration();
+  private final boolean isCTREPro = Constants.getPhoenixPro() == CTREPro.LICENSED;
 
   public FlywheelIOTalonFX() {
     config.CurrentLimits.SupplyCurrentLimit = PowerConstants.kMotorPortMaxCurrent;
@@ -70,10 +74,15 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     closedRamps.TorqueClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
     // Apply the open- and closed-loop ramp configuration for current smoothing
     config.withClosedLoopRamps(closedRamps).withOpenLoopRamps(openRamps);
+    // set Motion Magic Velocity settings
+    var motionMagicConfigs = config.MotionMagic;
+    motionMagicConfigs.MotionMagicAcceleration =
+        400; // Target acceleration of 400 rps/s (0.25 seconds to max)
+    motionMagicConfigs.MotionMagicJerk = 4000; // Target jerk of 4000 rps/s/s (0.1 seconds)
 
     // Apply the configurations to the flywheel motors
-    leader.getConfigurator().apply(config);
-    follower.getConfigurator().apply(config);
+    PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
+    PhoenixUtil.tryUntilOk(5, () -> follower.getConfigurator().apply(config, 0.25));
     // If follower rotates in the opposite direction, set "MotorAlignmentValue" to Opposed
     follower.setControl(new Follower(leader.getDeviceID(), MotorAlignmentValue.Aligned));
 
@@ -98,12 +107,25 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   @Override
   public void setVoltage(double volts) {
-    leader.setControl(new VoltageOut(volts));
+    final MotionMagicVoltage m_request = new MotionMagicVoltage(volts);
+    m_request.withEnableFOC(isCTREPro);
+    leader.setControl(m_request);
   }
 
   @Override
   public void setVelocity(double velocityRadPerSec) {
-    leader.setControl(new VelocityVoltage(Units.radiansToRotations(velocityRadPerSec)));
+    // create a Motion Magic Velocity request, voltage output
+    final MotionMagicVelocityVoltage m_request = new MotionMagicVelocityVoltage(0);
+    m_request.withEnableFOC(isCTREPro);
+    leader.setControl(m_request.withVelocity(Units.radiansToRotations(velocityRadPerSec)));
+  }
+
+  @Override
+  public void setPercent(double percent) {
+    // create a Motion Magic DutyCycle request, voltage output
+    final MotionMagicDutyCycle m_request = new MotionMagicDutyCycle(percent);
+    m_request.withEnableFOC(isCTREPro);
+    leader.setControl(m_request);
   }
 
   @Override
