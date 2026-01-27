@@ -18,7 +18,6 @@ import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
-import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -30,8 +29,8 @@ import org.littletonrobotics.junction.Logger;
 public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
-  private final LoggedPowerDistribution m_pdm =
-      LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+  // private final LoggedPowerDistribution m_pdm =
+  //     LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
   ConduitApi conduit = ConduitApi.getInstance();
 
   // Define local variables
@@ -78,12 +77,12 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
       }
     }
 
-    // if (voltage < PowerConstants.kVoltageWarning) {
-    //   new Alert("Low battery voltage!", AlertType.WARNING).set(true);
-    // }
-    // if (voltage < PowerConstants.kVoltageCritical) {
-    //   new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
-    // }
+    if (voltage < PowerConstants.kVoltageWarning) {
+      new Alert("Low battery voltage!", AlertType.WARNING).set(true);
+    }
+    if (voltage < PowerConstants.kVoltageCritical) {
+      new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
+    }
 
     // --- Battery estimation ---
     long nowUs = RobotController.getFPGATime();
