@@ -63,6 +63,7 @@ import frc.robot.util.GetJoystickValue;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSIEnum.AutoType;
+import frc.robot.util.RBSIEnum.DriveStyle;
 import frc.robot.util.RBSIEnum.Mode;
 import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -106,6 +107,9 @@ public class RobotContainer {
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
   private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+
+  private final LoggedDashboardChooser<DriveStyle> driveStyle =
+      new LoggedDashboardChooser<>("Drive Style");
 
   private final AutoChooser autoChooserChoreo;
   private final AutoFactory autoFactoryChoreo;
@@ -259,6 +263,10 @@ public class RobotContainer {
             "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
     }
 
+    // Get drive style from the Dashboard Chooser
+    driveStyle.addDefaultOption("TANK", DriveStyle.TANK);
+    driveStyle.addOption("GAMER", DriveStyle.GAMER);
+
     // Define Auto commands
     defineAutoCommands();
     // Define SysIs Routines
@@ -285,6 +293,8 @@ public class RobotContainer {
     GetJoystickValue driveStickY;
     GetJoystickValue driveStickX;
     GetJoystickValue turnStickX;
+    // OPTIONAL: Use the DashboardChooser rather than the Constants file for Drive Style
+    // switch (driveStyle.get()) {
     switch (OperatorConstants.kDriveStyle) {
       case GAMER:
         driveStickY = driverController::getRightY;
