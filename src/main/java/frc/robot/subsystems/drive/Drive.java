@@ -50,7 +50,6 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.Imu;
-import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
@@ -220,9 +219,12 @@ public class Drive extends SubsystemBase {
   /** Periodic function that is called each robot cycle by the command scheduler */
   @Override
   public void periodic() {
+    final long t0 = System.nanoTime();
     odometryLock.lock();
+    final long t1 = System.nanoTime();
 
-    final ImuIO.ImuIOInputs imuInputs = imu.getInputs();
+    final var imuInputs = imu.getInputs();
+    final long t2 = System.nanoTime();
 
     // Stop modules & log empty setpoint states if disabled
     if (DriverStation.isDisabled()) {
@@ -232,17 +234,18 @@ public class Drive extends SubsystemBase {
         Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
       }
     }
+    final long t3 = System.nanoTime();
 
     // Feed historical samples into odometry if REAL robot
     if (Constants.getMode() != Mode.SIM) {
       double[] sampleTimestamps = modules[0].getOdometryTimestamps();
       int sampleCount = sampleTimestamps.length;
 
-      for (int i = 0; i < sampleCount; i++) {
-        // Read wheel positions and deltas from each module
-        SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
-        SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
+      // Read wheel positions and deltas from each module
+      SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
+      SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
 
+      for (int i = 0; i < sampleCount; i++) {
         for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
           modulePositions[moduleIndex] = modules[moduleIndex].getOdometryPositions()[i];
           moduleDeltas[moduleIndex] =
@@ -264,16 +267,34 @@ public class Drive extends SubsystemBase {
       }
       Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
     }
+    final long t4 = System.nanoTime();
 
     // Module periodic updates
     for (var module : modules) {
       module.periodic();
     }
+    final long t5 = System.nanoTime();
 
     odometryLock.unlock();
+    final long t6 = System.nanoTime();
 
-    // Update gyro/IMU alert
-    gyroDisconnectedAlert.set(!imu.getInputs().connected && Constants.getMode() != Mode.SIM);
+    Logger.recordOutput("Loop/Drive/total_ms", (t6 - t0) / 1e6);
+    Logger.recordOutput("Loop/Drive/lockWait_ms", (t1 - t0) / 1e6);
+    Logger.recordOutput("Loop/Drive/getImuInputs_ms", (t2 - t1) / 1e6);
+    Logger.recordOutput("Loop/Drive/disabled_ms", (t3 - t2) / 1e6);
+    Logger.recordOutput("Loop/Drive/odometry_ms", (t4 - t3) / 1e6);
+    Logger.recordOutput("Loop/Drive/modules_ms", (t5 - t4) / 1e6);
+    Logger.recordOutput("Loop/Drive/unlock_ms", (t6 - t5) / 1e6);
+
+    double driveMs = (t6 - t0) / 1e6;
+    Logger.recordOutput("Loop/Drive/total_ms", driveMs);
+
+    if (driveMs > 20.0) {
+      Logger.recordOutput("LoopSpike/Drive/odometry_ms", (t4 - t3) / 1e6);
+      Logger.recordOutput("LoopSpike/Drive/modules_ms", (t5 - t4) / 1e6);
+    }
+
+    gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
   }
 
   /** Simulation Periodic Method */

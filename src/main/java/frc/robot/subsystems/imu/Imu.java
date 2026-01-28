@@ -33,11 +33,24 @@ public class Imu extends VirtualSubsystem {
 
   @Override
   protected void rbsiPeriodic() {
+    final long t0 = System.nanoTime();
     io.updateInputs(inputs);
-    Logger.processInputs("IMU", inputs); // optional but useful
+    final long t1 = System.nanoTime();
+    Logger.processInputs("IMU", inputs);
+    final long t2 = System.nanoTime();
+
+    Logger.recordOutput("Loop/IMU/update_ms", (t1 - t0) / 1e6);
+    Logger.recordOutput("Loop/IMU/log_ms", (t2 - t1) / 1e6);
+    Logger.recordOutput("Loop/IMU/total_ms", (t2 - t0) / 1e6);
+
+    double totalMs = (t2 - t0) / 1e6;
+    Logger.recordOutput("Loop/IMU/total_ms", totalMs);
+    if (totalMs > 2.0) {
+      Logger.recordOutput("LoopSpike/IMU/update_ms", (t1 - t0) / 1e6);
+    }
   }
 
-  public ImuIO.ImuIOInputs getInputs() {
+  public ImuIOInputsAutoLogged getInputs() {
     return inputs;
   }
 

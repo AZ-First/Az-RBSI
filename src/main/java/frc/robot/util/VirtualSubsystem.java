@@ -17,7 +17,7 @@ import org.littletonrobotics.junction.Logger;
  * Base class for virtual subsystems -- not robot hardware -- that should be treated as subsystems
  */
 public abstract class VirtualSubsystem {
-  private static List<VirtualSubsystem> subsystems = new ArrayList<>();
+  private static final List<VirtualSubsystem> subsystems = new ArrayList<>();
   private final String name = getClass().getSimpleName();
 
   // Load all defined virtual subsystems into a list
@@ -46,7 +46,7 @@ public abstract class VirtualSubsystem {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
-    Logger.recordOutput("LoggedRobot/" + name + "CodeMS", (System.nanoTime() - start) / 1e6);
+    Logger.recordOutput("Loop/Virtual/" + name + "_ms", (System.nanoTime() - start) / 1e6);
   }
 
   /** Subclasses must implement this instead of periodic(). */

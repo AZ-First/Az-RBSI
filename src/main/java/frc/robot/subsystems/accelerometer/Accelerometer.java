@@ -21,7 +21,6 @@ import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants;
 import frc.robot.subsystems.imu.Imu;
-import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
 
@@ -50,8 +49,9 @@ public class Accelerometer extends VirtualSubsystem {
 
   @Override
   public void rbsiPeriodic() {
-    // --- Update IMU readings ---
-    final ImuIO.ImuIOInputs imuInputs = imu.getInputs(); // cached
+    long t0 = System.nanoTime();
+    // --- Updated IMU readings ---
+    final var imuInputs = imu.getInputs();
 
     // --- Apply orientation corrections ---
     Translation3d rioAccVector =
@@ -76,13 +76,15 @@ public class Accelerometer extends VirtualSubsystem {
     Logger.recordOutput("Accel/IMU/Jerk_mps3", imuJerk);
 
     // --- Log IMU latency ---
-    if (imuInputs.odometryYawTimestamps.length > 0) {
-      int last = imuInputs.odometryYawTimestamps.length - 1;
-      double now = Timer.getFPGATimestamp();
-      double latencySeconds = now - imuInputs.odometryYawTimestamps[last];
-      Logger.recordOutput("IMU/LatencySec", latencySeconds);
+    final double[] ts = imuInputs.odometryYawTimestamps;
+    if (ts.length > 0) {
+      double latencySeconds = Timer.getFPGATimestamp() - ts[ts.length - 1];
+      Logger.recordOutput("IMU/OdometryLatencySec", latencySeconds);
     }
 
     prevRioAccel = rioAccVector;
+
+    long t1 = System.nanoTime();
+    Logger.recordOutput("Loop/Accel/total_ms", (t1 - t0) / 1e6);
   }
 }
