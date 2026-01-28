@@ -27,8 +27,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.Cameras;
 import frc.robot.FieldConstants;
 import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ArrayList;
 import org.littletonrobotics.junction.Logger;
 
 public class Vision extends SubsystemBase {
@@ -71,29 +70,30 @@ public class Vision extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Update inputs + process inputs first (cheap, and keeps AK logs consistent)
     for (int i = 0; i < io.length; i++) {
       io[i].updateInputs(inputs[i]);
-      Logger.processInputs("Vision/Camera" + Integer.toString(i), inputs[i]);
+      Logger.processInputs("Vision/Camera" + i, inputs[i]);
+      disconnectedAlerts[i].set(!inputs[i].connected);
     }
 
-    // Initialize logging values
-    List<Pose3d> allTagPoses = new LinkedList<>();
-    List<Pose3d> allRobotPoses = new LinkedList<>();
-    List<Pose3d> allRobotPosesAccepted = new LinkedList<>();
-    List<Pose3d> allRobotPosesRejected = new LinkedList<>();
+    // Reusable scratch buffers (ArrayList avoids LinkedList churn)
+    // Tune these capacities if you know typical sizes
+    final ArrayList<Pose3d> allTagPoses = new ArrayList<>(32);
+    final ArrayList<Pose3d> allRobotPoses = new ArrayList<>(64);
+    final ArrayList<Pose3d> allRobotPosesAccepted = new ArrayList<>(64);
+    final ArrayList<Pose3d> allRobotPosesRejected = new ArrayList<>(64);
 
     // Loop over cameras
     for (int cameraIndex = 0; cameraIndex < io.length; cameraIndex++) {
-      // Update disconnected alert
-      disconnectedAlerts[cameraIndex].set(!inputs[cameraIndex].connected);
 
-      // Initialize logging values
-      List<Pose3d> tagPoses = new LinkedList<>();
-      List<Pose3d> robotPoses = new LinkedList<>();
-      List<Pose3d> robotPosesAccepted = new LinkedList<>();
-      List<Pose3d> robotPosesRejected = new LinkedList<>();
+      // Per-camera scratch buffers
+      final ArrayList<Pose3d> tagPoses = new ArrayList<>(16);
+      final ArrayList<Pose3d> robotPoses = new ArrayList<>(32);
+      final ArrayList<Pose3d> robotPosesAccepted = new ArrayList<>(32);
+      final ArrayList<Pose3d> robotPosesRejected = new ArrayList<>(32);
 
-      // Add tag poses
+      // Add tag poses from ids
       for (int tagId : inputs[cameraIndex].tagIds) {
         var tagPose = FieldConstants.aprilTagLayout.getTagPose(tagId);
         if (tagPose.isPresent()) {
@@ -151,19 +151,19 @@ public class Vision extends SubsystemBase {
             VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev));
       }
 
-      // Log camera datadata
+      // Log camera data
       Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/TagPoses",
-          tagPoses.toArray(new Pose3d[0]));
+          "Vision/Camera" + cameraIndex + "/TagPoses", tagPoses.toArray(new Pose3d[0]));
       Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPoses",
-          robotPoses.toArray(new Pose3d[0]));
+          "Vision/Camera" + cameraIndex + "/RobotPoses", robotPoses.toArray(new Pose3d[0]));
       Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesAccepted",
+          "Vision/Camera" + cameraIndex + "/RobotPosesAccepted",
           robotPosesAccepted.toArray(new Pose3d[0]));
       Logger.recordOutput(
-          "Vision/Camera" + Integer.toString(cameraIndex) + "/RobotPosesRejected",
+          "Vision/Camera" + cameraIndex + "/RobotPosesRejected",
           robotPosesRejected.toArray(new Pose3d[0]));
+
+      // Summary aggregation
       allTagPoses.addAll(tagPoses);
       allRobotPoses.addAll(robotPoses);
       allRobotPosesAccepted.addAll(robotPosesAccepted);

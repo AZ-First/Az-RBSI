@@ -14,9 +14,8 @@ import static frc.robot.FieldConstants.*;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 import org.photonvision.PhotonCamera;
 
@@ -40,10 +39,20 @@ public class VisionIOPhotonVision implements VisionIO {
   public void updateInputs(VisionIOInputs inputs) {
     inputs.connected = camera.isConnected();
 
-    // Read new camera observations
+    // Cap the number of unread results processed per loop
+    final int kMaxUnread = 5;
+
+    // Use HashSet/ArrayList to avoid LinkedList churn
     Set<Short> tagIds = new HashSet<>();
-    List<PoseObservation> poseObservations = new LinkedList<>();
+    ArrayList<PoseObservation> poseObservations = new ArrayList<>(kMaxUnread);
+
+    int processed = 0;
     for (var result : camera.getAllUnreadResults()) {
+      // Hard cap
+      if (processed++ >= kMaxUnread) {
+        break;
+      }
+
       // Update latest target observation
       if (result.hasTargets()) {
         inputs.latestTargetObservation =
@@ -72,6 +81,10 @@ public class VisionIOPhotonVision implements VisionIO {
         // Add tag IDs
         tagIds.addAll(multitagResult.fiducialIDsUsed);
 
+        // Guard against divide-by-zero if targets is empty (defensive)
+        double avgTagDistance =
+            result.targets.isEmpty() ? 0.0 : (totalTagDistance / result.targets.size());
+
         // Add observation
         poseObservations.add(
             new PoseObservation(
@@ -79,7 +92,7 @@ public class VisionIOPhotonVision implements VisionIO {
                 robotPose, // 3D pose estimate
                 multitagResult.estimatedPose.ambiguity, // Ambiguity
                 multitagResult.fiducialIDsUsed.size(), // Tag count
-                totalTagDistance / result.targets.size(), // Average tag distance
+                avgTagDistance, // Average tag distance
                 PoseObservationType.PHOTONVISION)); // Observation type
 
       } else if (!result.targets.isEmpty()) { // Single tag result

@@ -10,9 +10,9 @@
 package frc.robot.subsystems.drive;
 
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -52,6 +52,7 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
+import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.SparkUtil;
@@ -137,54 +138,55 @@ public class ModuleIOBlended implements ModuleIO {
         switch (module) {
           case 0 ->
               ConstantCreator.createModuleConstants(
-                  kFLSteerMotorId,
-                  kFLDriveMotorId,
-                  kFLEncoderId,
-                  kFLEncoderOffset,
-                  kFLXPosMeters,
-                  kFLYPosMeters,
-                  kFLDriveInvert,
-                  kFLSteerInvert,
-                  kFLEncoderInvert);
+                  SwerveConstants.kFLSteerMotorId,
+                  SwerveConstants.kFLDriveMotorId,
+                  SwerveConstants.kFLEncoderId,
+                  SwerveConstants.kFLEncoderOffset,
+                  SwerveConstants.kFLXPosMeters,
+                  SwerveConstants.kFLYPosMeters,
+                  SwerveConstants.kFLDriveInvert,
+                  SwerveConstants.kFLSteerInvert,
+                  SwerveConstants.kFLEncoderInvert);
           case 1 ->
               ConstantCreator.createModuleConstants(
-                  kFRSteerMotorId,
-                  kFRDriveMotorId,
-                  kFREncoderId,
-                  kFREncoderOffset,
-                  kFRXPosMeters,
-                  kFRYPosMeters,
-                  kFRDriveInvert,
-                  kFRSteerInvert,
-                  kFREncoderInvert);
+                  SwerveConstants.kFRSteerMotorId,
+                  SwerveConstants.kFRDriveMotorId,
+                  SwerveConstants.kFREncoderId,
+                  SwerveConstants.kFREncoderOffset,
+                  SwerveConstants.kFRXPosMeters,
+                  SwerveConstants.kFRYPosMeters,
+                  SwerveConstants.kFRDriveInvert,
+                  SwerveConstants.kFRSteerInvert,
+                  SwerveConstants.kFREncoderInvert);
           case 2 ->
               ConstantCreator.createModuleConstants(
-                  kBLSteerMotorId,
-                  kBLDriveMotorId,
-                  kBLEncoderId,
-                  kBLEncoderOffset,
-                  kBLXPosMeters,
-                  kBLYPosMeters,
-                  kBLDriveInvert,
-                  kBLSteerInvert,
-                  kBLEncoderInvert);
+                  SwerveConstants.kBLSteerMotorId,
+                  SwerveConstants.kBLDriveMotorId,
+                  SwerveConstants.kBLEncoderId,
+                  SwerveConstants.kBLEncoderOffset,
+                  SwerveConstants.kBLXPosMeters,
+                  SwerveConstants.kBLYPosMeters,
+                  SwerveConstants.kBLDriveInvert,
+                  SwerveConstants.kBLSteerInvert,
+                  SwerveConstants.kBLEncoderInvert);
           case 3 ->
               ConstantCreator.createModuleConstants(
-                  kBRSteerMotorId,
-                  kBRDriveMotorId,
-                  kBREncoderId,
-                  kBREncoderOffset,
-                  kBRXPosMeters,
-                  kBRYPosMeters,
-                  kBRDriveInvert,
-                  kBRSteerInvert,
-                  kBREncoderInvert);
+                  SwerveConstants.kBRSteerMotorId,
+                  SwerveConstants.kBRDriveMotorId,
+                  SwerveConstants.kBREncoderId,
+                  SwerveConstants.kBREncoderOffset,
+                  SwerveConstants.kBRXPosMeters,
+                  SwerveConstants.kBRYPosMeters,
+                  SwerveConstants.kBRDriveInvert,
+                  SwerveConstants.kBRSteerInvert,
+                  SwerveConstants.kBREncoderInvert);
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    driveTalon = new TalonFX(constants.DriveMotorId, kCANBus);
+    CANBus canBus = CANBuses.get(SwerveConstants.kCANbusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
     turnSpark = new SparkMax(constants.SteerMotorId, MotorType.kBrushless);
-    cancoder = new CANcoder(constants.EncoderId, kCANBus);
+    cancoder = new CANcoder(constants.EncoderId, canBus);
 
     turnController = turnSpark.getClosedLoopController();
 
@@ -229,21 +231,22 @@ public class ModuleIOBlended implements ModuleIO {
     turnConfig
         .absoluteEncoder
         .inverted(constants.EncoderInverted)
-        .positionConversionFactor(turnEncoderPositionFactor)
-        .velocityConversionFactor(turnEncoderVelocityFactor)
+        .positionConversionFactor(SwerveConstants.turnEncoderPositionFactor)
+        .velocityConversionFactor(SwerveConstants.turnEncoderVelocityFactor)
         .averageDepth(2);
     turnConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
-        .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
+        .positionWrappingInputRange(
+            SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
         .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
         .kV(0.0);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
-        .absoluteEncoderPositionPeriodMs((int) (1000.0 / kOdometryFrequency))
+        .absoluteEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
         .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
         .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
@@ -434,8 +437,8 @@ public class ModuleIOBlended implements ModuleIO {
     double setpoint =
         MathUtil.inputModulus(
             rotation.plus(Rotation2d.fromRotations(constants.EncoderOffset)).getRadians(),
-            turnPIDMinInput,
-            turnPIDMaxInput);
+            SwerveConstants.turnPIDMinInput,
+            SwerveConstants.turnPIDMaxInput);
     turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 
@@ -444,12 +447,12 @@ public class ModuleIOBlended implements ModuleIO {
       ConstantCreator =
           new SwerveModuleConstantsFactory<
                   TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>()
-              .withDriveMotorGearRatio(kDriveGearRatio)
-              .withSteerMotorGearRatio(kSteerGearRatio)
-              .withCouplingGearRatio(kCoupleRatio)
+              .withDriveMotorGearRatio(SwerveConstants.kDriveGearRatio)
+              .withSteerMotorGearRatio(SwerveConstants.kSteerGearRatio)
+              .withCouplingGearRatio(SwerveConstants.kCoupleRatio)
               .withWheelRadius(DrivebaseConstants.kWheelRadiusMeters)
-              .withSteerInertia(kSteerInertia)
-              .withDriveInertia(kDriveInertia)
-              .withSteerFrictionVoltage(kSteerFrictionVoltage)
-              .withDriveFrictionVoltage(kDriveFrictionVoltage);
+              .withSteerInertia(SwerveConstants.kSteerInertia)
+              .withDriveInertia(SwerveConstants.kDriveInertia)
+              .withSteerFrictionVoltage(SwerveConstants.kSteerFrictionVoltage)
+              .withDriveFrictionVoltage(SwerveConstants.kDriveFrictionVoltage);
 }

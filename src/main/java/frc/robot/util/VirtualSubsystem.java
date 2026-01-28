@@ -11,12 +11,14 @@ package frc.robot.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Base class for virtual subsystems -- not robot hardware -- that should be treated as subsystems
  */
 public abstract class VirtualSubsystem {
   private static List<VirtualSubsystem> subsystems = new ArrayList<>();
+  private final String name = getClass().getSimpleName();
 
   // Load all defined virtual subsystems into a list
   public VirtualSubsystem() {
@@ -30,6 +32,24 @@ public abstract class VirtualSubsystem {
     }
   }
 
-  // Each virtual subsystem must implement its own periodic() method
-  public abstract void periodic();
+  /**
+   * Guaranteed timing wrapper (cannot be bypassed by subclasses).
+   *
+   * <p>DO NOT OVERRIDE.
+   *
+   * <p>Subsystems must implement {@link #rbsiPeriodic()} instead.
+   *
+   * <p>If you see a compiler error here, remove your periodic() override and move your logic into
+   * rbsiPeriodic().
+   */
+  @Deprecated(forRemoval = false)
+  public final void periodic() {
+    long start = System.nanoTime();
+    rbsiPeriodic();
+    long end = System.nanoTime();
+    Logger.recordOutput("LoggedRobot/" + name + "CodeMS", (end - start) / 1e6);
+  }
+
+  /** Subclasses must implement this instead of periodic(). */
+  protected abstract void rbsiPeriodic();
 }

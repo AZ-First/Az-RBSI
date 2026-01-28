@@ -10,9 +10,9 @@
 package frc.robot.subsystems.drive;
 
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -44,6 +44,7 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
+import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
@@ -135,9 +136,10 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    driveTalon = new TalonFX(constants.DriveMotorId, kCANBus);
-    turnTalon = new TalonFX(constants.SteerMotorId, kCANBus);
-    cancoder = new CANcoder(constants.EncoderId, kCANBus);
+    CANBus canBus = CANBuses.get(SwerveConstants.kCANbusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
+    turnTalon = new TalonFX(constants.SteerMotorId, canBus);
+    cancoder = new CANcoder(constants.EncoderId, canBus);
 
     // Configure drive motor
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;

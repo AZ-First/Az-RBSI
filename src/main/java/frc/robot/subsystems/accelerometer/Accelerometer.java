@@ -44,7 +44,7 @@ public class Accelerometer extends VirtualSubsystem {
   }
 
   @Override
-  public void periodic() {
+  public void rbsiPeriodic() {
     // --- Update IMU readings ---
     imuIO.updateInputs(imuInputs);
 

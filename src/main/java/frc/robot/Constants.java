@@ -19,6 +19,7 @@ package frc.robot;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.ctre.phoenix6.CANBus;
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
@@ -45,6 +46,9 @@ import frc.robot.util.RBSIEnum.MotorIdleMode;
 import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.photonvision.simulation.SimCameraProperties;
 import swervelib.math.Matter;
 
@@ -162,12 +166,55 @@ public final class Constants {
   }
 
   /************************************************************************* */
+  /** List of Robot CAN Busses ********************************************* */
+  public static final class CANBuses {
+
+    // ---- Bus names (single source of truth) ----
+    public static final String DRIVE = "DriveTrain";
+    public static final String RIO = "";
+    // In 2027 and later, you'll be able to have even more CAN Busses!
+
+    // ---- Singleton instances (exactly one per bus) ----
+    public static final CANBus DRIVE_BUS = new CANBus(DRIVE);
+    public static final CANBus RIO_BUS = new CANBus(RIO);
+
+    // ---- Lookup table: name -> CANBus singleton ----
+    private static final Map<String, CANBus> BY_NAME;
+
+    static {
+      Map<String, CANBus> m = new HashMap<>();
+      m.put(DRIVE, DRIVE_BUS);
+      m.put(RIO, RIO_BUS);
+      BY_NAME = Collections.unmodifiableMap(m);
+    }
+
+    /**
+     * Get the singleton CANBus for a given bus name.
+     *
+     * <p>Usage: CANBus bus = Constants.CANBuses.get(Constants.CANBuses.DRIVE);
+     */
+    public static CANBus get(String name) {
+      CANBus bus = BY_NAME.get(name);
+      if (bus == null) {
+        throw new IllegalArgumentException(
+            "Unknown CAN bus name '" + name + "'. Known buses: " + BY_NAME.keySet());
+      }
+      return bus;
+    }
+
+    /** Expose known bus names for debugging. */
+    public static Map<String, CANBus> all() {
+      return BY_NAME;
+    }
+  }
+
+  /************************************************************************* */
   /** List of Robot Device CAN and Power Distribution Circuit IDs ********** */
   public static class RobotDevices {
 
     /* DRIVETRAIN CAN DEVICE IDS */
     // Input the correct Power Distribution Module port for each motor!!!!
-    // NOTE: The CAN ID and bus are set in the Swerve Generator (Phoenix Tuner or YAGSL)
+    // NOTE: The CAN ID's are set in the Swerve Generator (Phoenix Tuner or YAGSL)
 
     // Front Left
     public static final RobotDeviceId FL_DRIVE =
@@ -204,8 +251,8 @@ public final class Constants {
     /* SUBSYSTEM CAN DEVICE IDS */
     // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
     // Example:
-    public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, "", 8);
-    public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, "", 9);
+    public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, CANBuses.RIO, 8);
+    public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, CANBuses.RIO, 9);
 
     /* BEAM BREAK and/or LIMIT SWITCH DIO CHANNELS */
     // This is where digital I/O feedback devices are defined

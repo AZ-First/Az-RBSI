@@ -112,15 +112,16 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
+
+    // Switch thread to high priority to improve loop timing
+    if (isReal()) {
+      Threads.setCurrentThreadPriority(true, 99);
+    }
   }
 
   /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
-    // Switch thread to high priority to improve loop timing
-    if (isReal()) {
-      Threads.setCurrentThreadPriority(true, 99);
-    }
 
     // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
@@ -131,9 +132,6 @@ public class Robot extends LoggedRobot {
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
     CommandScheduler.getInstance().run();
-
-    // Return to normal thread priority
-    Threads.setCurrentThreadPriority(false, 10);
   }
 
   /** This function is called once when the robot is disabled. */

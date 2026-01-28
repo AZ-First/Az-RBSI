@@ -51,29 +51,33 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     RobotDevices.BR_ROTATION.getPowerPort()
   };
 
-  // Class method definition, including inputs of optional subsystems
+  private final Alert totalCurrentAlert =
+      new Alert("Total current draw exceeds limit!", AlertType.WARNING);
+
+  private final Alert[] portAlerts = new Alert[24]; // or pdh.getNumChannels() after construct
+
+  // Constructor, including inputs of optional subsystems
   public RBSIPowerMonitor(LoggedTunableNumber batteryCapacityAh, RBSISubsystem... subsystems) {
     this.batteryCapacityAh = batteryCapacityAh;
     this.subsystems = subsystems;
+
+    for (int i = 0; i < portAlerts.length; i++) {
+      portAlerts[i] = new Alert("Port " + i + " current exceeds limit!", AlertType.WARNING);
+    }
   }
 
   /** Periodic Method */
   @Override
-  public void periodic() {
+  public void rbsiPeriodic() {
     // --- Read voltage & total current ---
     double voltage = m_pdm.getVoltage();
     double totalCurrent = m_pdm.getTotalCurrent();
 
     // --- Safety alerts ---
-    if (totalCurrent > PowerConstants.kTotalMaxCurrent) {
-      new Alert("Total current draw exceeds limit!", AlertType.WARNING).set(true);
-    }
+    totalCurrentAlert.set(totalCurrent > PowerConstants.kTotalMaxCurrent);
 
     for (int ch = 0; ch < m_pdm.getNumChannels(); ch++) {
-      double current = m_pdm.getCurrent(ch);
-      if (current > PowerConstants.kMotorPortMaxCurrent) {
-        new Alert("Port " + ch + " current exceeds limit!", AlertType.WARNING).set(true);
-      }
+      portAlerts[ch].set(m_pdm.getCurrent(ch) > PowerConstants.kMotorPortMaxCurrent);
     }
 
     // if (voltage < PowerConstants.kVoltageWarning) {

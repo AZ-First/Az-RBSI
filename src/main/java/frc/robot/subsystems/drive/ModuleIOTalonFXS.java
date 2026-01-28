@@ -10,9 +10,9 @@
 package frc.robot.subsystems.drive;
 
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANdiConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -45,6 +45,7 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
+import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
 import java.util.Queue;
@@ -124,9 +125,10 @@ public class ModuleIOTalonFXS implements ModuleIO {
   public ModuleIOTalonFXS(
       SwerveModuleConstants<TalonFXSConfiguration, TalonFXSConfiguration, CANdiConfiguration>
           constants) {
-    driveTalon = new TalonFXS(constants.DriveMotorId, kCANBus);
-    turnTalon = new TalonFXS(constants.SteerMotorId, kCANBus);
-    candi = new CANdi(constants.EncoderId, kCANBus);
+    CANBus canBus = CANBuses.get(SwerveConstants.kCANbusName);
+    driveTalon = new TalonFXS(constants.DriveMotorId, canBus);
+    turnTalon = new TalonFXS(constants.SteerMotorId, canBus);
+    candi = new CANdi(constants.EncoderId, canBus);
 
     // Configure drive motor
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
