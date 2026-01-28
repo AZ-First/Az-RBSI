@@ -22,12 +22,13 @@ import static edu.wpi.first.units.Units.*;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.AngularVelocity;
+import frc.robot.util.RBSIIO;
 import org.littletonrobotics.junction.AutoLog;
 
 /**
  * Single IMU interface exposing all relevant state: orientation, rates, linear accel, and odometry.
  */
-public interface ImuIO {
+public interface ImuIO extends RBSIIO {
 
   @AutoLog
   public static class ImuIOInputs {

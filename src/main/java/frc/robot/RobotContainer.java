@@ -47,6 +47,7 @@ import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
 import frc.robot.subsystems.flywheel_example.FlywheelIOSim;
+import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIONavX;
 import frc.robot.subsystems.imu.ImuIOPigeon2;
@@ -89,12 +90,13 @@ public class RobotContainer {
   // These are the "Active Subsystems" that the robot controls
   private final Drive m_drivebase;
 
-  private final ImuIO m_imu;
   private final Flywheel m_flywheel;
 
   // ... Add additional subsystems here (e.g., elevator, arm, etc.)
 
   // These are "Virtual Subsystems" that report information but have no motors
+  private final Imu m_imu;
+
   @SuppressWarnings("unused")
   private final Accelerometer m_accel;
 
@@ -136,17 +138,13 @@ public class RobotContainer {
         // YAGSL drivebase, get config from deploy directory
 
         // Get the IMU instance
-        switch (SwerveConstants.kImuType) {
-          case "pigeon2":
-            m_imu = new ImuIOPigeon2();
-            break;
-          case "navx":
-          case "navx_spi":
-            m_imu = new ImuIONavX();
-            break;
-          default:
-            throw new RuntimeException("Invalid IMU type");
-        }
+        ImuIO imuIO =
+            switch (SwerveConstants.kImuType) {
+              case "pigeon2" -> new ImuIOPigeon2();
+              case "navx", "navx_spi" -> new ImuIONavX();
+              default -> throw new RuntimeException("Invalid IMU type");
+            };
+        m_imu = new Imu(imuIO);
 
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
@@ -173,7 +171,7 @@ public class RobotContainer {
 
       case SIM:
         // Sim robot, instantiate physics sim IO implementations
-        m_imu = new ImuIOSim();
+        m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim() {});
         m_vision =
@@ -207,7 +205,7 @@ public class RobotContainer {
 
       default:
         // Replayed robot, disable IO implementations
-        m_imu = new ImuIOSim();
+        m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =

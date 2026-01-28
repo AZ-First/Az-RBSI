@@ -49,6 +49,7 @@ import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.RobotConstants;
+import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
@@ -62,15 +63,13 @@ import org.littletonrobotics.junction.Logger;
 public class Drive extends SubsystemBase {
 
   static final Lock odometryLock = new ReentrantLock();
-  private final ImuIO imuIO;
-  private final ImuIO.ImuIOInputs imuInputs = new ImuIO.ImuIOInputs();
+  private final Imu imu;
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
   private final SysIdRoutine sysId;
   private final Alert gyroDisconnectedAlert =
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
 
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
-  private Rotation2d rawGyroRotation = imuInputs.yawPosition;
   private SwerveModulePosition[] lastModulePositions = // For delta tracking
       new SwerveModulePosition[] {
         new SwerveModulePosition(),
@@ -79,15 +78,15 @@ public class Drive extends SubsystemBase {
         new SwerveModulePosition()
       };
   private SwerveDrivePoseEstimator m_PoseEstimator =
-      new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, Pose2d.kZero);
+      new SwerveDrivePoseEstimator(kinematics, Rotation2d.kZero, lastModulePositions, Pose2d.kZero);
 
   private ProfiledPIDController angleController;
 
   private DriveSimPhysics simPhysics;
 
   // Constructor
-  public Drive(ImuIO imuIO) {
-    this.imuIO = imuIO;
+  public Drive(Imu imu) {
+    this.imu = imu;
 
     // Define the Angle Controller
     angleController =
@@ -117,7 +116,7 @@ public class Drive extends SubsystemBase {
           for (int i = 0; i < 4; i++) {
             switch (modType) {
               case 0b00000000: // ALL-CTRE
-                if (kImuType == "navx" || kImuType == "navx_spi") {
+                if (kImuType.equals("navx") || kImuType.equals("navx_spi")) {
                   modules[i] = new Module(new ModuleIOTalonFX(i), i);
                 } else {
                   throw new RuntimeException(
@@ -223,6 +222,8 @@ public class Drive extends SubsystemBase {
   public void periodic() {
     odometryLock.lock();
 
+    final ImuIO.ImuIOInputs imuInputs = imu.getInputs();
+
     // Stop modules & log empty setpoint states if disabled
     if (DriverStation.isDisabled()) {
       for (var module : modules) {
@@ -231,9 +232,6 @@ public class Drive extends SubsystemBase {
         Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
       }
     }
-
-    // Update the IMU inputs -- logging happens automatically
-    imuIO.updateInputs(imuInputs);
 
     // Feed historical samples into odometry if REAL robot
     if (Constants.getMode() != Mode.SIM) {
@@ -275,7 +273,7 @@ public class Drive extends SubsystemBase {
     odometryLock.unlock();
 
     // Update gyro/IMU alert
-    gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
+    gyroDisconnectedAlert.set(!imu.getInputs().connected && Constants.getMode() != Mode.SIM);
   }
 
   /** Simulation Periodic Method */
@@ -296,9 +294,9 @@ public class Drive extends SubsystemBase {
     simPhysics.update(moduleStates, dt);
 
     // 4) Feed IMU from authoritative physics
-    imuIO.simulationSetYaw(simPhysics.getYaw());
-    imuIO.simulationSetOmega(simPhysics.getOmegaRadPerSec());
-    imuIO.setLinearAccel(
+    imu.simulationSetYaw(simPhysics.getYaw());
+    imu.simulationSetOmega(simPhysics.getOmegaRadPerSec());
+    imu.setLinearAccel(
         new Translation3d(
             simPhysics.getLinearAccel().getX(), simPhysics.getLinearAccel().getY(), 0.0));
 
@@ -461,7 +459,7 @@ public class Drive extends SubsystemBase {
     if (Constants.getMode() == Mode.SIM) {
       return simPhysics.getYaw();
     }
-    return imuInputs.yawPosition;
+    return imu.getInputs().yawPosition;
   }
 
   /** Returns an array of module translations. */
@@ -541,12 +539,12 @@ public class Drive extends SubsystemBase {
 
   /** Resets the current odometry pose. */
   public void resetPose(Pose2d pose) {
-    m_PoseEstimator.resetPosition(rawGyroRotation, getModulePositions(), pose);
+    m_PoseEstimator.resetPosition(getHeading(), getModulePositions(), pose);
   }
 
   /** Zeros the gyro based on alliance color */
   public void zeroHeadingForAlliance() {
-    imuIO.zeroYaw(
+    imu.zeroYaw(
         DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue
             ? Rotation2d.kZero
             : Rotation2d.k180deg);
@@ -555,7 +553,7 @@ public class Drive extends SubsystemBase {
 
   /** Zeros the heading */
   public void zeroHeading() {
-    imuIO.zeroYaw(Rotation2d.kZero);
+    imu.zeroYaw(Rotation2d.kZero);
     resetHeadingController();
   }
 

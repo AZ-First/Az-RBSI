@@ -18,7 +18,9 @@ import static frc.robot.Constants.RobotConstants.*;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.BuiltInAccelerometer;
+import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants;
+import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
@@ -34,36 +36,38 @@ import org.littletonrobotics.junction.Logger;
 public class Accelerometer extends VirtualSubsystem {
 
   private final BuiltInAccelerometer rioAccel = new BuiltInAccelerometer();
-  private final ImuIO imuIO;
-  private final ImuIO.ImuIOInputs imuInputs = new ImuIO.ImuIOInputs();
+  private final Imu imu;
+
+  // RIO and IMU rotations with respect to the robot
+  private static final Rotation3d kRioRot = new Rotation3d(0, 0, kRioOrientation.getRadians());
+  private static final Rotation3d kImuRot = new Rotation3d(0, 0, kIMUOrientation.getRadians());
 
   private Translation3d prevRioAccel = Translation3d.kZero;
 
-  public Accelerometer(ImuIO imuIO) {
-    this.imuIO = imuIO;
+  public Accelerometer(Imu imu) {
+    this.imu = imu;
   }
 
   @Override
   public void rbsiPeriodic() {
     // --- Update IMU readings ---
-    imuIO.updateInputs(imuInputs);
+    final ImuIO.ImuIOInputs imuInputs = imu.getInputs(); // cached
 
     // --- Apply orientation corrections ---
     Translation3d rioAccVector =
         new Translation3d(rioAccel.getX(), rioAccel.getY(), rioAccel.getZ())
-            .rotateBy(new Rotation3d(0., 0., kRioOrientation.getRadians()))
+            .rotateBy(kRioRot)
             .times(9.81); // convert to m/s^2
 
     Translation3d imuAccVector =
         imuInputs
             .linearAccel
-            .rotateBy(new Rotation3d(0., 0., kIMUOrientation.getRadians()))
+            .rotateBy(kImuRot)
             .times(1.00); // already converted to m/s^2 in ImuIO implementation
 
     // --- Compute jerks ---
     Translation3d rioJerk = rioAccVector.minus(prevRioAccel).div(Constants.loopPeriodSecs);
-    Translation3d imuJerk =
-        imuInputs.jerk.rotateBy(new Rotation3d(0.0, 0.0, kIMUOrientation.getRadians()));
+    Translation3d imuJerk = imuInputs.jerk.rotateBy(kImuRot);
 
     // --- Log to AdvantageKit ---
     Logger.recordOutput("Accel/Rio/Accel_mps2", rioAccVector);
@@ -73,9 +77,9 @@ public class Accelerometer extends VirtualSubsystem {
 
     // --- Log IMU latency ---
     if (imuInputs.odometryYawTimestamps.length > 0) {
-      double latencySeconds =
-          System.currentTimeMillis() / 1000.0
-              - imuInputs.odometryYawTimestamps[imuInputs.odometryYawTimestamps.length - 1];
+      int last = imuInputs.odometryYawTimestamps.length - 1;
+      double now = Timer.getFPGATimestamp();
+      double latencySeconds = now - imuInputs.odometryYawTimestamps[last];
       Logger.recordOutput("IMU/LatencySec", latencySeconds);
     }
 

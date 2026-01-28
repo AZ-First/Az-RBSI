@@ -46,8 +46,7 @@ public abstract class VirtualSubsystem {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
-    long end = System.nanoTime();
-    Logger.recordOutput("LoggedRobot/" + name + "CodeMS", (end - start) / 1e6);
+    Logger.recordOutput("LoggedRobot/" + name + "CodeMS", (System.nanoTime() - start) / 1e6);
   }
 
   /** Subclasses must implement this instead of periodic(). */
