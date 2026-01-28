@@ -118,7 +118,10 @@ steps you need to complete:
    https://github.com/CrossTheRoadElec/Phoenix6-Examples/blob/1db713d75b08a4315c9273cebf5b5e6a130ed3f7/java/SwerveWithPathPlanner/src/main/java/frc/robot/generated/TunerConstants.java#L171-L175).
    Before removing them, both lines will be marked as errors in VSCode.
 
-5. In `TunerConstants.java`, change `kSteerInertia` to `0.004` and
+5. In `TunerConstants.java`, change `kSlipCurrent` to `60` amps.  This will
+   keep your robot from tearing holes in the carpet at competition!
+
+6. In `TunerConstants.java`, change `kSteerInertia` to `0.004` and
    `kDriveInertia` to `0.025` to allow the AdvantageKit simulation code to
    operate as expected.
 
