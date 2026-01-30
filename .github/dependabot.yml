@@ -25,3 +25,5 @@ updates:
       - "gradle dependencies"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "gradle"
