@@ -54,8 +54,12 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final Alert totalCurrentAlert =
       new Alert("Total current draw exceeds limit!", AlertType.WARNING);
-
   private final Alert[] portAlerts = new Alert[24]; // or pdh.getNumChannels() after construct
+  private final Alert lowVoltageAlert = new Alert("Low battery voltage!", AlertType.WARNING);
+  private final Alert criticalVoltageAlert =
+      new Alert("Critical battery voltage!", AlertType.ERROR);
+
+  private long loops = 0;
 
   // Constructor, including inputs of optional subsystems
   public RBSIPowerMonitor(LoggedTunableNumber batteryCapacityAh, RBSISubsystem... subsystems) {
@@ -70,25 +74,20 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   /** Periodic Method */
   @Override
   public void rbsiPeriodic() {
+    // Limit polling to every 5 loops
+    if ((loops++ % 5) != 0) return; // 50Hz loop -> run at 10Hz
+
     // --- Read voltage & total current ---
     double voltage = conduit.getPDPVoltage();
     double totalCurrent = conduit.getPDPTotalCurrent();
 
     // --- Safety alerts ---
     totalCurrentAlert.set(totalCurrent > PowerConstants.kTotalMaxCurrent);
+    lowVoltageAlert.set(voltage < PowerConstants.kVoltageWarning);
+    criticalVoltageAlert.set(voltage < PowerConstants.kVoltageCritical);
 
     for (int ch = 0; ch < conduit.getPDPChannelCount(); ch++) {
-      double current = conduit.getPDPChannelCurrent(ch);
-      if (current > PowerConstants.kMotorPortMaxCurrent) {
-        new Alert("Port " + ch + " current exceeds limit!", AlertType.WARNING).set(true);
-      }
-    }
-
-    if (voltage < PowerConstants.kVoltageWarning) {
-      new Alert("Low battery voltage!", AlertType.WARNING).set(true);
-    }
-    if (voltage < PowerConstants.kVoltageCritical) {
-      new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
+      portAlerts[ch].set(conduit.getPDPChannelCurrent(ch) > PowerConstants.kMotorPortMaxCurrent);
     }
 
     // --- Battery estimation ---

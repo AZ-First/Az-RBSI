@@ -96,7 +96,7 @@ public class PhoenixOdometryThread extends Thread {
 
   /** Returns a new queue that returns timestamp values for each sample. */
   public Queue<Double> makeTimestampQueue() {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     Drive.odometryLock.lock();
     try {
       timestampQueues.add(queue);

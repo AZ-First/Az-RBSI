@@ -36,6 +36,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.SimCameras;
 import frc.robot.FieldConstants.AprilTagLayoutType;
@@ -63,6 +64,8 @@ import frc.robot.util.Alert.AlertType;
 import frc.robot.util.GetJoystickValue;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
+import frc.robot.util.RBSICANBusRegistry;
+import frc.robot.util.RBSICANHealth;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.DriveStyle;
 import frc.robot.util.RBSIEnum.Mode;
@@ -107,6 +110,9 @@ public class RobotContainer {
   @SuppressWarnings("unused")
   private final Vision m_vision;
 
+  @SuppressWarnings("unused")
+  private RBSICANHealth m_can0, m_can1;
+
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
   private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
@@ -136,8 +142,11 @@ public class RobotContainer {
     switch (Constants.getMode()) {
       case REAL:
         // Real robot, instantiate hardware IO implementations
-        // YAGSL drivebase, get config from deploy directory
 
+        // Register the CANBus
+        RBSICANBusRegistry.initReal(CANBuses.RIO, CANBuses.DRIVE);
+
+        // YAGSL drivebase, get config from deploy directory
         // Get the IMU instance
         ImuIO imuIO =
             switch (SwerveConstants.kImuType) {
@@ -168,10 +177,14 @@ public class RobotContainer {
             };
         m_accel = new Accelerometer(m_imu);
         sweep = null;
+        m_can0 = new RBSICANHealth(CANBuses.RIO);
+        m_can1 = new RBSICANHealth(CANBuses.DRIVE);
+
         break;
 
       case SIM:
         // Sim robot, instantiate physics sim IO implementations
+        RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim() {});
@@ -201,11 +214,13 @@ public class RobotContainer {
         visionSim.addCamera(cam2, Transform3d.kZero);
         // 5) Create the sweep evaluator
         sweep = new CameraSweepEvaluator(visionSim, cam1, cam2);
-
+        m_can0 = new RBSICANHealth(CANBuses.RIO);
+        m_can1 = new RBSICANHealth(CANBuses.DRIVE);
         break;
 
       default:
         // Replayed robot, disable IO implementations
+        RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIO() {});
@@ -213,6 +228,8 @@ public class RobotContainer {
             new Vision(m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
         m_accel = new Accelerometer(m_imu);
         sweep = null;
+        m_can0 = new RBSICANHealth(CANBuses.RIO);
+        m_can1 = new RBSICANHealth(CANBuses.DRIVE);
         break;
     }
 

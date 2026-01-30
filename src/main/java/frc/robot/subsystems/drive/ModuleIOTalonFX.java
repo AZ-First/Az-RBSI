@@ -44,10 +44,10 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
-import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
+import frc.robot.util.RBSICANBusRegistry;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
 
@@ -61,6 +61,9 @@ public class ModuleIOTalonFX implements ModuleIO {
   private final SwerveModuleConstants<
           TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>
       constants;
+
+  // This module number (for logging)
+  private final int module;
 
   // Hardware objects
   private final TalonFX driveTalon;
@@ -94,6 +97,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
   // Inputs from drive motor
   private final StatusSignal<Angle> drivePosition;
+  private final StatusSignal<Angle> drivePositionOdom;
   private final Queue<Double> drivePositionQueue;
   private final StatusSignal<AngularVelocity> driveVelocity;
   private final StatusSignal<Voltage> driveAppliedVolts;
@@ -102,6 +106,7 @@ public class ModuleIOTalonFX implements ModuleIO {
   // Inputs from turn motor
   private final StatusSignal<Angle> turnAbsolutePosition;
   private final StatusSignal<Angle> turnPosition;
+  private final StatusSignal<Angle> turnPositionOdom;
   private final Queue<Double> turnPositionQueue;
   private final StatusSignal<AngularVelocity> turnVelocity;
   private final StatusSignal<Voltage> turnAppliedVolts;
@@ -127,6 +132,9 @@ public class ModuleIOTalonFX implements ModuleIO {
    * TalonFX I/O
    */
   public ModuleIOTalonFX(int module) {
+    // Record the module number for logging purposes
+    this.module = module;
+
     constants =
         switch (module) {
           case 0 -> TunerConstants.FrontLeft;
@@ -136,7 +144,7 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    CANBus canBus = CANBuses.get(SwerveConstants.kCANbusName);
+    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
     driveTalon = new TalonFX(constants.DriveMotorId, canBus);
     turnTalon = new TalonFX(constants.SteerMotorId, canBus);
     cancoder = new CANcoder(constants.EncoderId, canBus);
@@ -217,23 +225,26 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
-    drivePositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(driveTalon.getPosition());
+    drivePositionOdom = drivePosition.clone(); // NEW
+    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
 
     // Create turn status signals
-    turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = turnTalon.getPosition();
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnTalon.getPosition());
+    turnPositionOdom = turnPosition.clone(); // NEW
+    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnPositionOdom);
+
+    turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnVelocity = turnTalon.getVelocity();
     turnAppliedVolts = turnTalon.getMotorVoltage();
     turnCurrent = turnTalon.getStatorCurrent();
 
-    // Configure periodic frames
+    // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
     BaseStatusSignal.setUpdateFrequencyForAll(
-        SwerveConstants.kOdometryFrequency, drivePosition, turnPosition);
+        SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0,
         driveVelocity,
@@ -243,17 +254,25 @@ public class ModuleIOTalonFX implements ModuleIO {
         turnVelocity,
         turnAppliedVolts,
         turnCurrent);
+
     ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
   }
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
-    // Refresh all signals
-    var driveStatus =
-        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var turnStatus =
-        BaseStatusSignal.refreshAll(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
-    var turnEncoderStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+
+    // Refresh most signals
+    long a0 = System.nanoTime();
+    var driveStatus = BaseStatusSignal.refreshAll(driveVelocity, driveAppliedVolts, driveCurrent);
+    long a1 = System.nanoTime();
+    var turnStatus = BaseStatusSignal.refreshAll(turnVelocity, turnAppliedVolts, turnCurrent);
+    long a2 = System.nanoTime();
+    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+    long a3 = System.nanoTime();
+
+    Logger.recordOutput("LoopSpike/Module" + module + "/refresh_drive_ms", (a1 - a0) / 1e6);
+    Logger.recordOutput("LoopSpike/Module" + module + "/refresh_turn_ms", (a2 - a1) / 1e6);
+    Logger.recordOutput("LoopSpike/Module" + module + "/refresh_enc_ms", (a3 - a2) / 1e6);
 
     // Update drive inputs
     inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
@@ -264,7 +283,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Update turn inputs
     inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus.isOK());
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(turnEncoderStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());
@@ -282,6 +301,13 @@ public class ModuleIOTalonFX implements ModuleIO {
         turnPositionQueue.stream()
             .map((Double value) -> Rotation2d.fromRotations(value))
             .toArray(Rotation2d[]::new);
+
+    // Log queue size right before we clear
+    Logger.recordOutput("LoopSpike/Module" + module + "/queue_ts_len", timestampQueue.size());
+    Logger.recordOutput(
+        "LoopSpike/Module" + module + "/queue_drive_len", drivePositionQueue.size());
+    Logger.recordOutput("LoopSpike/Module" + module + "/queue_turn_len", turnPositionQueue.size());
+
     timestampQueue.clear();
     drivePositionQueue.clear();
     turnPositionQueue.clear();

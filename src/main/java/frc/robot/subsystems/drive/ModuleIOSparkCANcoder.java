@@ -35,8 +35,8 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
-import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.SparkUtil;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
@@ -141,7 +141,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
               case 3 -> SwerveConstants.kBREncoderId;
               default -> 0;
             },
-            CANBuses.get(SwerveConstants.kCANbusName));
+            RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
     driveController = driveSpark.getClosedLoopController();
     turnController = turnSpark.getClosedLoopController();
 

@@ -52,9 +52,9 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
-import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
+import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.SparkUtil;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
@@ -183,7 +183,7 @@ public class ModuleIOBlended implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    CANBus canBus = CANBuses.get(SwerveConstants.kCANbusName);
+    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
     driveTalon = new TalonFX(constants.DriveMotorId, canBus);
     turnSpark = new SparkMax(constants.SteerMotorId, MotorType.kBrushless);
     cancoder = new CANcoder(constants.EncoderId, canBus);

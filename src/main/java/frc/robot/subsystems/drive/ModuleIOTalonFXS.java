@@ -45,9 +45,9 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
-import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
+import frc.robot.util.RBSICANBusRegistry;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
 
@@ -125,7 +125,7 @@ public class ModuleIOTalonFXS implements ModuleIO {
   public ModuleIOTalonFXS(
       SwerveModuleConstants<TalonFXSConfiguration, TalonFXSConfiguration, CANdiConfiguration>
           constants) {
-    CANBus canBus = CANBuses.get(SwerveConstants.kCANbusName);
+    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
     driveTalon = new TalonFXS(constants.DriveMotorId, canBus);
     turnTalon = new TalonFXS(constants.SteerMotorId, canBus);
     candi = new CANdi(constants.EncoderId, canBus);

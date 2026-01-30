@@ -236,6 +236,12 @@ public class Drive extends SubsystemBase {
     }
     final long t3 = System.nanoTime();
 
+    // Module periodic updates, which drains queues this cycle
+    for (var module : modules) {
+      module.periodic();
+    }
+    final long t4 = System.nanoTime();
+
     // Feed historical samples into odometry if REAL robot
     if (Constants.getMode() != Mode.SIM) {
       double[] sampleTimestamps = modules[0].getOdometryTimestamps();
@@ -267,12 +273,6 @@ public class Drive extends SubsystemBase {
       }
       Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
     }
-    final long t4 = System.nanoTime();
-
-    // Module periodic updates
-    for (var module : modules) {
-      module.periodic();
-    }
     final long t5 = System.nanoTime();
 
     odometryLock.unlock();
@@ -282,8 +282,8 @@ public class Drive extends SubsystemBase {
     Logger.recordOutput("Loop/Drive/lockWait_ms", (t1 - t0) / 1e6);
     Logger.recordOutput("Loop/Drive/getImuInputs_ms", (t2 - t1) / 1e6);
     Logger.recordOutput("Loop/Drive/disabled_ms", (t3 - t2) / 1e6);
-    Logger.recordOutput("Loop/Drive/odometry_ms", (t4 - t3) / 1e6);
-    Logger.recordOutput("Loop/Drive/modules_ms", (t5 - t4) / 1e6);
+    Logger.recordOutput("Loop/Drive/modules_ms", (t4 - t3) / 1e6);
+    Logger.recordOutput("Loop/Drive/odometry_ms", (t5 - t4) / 1e6);
     Logger.recordOutput("Loop/Drive/unlock_ms", (t6 - t5) / 1e6);
 
     double driveMs = (t6 - t0) / 1e6;

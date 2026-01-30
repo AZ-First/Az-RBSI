@@ -28,16 +28,17 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
-import frc.robot.Constants.CANBuses;
 import frc.robot.subsystems.drive.PhoenixOdometryThread;
 import frc.robot.subsystems.drive.SwerveConstants;
+import frc.robot.util.RBSICANBusRegistry;
 import java.util.Queue;
 
 /** IMU IO for CTRE Pigeon2 */
 public class ImuIOPigeon2 implements ImuIO {
 
   private final Pigeon2 pigeon =
-      new Pigeon2(SwerveConstants.kPigeonId, CANBuses.get(SwerveConstants.kCANbusName));
+      new Pigeon2(
+          SwerveConstants.kPigeonId, RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
   private final StatusSignal<Angle> yawSignal = pigeon.getYaw();
   private final StatusSignal<AngularVelocity> yawRateSignal = pigeon.getAngularVelocityZWorld();
   private final Queue<Double> odomTimestamps;
