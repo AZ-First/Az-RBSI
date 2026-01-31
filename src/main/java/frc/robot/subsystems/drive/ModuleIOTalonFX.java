@@ -247,6 +247,8 @@ public class ModuleIOTalonFX implements ModuleIO {
         SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0,
+        drivePosition,
+        turnPosition,
         driveVelocity,
         driveAppliedVolts,
         driveCurrent,
@@ -262,17 +264,22 @@ public class ModuleIOTalonFX implements ModuleIO {
   public void updateInputs(ModuleIOInputs inputs) {
 
     // Refresh most signals
-    long a0 = System.nanoTime();
-    var driveStatus = BaseStatusSignal.refreshAll(driveVelocity, driveAppliedVolts, driveCurrent);
-    long a1 = System.nanoTime();
-    var turnStatus = BaseStatusSignal.refreshAll(turnVelocity, turnAppliedVolts, turnCurrent);
-    long a2 = System.nanoTime();
+    var driveStatus =
+        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+    var turnStatus =
+        BaseStatusSignal.refreshAll(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
     var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
-    long a3 = System.nanoTime();
 
-    Logger.recordOutput("LoopSpike/Module" + module + "/refresh_drive_ms", (a1 - a0) / 1e6);
-    Logger.recordOutput("LoopSpike/Module" + module + "/refresh_turn_ms", (a2 - a1) / 1e6);
-    Logger.recordOutput("LoopSpike/Module" + module + "/refresh_enc_ms", (a3 - a2) / 1e6);
+    // Log *which* groups are failing and what the code is
+    if (!driveStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+    }
+    if (!turnStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/TurnRefreshStatus", turnStatus.toString());
+    }
+    if (!encStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    }
 
     // Update drive inputs
     inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
@@ -302,12 +309,7 @@ public class ModuleIOTalonFX implements ModuleIO {
             .map((Double value) -> Rotation2d.fromRotations(value))
             .toArray(Rotation2d[]::new);
 
-    // Log queue size right before we clear
-    Logger.recordOutput("LoopSpike/Module" + module + "/queue_ts_len", timestampQueue.size());
-    Logger.recordOutput(
-        "LoopSpike/Module" + module + "/queue_drive_len", drivePositionQueue.size());
-    Logger.recordOutput("LoopSpike/Module" + module + "/queue_turn_len", turnPositionQueue.size());
-
+    // Clear the queues
     timestampQueue.clear();
     drivePositionQueue.clear();
     turnPositionQueue.clear();

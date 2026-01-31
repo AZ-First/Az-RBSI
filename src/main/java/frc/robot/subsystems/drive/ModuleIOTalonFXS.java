@@ -90,6 +90,7 @@ public class ModuleIOTalonFXS implements ModuleIO {
 
   // Inputs from drive motor
   private final StatusSignal<Angle> drivePosition;
+  private final StatusSignal<Angle> drivePositionOdom;
   private final Queue<Double> drivePositionQueue;
   private final StatusSignal<AngularVelocity> driveVelocity;
   private final StatusSignal<Voltage> driveAppliedVolts;
@@ -98,6 +99,7 @@ public class ModuleIOTalonFXS implements ModuleIO {
   // Inputs from turn motor
   private final StatusSignal<Angle> turnAbsolutePosition;
   private final StatusSignal<Angle> turnPosition;
+  private final StatusSignal<Angle> turnPositionOdom;
   private final Queue<Double> turnPositionQueue;
   private final StatusSignal<AngularVelocity> turnVelocity;
   private final StatusSignal<Voltage> turnAppliedVolts;
@@ -234,24 +236,30 @@ public class ModuleIOTalonFXS implements ModuleIO {
 
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
-    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePosition.clone());
+    drivePositionOdom = drivePosition.clone(); // NEW
+    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
 
     // Create turn status signals
-    turnAbsolutePosition = candi.getPWM1Position();
     turnPosition = turnTalon.getPosition();
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnPosition.clone());
+    turnPositionOdom = turnPosition.clone(); // NEW
+    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnPositionOdom);
+
+    turnAbsolutePosition = candi.getPWM1Position();
     turnVelocity = turnTalon.getVelocity();
     turnAppliedVolts = turnTalon.getMotorVoltage();
     turnCurrent = turnTalon.getStatorCurrent();
 
-    // Configure periodic frames
+    // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
     BaseStatusSignal.setUpdateFrequencyForAll(
-        SwerveConstants.kOdometryFrequency, drivePosition, turnPosition);
+        SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0,
+        drivePosition,
+        turnPosition,
         driveVelocity,
         driveAppliedVolts,
         driveCurrent,
@@ -259,6 +267,7 @@ public class ModuleIOTalonFXS implements ModuleIO {
         turnVelocity,
         turnAppliedVolts,
         turnCurrent);
+
     ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
   }
 

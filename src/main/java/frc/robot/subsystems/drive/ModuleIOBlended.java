@@ -100,6 +100,7 @@ public class ModuleIOBlended implements ModuleIO {
 
   // Inputs from drive motor
   private final StatusSignal<Angle> drivePosition;
+  private final StatusSignal<Angle> drivePositionOdom;
   private final Queue<Double> drivePositionQueue;
   private final StatusSignal<AngularVelocity> driveVelocity;
   private final StatusSignal<Voltage> driveAppliedVolts;
@@ -287,8 +288,8 @@ public class ModuleIOBlended implements ModuleIO {
 
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
-    drivePositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(driveTalon.getPosition());
+    drivePositionOdom = drivePosition.clone(); // NEW
+    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
@@ -300,8 +301,11 @@ public class ModuleIOBlended implements ModuleIO {
     turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(cancoder.getPosition());
 
     // Configure periodic frames
-    BaseStatusSignal.setUpdateFrequencyForAll(SwerveConstants.kOdometryFrequency, drivePosition);
-    BaseStatusSignal.setUpdateFrequencyForAll(50.0, driveVelocity, driveAppliedVolts, driveCurrent);
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        SwerveConstants.kOdometryFrequency, drivePositionOdom);
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        50.0, drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+
     ParentDevice.optimizeBusUtilizationForAll(driveTalon);
   }
 

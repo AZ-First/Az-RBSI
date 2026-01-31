@@ -29,7 +29,6 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
@@ -43,7 +42,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
@@ -53,13 +51,13 @@ import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
-import java.util.Arrays;
+import frc.robot.util.RBSISubsystem;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
-public class Drive extends SubsystemBase {
+public class Drive extends RBSISubsystem {
 
   static final Lock odometryLock = new ReentrantLock();
   private final Imu imu;
@@ -218,38 +216,34 @@ public class Drive extends SubsystemBase {
 
   /** Periodic function that is called each robot cycle by the command scheduler */
   @Override
-  public void periodic() {
-    final long t0 = System.nanoTime();
+  public void rbsiPeriodic() {
     odometryLock.lock();
-    final long t1 = System.nanoTime();
 
-    final var imuInputs = imu.getInputs();
-    final long t2 = System.nanoTime();
+    // Get the IMU inputs
+    final var imuInputs = imu.getInputs(); // primitive inputs
 
     // Stop modules & log empty setpoint states if disabled
     if (DriverStation.isDisabled()) {
       for (var module : modules) {
         module.stop();
-        Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
-        Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
       }
+      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
+      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
     }
-    final long t3 = System.nanoTime();
 
     // Module periodic updates, which drains queues this cycle
     for (var module : modules) {
       module.periodic();
     }
-    final long t4 = System.nanoTime();
 
     // Feed historical samples into odometry if REAL robot
     if (Constants.getMode() != Mode.SIM) {
-      double[] sampleTimestamps = modules[0].getOdometryTimestamps();
-      int sampleCount = sampleTimestamps.length;
+      final double[] sampleTimestamps = modules[0].getOdometryTimestamps();
+      final int sampleCount = sampleTimestamps.length;
 
-      // Read wheel positions and deltas from each module
-      SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
-      SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
+      // Reuse arrays to reduce GC (you likely already have lastModulePositions as a field)
+      final SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
+      final SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
 
       for (int i = 0; i < sampleCount; i++) {
         for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
@@ -262,37 +256,24 @@ public class Drive extends SubsystemBase {
           lastModulePositions[moduleIndex] = modulePositions[moduleIndex];
         }
 
-        // Update gyro angle for odometry
-        Rotation2d yaw =
-            imuInputs.connected && imuInputs.odometryYawPositions.length > i
-                ? imuInputs.odometryYawPositions[i]
-                : imuInputs.yawPosition;
+        // Pick yaw sample if available; otherwise fall back to current yaw
+        final double yawRad =
+            (imuInputs.connected
+                    && imuInputs.odometryYawPositionsRad != null
+                    && imuInputs.odometryYawPositionsRad.length > i)
+                ? imuInputs.odometryYawPositionsRad[i]
+                : imuInputs.yawPositionRad;
+
+        // Boundary conversion: PoseEstimator requires Rotation2d
+        final Rotation2d yaw = Rotation2d.fromRadians(yawRad);
 
         // Apply to pose estimator
         m_PoseEstimator.updateWithTime(sampleTimestamps[i], yaw, modulePositions);
       }
+
       Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
     }
-    final long t5 = System.nanoTime();
-
     odometryLock.unlock();
-    final long t6 = System.nanoTime();
-
-    Logger.recordOutput("Loop/Drive/total_ms", (t6 - t0) / 1e6);
-    Logger.recordOutput("Loop/Drive/lockWait_ms", (t1 - t0) / 1e6);
-    Logger.recordOutput("Loop/Drive/getImuInputs_ms", (t2 - t1) / 1e6);
-    Logger.recordOutput("Loop/Drive/disabled_ms", (t3 - t2) / 1e6);
-    Logger.recordOutput("Loop/Drive/modules_ms", (t4 - t3) / 1e6);
-    Logger.recordOutput("Loop/Drive/odometry_ms", (t5 - t4) / 1e6);
-    Logger.recordOutput("Loop/Drive/unlock_ms", (t6 - t5) / 1e6);
-
-    double driveMs = (t6 - t0) / 1e6;
-    Logger.recordOutput("Loop/Drive/total_ms", driveMs);
-
-    if (driveMs > 20.0) {
-      Logger.recordOutput("LoopSpike/Drive/odometry_ms", (t4 - t3) / 1e6);
-      Logger.recordOutput("LoopSpike/Drive/modules_ms", (t5 - t4) / 1e6);
-    }
 
     gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
   }
@@ -303,46 +284,54 @@ public class Drive extends SubsystemBase {
     final double dt = Constants.loopPeriodSecs;
 
     // 1) Advance module wheel physics
-    for (Module module : modules) {
-      module.simulationPeriodic();
+    for (int i = 0; i < modules.length; i++) {
+      modules[i].simulationPeriodic();
     }
 
-    // 2) Get module states from modules (authoritative)
-    SwerveModuleState[] moduleStates =
-        Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
+    // 2) Get module states from modules (authoritative) - NO STREAMS
+    final SwerveModuleState[] moduleStates = new SwerveModuleState[modules.length];
+    for (int i = 0; i < modules.length; i++) {
+      moduleStates[i] = modules[i].getState();
+    }
 
     // 3) Update SIM physics (linear + angular)
     simPhysics.update(moduleStates, dt);
 
-    // 4) Feed IMU from authoritative physics
-    imu.simulationSetYaw(simPhysics.getYaw());
-    imu.simulationSetOmega(simPhysics.getOmegaRadPerSec());
-    imu.setLinearAccel(
-        new Translation3d(
-            simPhysics.getLinearAccel().getX(), simPhysics.getLinearAccel().getY(), 0.0));
+    // 4) Feed IMU from authoritative physics (primitive-only boundary)
+    final double yawRad =
+        simPhysics.getYaw().getRadians(); // or simPhysics.getYawRad() if you have it
+    final double omegaRadPerSec = simPhysics.getOmegaRadPerSec();
+
+    final double ax = simPhysics.getLinearAccel().getX();
+    final double ay = simPhysics.getLinearAccel().getY();
+
+    imu.simulationSetYawRad(yawRad);
+    imu.simulationSetOmegaRadPerSec(omegaRadPerSec);
+    imu.simulationSetLinearAccelMps2(ax, ay, 0.0);
 
     // 5) Feed PoseEstimator with authoritative yaw and module positions
-    SwerveModulePosition[] modulePositions =
-        Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
+    // (PoseEstimator still wants objects -> boundary conversion stays here)
+    final SwerveModulePosition[] modulePositions = new SwerveModulePosition[modules.length];
+    for (int i = 0; i < modules.length; i++) {
+      modulePositions[i] = modules[i].getPosition();
+    }
 
     m_PoseEstimator.resetPosition(
-        simPhysics.getYaw(), // gyro reading (authoritative)
-        modulePositions, // wheel positions
-        simPhysics.getPose() // pose is authoritative
-        );
+        Rotation2d.fromRadians(yawRad), modulePositions, simPhysics.getPose());
 
     // 6) Optional: inject vision measurement in SIM
     if (simulatedVisionAvailable) {
-      Pose2d visionPose = getSimulatedVisionPose();
-      double visionTimestamp = Timer.getFPGATimestamp();
-      var visionStdDevs = getSimulatedVisionStdDevs();
+      final Pose2d visionPose = getSimulatedVisionPose();
+      final double visionTimestamp = Timer.getFPGATimestamp();
+      final var visionStdDevs = getSimulatedVisionStdDevs();
       m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
     }
 
     // 7) Logging
     Logger.recordOutput("Sim/Pose", simPhysics.getPose());
-    Logger.recordOutput("Sim/Yaw", simPhysics.getYaw());
-    Logger.recordOutput("Sim/LinearAccel", simPhysics.getLinearAccel());
+    Logger.recordOutput("Sim/YawRad", yawRad);
+    Logger.recordOutput("Sim/OmegaRadPerSec", simPhysics.getOmegaRadPerSec());
+    Logger.recordOutput("Sim/LinearAccelXY_mps2", new double[] {ax, ay});
   }
 
   /** Drive Base Action Functions ****************************************** */
@@ -480,7 +469,7 @@ public class Drive extends SubsystemBase {
     if (Constants.getMode() == Mode.SIM) {
       return simPhysics.getYaw();
     }
-    return imu.getInputs().yawPosition;
+    return imu.getYaw();
   }
 
   /** Returns an array of module translations. */

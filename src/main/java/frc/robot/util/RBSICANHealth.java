@@ -29,8 +29,8 @@ public class RBSICANHealth extends VirtualSubsystem {
     var status = bus.getStatus();
     Logger.recordOutput("CAN/" + bus.getName() + "/Utilization", status.BusUtilization);
     Logger.recordOutput("CAN/" + bus.getName() + "/TxFullCount", status.TxFullCount);
-    Logger.recordOutput("CAN/" + bus.getName() + "/REC", status.REC);
-    Logger.recordOutput("CAN/" + bus.getName() + "/TEC", status.TEC);
+    Logger.recordOutput("CAN/" + bus.getName() + "/RxErrorCount", status.REC);
+    Logger.recordOutput("CAN/" + bus.getName() + "/TxErrorCount", status.TEC);
     Logger.recordOutput("CAN/" + bus.getName() + "/BusOffCount", status.BusOffCount);
   }
 }

@@ -19,55 +19,75 @@ package frc.robot.subsystems.imu;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import frc.robot.util.VirtualSubsystem;
-import org.littletonrobotics.junction.Logger;
 
-public class Imu extends VirtualSubsystem {
-
+public class Imu {
   private final ImuIO io;
-  private final ImuIOInputsAutoLogged inputs = new ImuIOInputsAutoLogged();
+  private final ImuIO.ImuIOInputs inputs = new ImuIO.ImuIOInputs();
+
+  // Optional per-cycle cached objects (avoid repeated allocations)
+  private long cacheStampNs = -1L;
+  private Rotation2d cachedYaw = Rotation2d.kZero;
+  private Translation3d cachedAccel = Translation3d.kZero;
+  private Translation3d cachedJerk = Translation3d.kZero;
 
   public Imu(ImuIO io) {
     this.io = io;
   }
 
-  @Override
-  protected void rbsiPeriodic() {
-    final long t0 = System.nanoTime();
+  public void periodic() {
     io.updateInputs(inputs);
-    final long t1 = System.nanoTime();
-    Logger.processInputs("IMU", inputs);
-    final long t2 = System.nanoTime();
-
-    Logger.recordOutput("Loop/IMU/update_ms", (t1 - t0) / 1e6);
-    Logger.recordOutput("Loop/IMU/log_ms", (t2 - t1) / 1e6);
-    Logger.recordOutput("Loop/IMU/total_ms", (t2 - t0) / 1e6);
-
-    double totalMs = (t2 - t0) / 1e6;
-    Logger.recordOutput("Loop/IMU/total_ms", totalMs);
-    if (totalMs > 2.0) {
-      Logger.recordOutput("LoopSpike/IMU/update_ms", (t1 - t0) / 1e6);
-    }
   }
 
-  public ImuIOInputsAutoLogged getInputs() {
+  /** Hot-path access: primitive-only snapshot */
+  public ImuIO.ImuIOInputs getInputs() {
     return inputs;
   }
 
-  // Pass-throughs so Drive can still control the IMU
+  /** Readable boundary: Rotation2d (alloc/cached per timestamp) */
+  public Rotation2d getYaw() {
+    refreshCachesIfNeeded();
+    return cachedYaw;
+  }
+
+  /** Readable boundary: Translation3d accel (alloc/cached per timestamp) */
+  public Translation3d getLinearAccel() {
+    refreshCachesIfNeeded();
+    return cachedAccel;
+  }
+
+  public Translation3d getJerk() {
+    refreshCachesIfNeeded();
+    return cachedJerk;
+  }
+
   public void zeroYaw(Rotation2d yaw) {
-    io.zeroYaw(yaw);
+    io.zeroYawRad(yaw.getRadians());
   }
 
-  public void simulationSetYaw(Rotation2d yaw) {
-    io.simulationSetYaw(yaw);
+  private void refreshCachesIfNeeded() {
+    final long stamp = inputs.timestampNs;
+    if (stamp == cacheStampNs) return;
+    cacheStampNs = stamp;
+
+    cachedYaw = Rotation2d.fromRadians(inputs.yawPositionRad);
+    cachedAccel = new Translation3d(inputs.linearAccelX, inputs.linearAccelY, inputs.linearAccelZ);
+    cachedJerk = new Translation3d(inputs.jerkX, inputs.jerkY, inputs.jerkZ);
   }
 
-  public void simulationSetOmega(double omegaRadPerSec) {
-    io.simulationSetOmega(omegaRadPerSec);
+  // ---------------- SIM PUSH (primitive-only boundary) ----------------
+
+  /** Simulation: push authoritative yaw (radians) into the IO layer */
+  public void simulationSetYawRad(double yawRad) {
+    io.simulationSetYawRad(yawRad);
   }
 
-  public void setLinearAccel(Translation3d accelMps2) {
-    io.setLinearAccel(accelMps2);
+  /** Simulation: push authoritative yaw rate (rad/s) into the IO layer */
+  public void simulationSetOmegaRadPerSec(double omegaRadPerSec) {
+    io.simulationSetOmegaRadPerSec(omegaRadPerSec);
+  }
+
+  /** Simulation: push authoritative linear accel (m/s^2) into the IO layer */
+  public void simulationSetLinearAccelMps2(double ax, double ay, double az) {
+    io.simulationSetLinearAccelMps2(ax, ay, az);
   }
 }

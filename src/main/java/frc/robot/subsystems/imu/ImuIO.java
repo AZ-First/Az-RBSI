@@ -17,51 +17,63 @@
 
 package frc.robot.subsystems.imu;
 
-import static edu.wpi.first.units.Units.*;
-
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.units.measure.AngularVelocity;
 import frc.robot.util.RBSIIO;
 import org.littletonrobotics.junction.AutoLog;
 
 /**
- * Single IMU interface exposing all relevant state: orientation, rates, linear accel, and odometry.
+ * Single IMU interface exposing all relevant state: orientation, rates, linear accel, jerk, and
+ * odometry samples.
+ *
+ * <p>Primitive-only core: NO WPILib geometry objects, NO Units objects. Conversions happen at the
+ * boundary in the Imu subsystem (wrapper methods).
  */
 public interface ImuIO extends RBSIIO {
 
   @AutoLog
-  public static class ImuIOInputs {
+  class ImuIOInputs {
     public boolean connected = false;
 
-    // Timestamp
-    public long timestampNs = 0;
+    /** FPGA-local timestamp when inputs were captured (ns) */
+    public long timestampNs = 0L;
 
-    // Gyro
-    public Rotation2d yawPosition = Rotation2d.kZero;
-    public AngularVelocity yawVelocityRadPerSec = RadiansPerSecond.of(0.0);
+    /** Yaw angle (robot frame) in radians */
+    public double yawPositionRad = 0.0;
 
-    // Linear acceleration and jerk in robot frame (m/s^2;  m/s^3)
-    public Translation3d linearAccel = Translation3d.kZero;
-    public Translation3d jerk = Translation3d.kZero;
+    /** Yaw angular rate in radians/sec */
+    public double yawRateRadPerSec = 0.0;
 
+    /** Linear acceleration in robot frame (m/s^2) */
+    public double linearAccelX = 0.0;
+
+    public double linearAccelY = 0.0;
+    public double linearAccelZ = 0.0;
+
+    /** Linear jerk in robot frame (m/s^3) */
+    public double jerkX = 0.0;
+
+    public double jerkY = 0.0;
+    public double jerkZ = 0.0;
+
+    /** Time spent in the IO update call (seconds) */
     public double latencySeconds = 0.0;
 
-    // Odometry tracking (optional, for external odometry/vision fusion)
+    /** Optional odometry samples (timestamps in seconds) */
     public double[] odometryYawTimestamps = new double[] {};
-    public Rotation2d[] odometryYawPositions = new Rotation2d[] {};
+
+    /** Optional odometry samples (yaw positions in radians) */
+    public double[] odometryYawPositionsRad = new double[] {};
   }
 
   /** Update the current IMU readings into `inputs` */
   default void updateInputs(ImuIOInputs inputs) {}
 
-  /** Zero the yaw to a known field-relative angle */
-  default void zeroYaw(Rotation2d yaw) {}
+  /** Zero the yaw to a known field-relative angle (radians) */
+  default void zeroYawRad(double yawRad) {}
 
-  /** Simulation-only update hooks */
-  default void simulationSetYaw(Rotation2d yaw) {}
+  /** Simulation-only hooks */
+  default void simulationSetYawRad(double yawRad) {}
 
-  default void simulationSetOmega(double omegaRadPerSec) {}
+  default void simulationSetOmegaRadPerSec(double omegaRadPerSec) {}
 
-  default void setLinearAccel(Translation3d accelMps2) {}
+  default void simulationSetLinearAccelMps2(double ax, double ay, double az) {}
 }
