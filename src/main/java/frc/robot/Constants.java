@@ -164,8 +164,10 @@ public final class Constants {
   /************************************************************************* */
   /** List of Robot CAN Busses ********************************************* */
   public static final class CANBuses {
-    public static final String DRIVE = "DriveTrain";
     public static final String RIO = "";
+    public static final String DRIVE = "DriveTrain";
+
+    public static final String[] ALL = {RIO, DRIVE};
   }
 
   /************************************************************************* */
@@ -178,30 +180,30 @@ public final class Constants {
 
     // Front Left
     public static final RobotDeviceId FL_DRIVE =
-        new RobotDeviceId(SwerveConstants.kFLDriveMotorId, SwerveConstants.kFLDriveCanbus, 18);
+        new RobotDeviceId(SwerveConstants.kFLDriveMotorId, SwerveConstants.kFLDriveCanbus, 16);
     public static final RobotDeviceId FL_ROTATION =
-        new RobotDeviceId(SwerveConstants.kFLSteerMotorId, SwerveConstants.kFLSteerCanbus, 19);
+        new RobotDeviceId(SwerveConstants.kFLSteerMotorId, SwerveConstants.kFLSteerCanbus, 17);
     public static final RobotDeviceId FL_CANCODER =
         new RobotDeviceId(SwerveConstants.kFLEncoderId, SwerveConstants.kFLEncoderCanbus, null);
     // Front Right
     public static final RobotDeviceId FR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kFRDriveMotorId, SwerveConstants.kFRDriveCanbus, 17);
+        new RobotDeviceId(SwerveConstants.kFRDriveMotorId, SwerveConstants.kFRDriveCanbus, 13);
     public static final RobotDeviceId FR_ROTATION =
-        new RobotDeviceId(SwerveConstants.kFRSteerMotorId, SwerveConstants.kFRSteerCanbus, 16);
+        new RobotDeviceId(SwerveConstants.kFRSteerMotorId, SwerveConstants.kFRSteerCanbus, 12);
     public static final RobotDeviceId FR_CANCODER =
         new RobotDeviceId(SwerveConstants.kFREncoderId, SwerveConstants.kFREncoderCanbus, null);
     // Back Left
     public static final RobotDeviceId BL_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBLDriveMotorId, SwerveConstants.kBLDriveCanbus, 1);
+        new RobotDeviceId(SwerveConstants.kBLDriveMotorId, SwerveConstants.kBLDriveCanbus, 2);
     public static final RobotDeviceId BL_ROTATION =
-        new RobotDeviceId(SwerveConstants.kBLSteerMotorId, SwerveConstants.kBLSteerCanbus, 0);
+        new RobotDeviceId(SwerveConstants.kBLSteerMotorId, SwerveConstants.kBLSteerCanbus, 3);
     public static final RobotDeviceId BL_CANCODER =
         new RobotDeviceId(SwerveConstants.kBLEncoderId, SwerveConstants.kBLEncoderCanbus, null);
     // Back Right
     public static final RobotDeviceId BR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 2);
+        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 7);
     public static final RobotDeviceId BR_ROTATION =
-        new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 3);
+        new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 6);
     public static final RobotDeviceId BR_CANCODER =
         new RobotDeviceId(SwerveConstants.kBREncoderId, SwerveConstants.kBREncoderCanbus, null);
     // Pigeon
@@ -317,7 +319,7 @@ public final class Constants {
     public static final double kDriveD = 0.03;
     public static final double kDriveV = 0.83;
     public static final double kDriveA = 0.0;
-    public static final double kDriveS = 0.21;
+    public static final double kDriveS = 2.00;
     public static final double kDriveT =
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
     public static final double kSteerP = 400.0;
@@ -439,61 +441,55 @@ public final class Constants {
 
   /************************************************************************* */
   /** Vision Camera Posses ************************************************* */
-  public static class Cameras {
-    // Camera names, must match names configured on coprocessor
-    public static String camera0Name = "camera_0";
-    public static String camera1Name = "camera_1";
-    // ... And more, if needed
+  public static final class Cameras {
+    public record CameraConfig(
+        String name,
+        Transform3d robotToCamera,
+        double stdDevFactor,
+        SimCameraProperties simProps) {}
 
-    // Robot to camera transforms
+    // Camera Configuration Records
     // (ONLY USED FOR PHOTONVISION -- Limelight: configure in web UI instead)
     // Example Cameras are mounted in the back corners, 18" up from the floor, facing sideways
-    public static Transform3d robotToCamera0 =
-        new Transform3d(
-            Inches.of(-13.0),
-            Inches.of(13.0),
-            Inches.of(12.0),
-            new Rotation3d(0.0, 0.0, Math.PI / 2));
-    public static Transform3d robotToCamera1 =
-        new Transform3d(
-            Inches.of(-13.0),
-            Inches.of(-13.0),
-            Inches.of(12.0),
-            new Rotation3d(0.0, 0.0, -Math.PI / 2));
+    public static final CameraConfig[] ALL = {
+      new CameraConfig(
+          "camera_0",
+          new Transform3d(
+              Inches.of(-13.0),
+              Inches.of(13.0),
+              Inches.of(12.0),
+              new Rotation3d(0.0, 0.0, Math.PI / 2)),
+          1.0,
+          new SimCameraProperties() {
+            {
+              setCalibration(1280, 800, Rotation2d.fromDegrees(120));
+              setCalibError(0.25, 0.08);
+              setFPS(30);
+              setAvgLatencyMs(20);
+              setLatencyStdDevMs(5);
+            }
+          }),
+      //
+      new CameraConfig(
+          "camera_1",
+          new Transform3d(
+              Inches.of(-13.0),
+              Inches.of(-13.0),
+              Inches.of(12.0),
+              new Rotation3d(0.0, 0.0, -Math.PI / 2)),
+          1.0,
+          new SimCameraProperties() {
+            {
+              setCalibration(1280, 800, Rotation2d.fromDegrees(120));
+              setCalibError(0.25, 0.08);
+              setFPS(30);
+              setAvgLatencyMs(20);
+              setLatencyStdDevMs(5);
+            }
+          }),
 
-    // Standard deviation multipliers for each camera
-    // (Adjust to trust some cameras more than others)
-    public static double[] cameraStdDevFactors =
-        new double[] {
-          1.0, // Camera 0
-          1.0 // Camera 1
-        };
-  }
-
-  /************************************************************************* */
-  /** Simulation Camera Properties ***************************************** */
-  public static class SimCameras {
-    public static final SimCameraProperties kSimCamera1Props =
-        new SimCameraProperties() {
-          {
-            setCalibration(1280, 800, Rotation2d.fromDegrees(120));
-            setCalibError(0.25, 0.08);
-            setFPS(30);
-            setAvgLatencyMs(20);
-            setLatencyStdDevMs(5);
-          }
-        };
-
-    public static final SimCameraProperties kSimCamera2Props =
-        new SimCameraProperties() {
-          {
-            setCalibration(1280, 800, Rotation2d.fromDegrees(120));
-            setCalibError(0.25, 0.08);
-            setFPS(30);
-            setAvgLatencyMs(20);
-            setLatencyStdDevMs(5);
-          }
-        };
+      // ... And more, if needed
+    };
   }
 
   /************************************************************************* */
