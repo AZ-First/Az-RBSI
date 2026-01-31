@@ -17,105 +17,163 @@
 
 package frc.robot.subsystems.imu;
 
-import static edu.wpi.first.units.Units.*;
-
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
 import com.ctre.phoenix6.hardware.Pigeon2;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.LinearAcceleration;
 import frc.robot.subsystems.drive.PhoenixOdometryThread;
 import frc.robot.subsystems.drive.SwerveConstants;
+import frc.robot.util.RBSICANBusRegistry;
+import java.util.Iterator;
 import java.util.Queue;
 
-/** IMU IO for CTRE Pigeon2 */
+/** IMU IO for CTRE Pigeon2 (primitive-only hot path) */
 public class ImuIOPigeon2 implements ImuIO {
 
-  private final Pigeon2 pigeon = new Pigeon2(SwerveConstants.kPigeonId, SwerveConstants.kCANBus);
+  private static final double DEG_TO_RAD = Math.PI / 180.0;
+  private static final double G_TO_MPS2 = 9.80665;
+
+  private final Pigeon2 pigeon =
+      new Pigeon2(
+          SwerveConstants.kPigeonId, RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
+
+  // Cached signals
   private final StatusSignal<Angle> yawSignal = pigeon.getYaw();
   private final StatusSignal<AngularVelocity> yawRateSignal = pigeon.getAngularVelocityZWorld();
+
+  private final StatusSignal<LinearAcceleration> accelX = pigeon.getAccelerationX();
+  private final StatusSignal<LinearAcceleration> accelY = pigeon.getAccelerationY();
+  private final StatusSignal<LinearAcceleration> accelZ = pigeon.getAccelerationZ();
+
   private final Queue<Double> odomTimestamps;
-  private final Queue<Double> odomYaws;
+  private final Queue<Double> odomYawsDeg;
 
-  private Translation3d prevAccel = Translation3d.kZero;
+  // Previous accel for jerk (m/s^2)
+  private double prevAx = 0.0, prevAy = 0.0, prevAz = 0.0;
+  private long prevTimestampNs = 0L;
 
-  /** Constructor */
+  // Reusable buffers for queue-drain (avoid streams)
+  private double[] odomTsBuf = new double[8];
+  private double[] odomYawRadBuf = new double[8];
+
   public ImuIOPigeon2() {
     pigeon.getConfigurator().apply(new Pigeon2Configuration());
     pigeon.getConfigurator().setYaw(0.0);
+
     yawSignal.setUpdateFrequency(SwerveConstants.kOdometryFrequency);
     yawRateSignal.setUpdateFrequency(50.0);
+
+    accelX.setUpdateFrequency(50.0);
+    accelY.setUpdateFrequency(50.0);
+    accelZ.setUpdateFrequency(50.0);
+
     pigeon.optimizeBusUtilization();
 
-    // Create queues for odometry logging/replay inside the class
     odomTimestamps = PhoenixOdometryThread.getInstance().makeTimestampQueue();
-    odomYaws = PhoenixOdometryThread.getInstance().registerSignal(pigeon.getYaw());
+    odomYawsDeg = PhoenixOdometryThread.getInstance().registerSignal(yawSignal);
   }
 
-  /** Update inputs for logging and robot code */
   @Override
   public void updateInputs(ImuIOInputs inputs) {
-    long start = System.nanoTime();
+    final long start = System.nanoTime();
 
-    inputs.connected = BaseStatusSignal.refreshAll(yawSignal, yawRateSignal).equals(StatusCode.OK);
-    inputs.yawPosition = Rotation2d.fromDegrees(yawSignal.getValueAsDouble());
-    inputs.yawVelocityRadPerSec = DegreesPerSecond.of(yawRateSignal.getValueAsDouble());
+    StatusCode code = BaseStatusSignal.refreshAll(yawSignal, yawRateSignal, accelX, accelY, accelZ);
+    inputs.connected = code.isOK();
 
-    inputs.linearAccel =
-        new Translation3d(
-                pigeon.getAccelerationX().getValueAsDouble(),
-                pigeon.getAccelerationY().getValueAsDouble(),
-                pigeon.getAccelerationZ().getValueAsDouble())
-            .times(9.81); // Convert to m/s^2
+    // Yaw / rate: Phoenix returns degrees and deg/s here; convert to radians
+    final double yawDeg = yawSignal.getValueAsDouble();
+    final double yawRateDegPerSec = yawRateSignal.getValueAsDouble();
 
-    // Compute the jerk and set the new timestamp
-    double timediff = (start - inputs.timestampNs) / 1.0e9;
-    inputs.jerk = inputs.linearAccel.minus(prevAccel).div(timediff);
+    inputs.yawPositionRad = yawDeg * DEG_TO_RAD;
+    inputs.yawRateRadPerSec = yawRateDegPerSec * DEG_TO_RAD;
+
+    // Accel: Phoenix returns "g" for these signals (common for Pigeon2). Convert to m/s^2
+    final double ax = accelX.getValueAsDouble() * G_TO_MPS2;
+    final double ay = accelY.getValueAsDouble() * G_TO_MPS2;
+    final double az = accelZ.getValueAsDouble() * G_TO_MPS2;
+
+    inputs.linearAccelX = ax;
+    inputs.linearAccelY = ay;
+    inputs.linearAccelZ = az;
+
+    // Jerk from delta accel / dt
+    if (prevTimestampNs != 0L) {
+      final double dt = (start - prevTimestampNs) * 1e-9;
+      if (dt > 1e-6) {
+        final double invDt = 1.0 / dt;
+        inputs.jerkX = (ax - prevAx) * invDt;
+        inputs.jerkY = (ay - prevAy) * invDt;
+        inputs.jerkZ = (az - prevAz) * invDt;
+      }
+    }
+
+    prevTimestampNs = start;
+    prevAx = ax;
+    prevAy = ay;
+    prevAz = az;
+
     inputs.timestampNs = start;
 
-    inputs.odometryYawTimestamps = odomTimestamps.stream().mapToDouble(d -> d).toArray();
-    inputs.odometryYawPositions =
-        odomYaws.stream().map(deg -> Rotation2d.fromDegrees(deg)).toArray(Rotation2d[]::new);
+    // Drain odometry queues to primitive arrays (timestamps are already doubles; yaws are degrees)
+    final int n = drainOdometryQueuesIntoBuffers();
+    if (n > 0) {
+      final double[] tsOut = new double[n];
+      final double[] yawOut = new double[n];
+      System.arraycopy(odomTsBuf, 0, tsOut, 0, n);
+      System.arraycopy(odomYawRadBuf, 0, yawOut, 0, n);
+      inputs.odometryYawTimestamps = tsOut;
+      inputs.odometryYawPositionsRad = yawOut;
+    } else {
+      inputs.odometryYawTimestamps = new double[] {};
+      inputs.odometryYawPositionsRad = new double[] {};
+    }
+
+    final long end = System.nanoTime();
+    inputs.latencySeconds = (end - start) * 1e-9;
+  }
+
+  @Override
+  public void zeroYawRad(double yawRad) {
+    pigeon.setYaw(yawRad / DEG_TO_RAD);
+  }
+
+  private int drainOdometryQueuesIntoBuffers() {
+    final int nTs = odomTimestamps.size();
+    final int nYaw = odomYawsDeg.size();
+    final int n = Math.min(nTs, nYaw);
+    if (n <= 0) {
+      odomTimestamps.clear();
+      odomYawsDeg.clear();
+      return 0;
+    }
+
+    ensureOdomCapacity(n);
+
+    // Iterate without streams (still boxed because Queue<Double>, but avoids stream overhead)
+    final Iterator<Double> itT = odomTimestamps.iterator();
+    final Iterator<Double> itY = odomYawsDeg.iterator();
+
+    int i = 0;
+    while (i < n && itT.hasNext() && itY.hasNext()) {
+      odomTsBuf[i] = itT.next();
+      odomYawRadBuf[i] = itY.next() * DEG_TO_RAD;
+      i++;
+    }
 
     odomTimestamps.clear();
-    odomYaws.clear();
-
-    // Latency in seconds
-    long end = System.nanoTime();
-    inputs.latencySeconds = (end - start) * 1.0e-9;
+    odomYawsDeg.clear();
+    return i;
   }
 
-  /**
-   * Zero the Pigeon2
-   *
-   * @param yaw The yaw to which to reset the gyro
-   */
-  @Override
-  public void zeroYaw(Rotation2d yaw) {
-    pigeon.setYaw(yaw.getDegrees());
+  private void ensureOdomCapacity(int n) {
+    if (odomTsBuf.length >= n) return;
+    int newCap = odomTsBuf.length;
+    while (newCap < n) newCap *= 2;
+    odomTsBuf = new double[newCap];
+    odomYawRadBuf = new double[newCap];
   }
-
-  // /**
-  //  * Zero the Pigeon2
-  //  *
-  //  * <p>This method should always rezero the pigeon in ALWAYS-BLUE-ORIGIN orientation. Testing,
-  //  * however, shows that it's not doing what I think it should be doing. There is likely
-  //  * interference with something else in the odometry
-  //  */
-  // @Override
-  // public void zero() {
-  //   // With the Pigeon facing forward, forward depends on the alliance selected.
-  //   if (DriverStation.getAlliance().get() == Alliance.Blue) {
-  //     System.out.println("Alliance Blue: Setting YAW to 0");
-  //     pigeon.setYaw(0.0);
-  //   } else {
-  //     System.out.println("Alliance Red: Setting YAW to 180");
-  //     pigeon.setYaw(180.0);
-  //   }
-  // }
-
 }

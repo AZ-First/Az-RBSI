@@ -26,14 +26,12 @@ public interface FlywheelIO extends RBSIIO {
   public default void updateInputs(FlywheelIOInputs inputs) {}
 
   /** Run closed loop at the specified velocity. */
-  public default void setVelocity(double velocityRadPerSec, double ffVolts) {}
+  public default void setVelocity(double velocityRadPerSec) {}
 
-  /** Set velocity PID constants. */
-  public default void configurePID(double kP, double kI, double kD) {}
+  /** Set gain constants */
+  public default void configureGains(double kP, double kI, double kD, double kS, double kV) {}
 
-  /** Set velocity FeedForward constants. */
-  public default void configureFF(double kS, double kV) {}
-
-  /** Set velocity FeedForward constants. */
-  public default void configureFF(double kS, double kV, double kA) {}
+  /** Set gain constants */
+  public default void configureGains(
+      double kP, double kI, double kD, double kS, double kV, double kA) {}
 }

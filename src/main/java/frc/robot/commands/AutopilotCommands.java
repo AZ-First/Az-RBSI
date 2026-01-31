@@ -21,16 +21,13 @@ import static edu.wpi.first.units.Units.*;
 
 import com.therekrab.autopilot.APTarget;
 import com.therekrab.autopilot.Autopilot.APResult;
-import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.subsystems.drive.Drive;
 import org.littletonrobotics.junction.Logger;
 
@@ -178,16 +175,6 @@ public class AutopilotCommands {
    */
   private static Command autopilotToTarget(Drive drive, APTarget target) {
 
-    // Create PID controller
-    ProfiledPIDController angleController =
-        new ProfiledPIDController(
-            AutoConstants.kPPsteerPID.kP,
-            AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD,
-            new TrapezoidProfile.Constraints(
-                DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
-    angleController.enableContinuousInput(-Math.PI, Math.PI);
-
     return Commands.run(
             () -> {
               ChassisSpeeds robotRelativeSpeeds = drive.getChassisSpeeds();
@@ -214,15 +201,19 @@ public class AutopilotCommands {
                       output.vx(),
                       output.vy(),
                       RadiansPerSecond.of(
-                          angleController.calculate(
-                              drive.getHeading().getRadians(), output.targetAngle().getRadians())));
+                          drive
+                              .getAngleController()
+                              .calculate(
+                                  drive.getHeading().getRadians(),
+                                  output.targetAngle().getRadians())));
 
               drive.runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(speeds, drive.getHeading()));
             },
             drive)
 
-        // Reset PID controller when command starts
-        .beforeStarting(() -> angleController.reset(drive.getHeading().getRadians()))
-        .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
+        // Reset PID controller when command starts & ends; run until we're at target
+        .beforeStarting(() -> drive.resetHeadingController())
+        .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target))
+        .finallyDo(() -> drive.resetHeadingController());
   }
 }

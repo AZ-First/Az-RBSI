@@ -13,11 +13,11 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
+import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -29,8 +29,9 @@ import org.littletonrobotics.junction.Logger;
 public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
-  private final PowerDistribution m_pdm =
-      new PowerDistribution(PowerConstants.kPDMCANid, PowerDistribution.ModuleType.kRev);
+  // private final LoggedPowerDistribution m_pdm =
+  //     LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+  ConduitApi conduit = ConduitApi.getInstance();
 
   // Define local variables
   private final LoggedTunableNumber batteryCapacityAh;
@@ -51,37 +52,43 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     RobotDevices.BR_ROTATION.getPowerPort()
   };
 
-  // Class method definition, including inputs of optional subsystems
+  private final Alert totalCurrentAlert =
+      new Alert("Total current draw exceeds limit!", AlertType.WARNING);
+  private final Alert[] portAlerts = new Alert[24]; // or pdh.getNumChannels() after construct
+  private final Alert lowVoltageAlert = new Alert("Low battery voltage!", AlertType.WARNING);
+  private final Alert criticalVoltageAlert =
+      new Alert("Critical battery voltage!", AlertType.ERROR);
+
+  private long loops = 0;
+
+  // Constructor, including inputs of optional subsystems
   public RBSIPowerMonitor(LoggedTunableNumber batteryCapacityAh, RBSISubsystem... subsystems) {
     this.batteryCapacityAh = batteryCapacityAh;
     this.subsystems = subsystems;
+
+    for (int i = 0; i < portAlerts.length; i++) {
+      portAlerts[i] = new Alert("Port " + i + " current exceeds limit!", AlertType.WARNING);
+    }
   }
 
   /** Periodic Method */
   @Override
-  public void periodic() {
+  public void rbsiPeriodic() {
+    // Limit polling to every 5 loops
+    if ((loops++ % 5) != 0) return; // 50Hz loop -> run at 10Hz
+
     // --- Read voltage & total current ---
-    double voltage = m_pdm.getVoltage();
-    double totalCurrent = m_pdm.getTotalCurrent();
+    double voltage = conduit.getPDPVoltage();
+    double totalCurrent = conduit.getPDPTotalCurrent();
 
     // --- Safety alerts ---
-    if (totalCurrent > PowerConstants.kTotalMaxCurrent) {
-      new Alert("Total current draw exceeds limit!", AlertType.WARNING).set(true);
-    }
+    totalCurrentAlert.set(totalCurrent > PowerConstants.kTotalMaxCurrent);
+    lowVoltageAlert.set(voltage < PowerConstants.kVoltageWarning);
+    criticalVoltageAlert.set(voltage < PowerConstants.kVoltageCritical);
 
-    for (int ch = 0; ch < m_pdm.getNumChannels(); ch++) {
-      double current = m_pdm.getCurrent(ch);
-      if (current > PowerConstants.kMotorPortMaxCurrent) {
-        new Alert("Port " + ch + " current exceeds limit!", AlertType.WARNING).set(true);
-      }
+    for (int ch = 0; ch < conduit.getPDPChannelCount(); ch++) {
+      portAlerts[ch].set(conduit.getPDPChannelCurrent(ch) > PowerConstants.kMotorPortMaxCurrent);
     }
-
-    // if (voltage < PowerConstants.kVoltageWarning) {
-    //   new Alert("Low battery voltage!", AlertType.WARNING).set(true);
-    // }
-    // if (voltage < PowerConstants.kVoltageCritical) {
-    //   new Alert("Critical battery voltage!", AlertType.ERROR).set(true);
-    // }
 
     // --- Battery estimation ---
     long nowUs = RobotController.getFPGATime();
@@ -123,7 +130,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private void logGroupCurrent(String name, int[] ports) {
     double sum = 0.0;
     for (int port : ports) {
-      sum += m_pdm.getCurrent(port);
+      sum += conduit.getPDPChannelCurrent(port);
     }
     Logger.recordOutput("Power/Subsystems/" + name + "Current", sum);
   }

@@ -13,6 +13,7 @@
 package frc.robot.util;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * This class is designed to include Az-RBSI specific methods on top of the standard WPILib
@@ -20,7 +21,29 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
  * etc.) should subclass ``RBSISubsystem`` rather than ``SubsystemBase`` in order to gain access to
  * added functionality.
  */
-public class RBSISubsystem extends SubsystemBase {
+public abstract class RBSISubsystem extends SubsystemBase {
+  private final String name = getClass().getSimpleName();
+
+  /**
+   * Guaranteed timing wrapper (cannot be bypassed by subclasses).
+   *
+   * <p>DO NOT OVERRIDE.
+   *
+   * <p>Subsystems must implement {@link #rbsiPeriodic()} instead.
+   *
+   * <p>If you see a compiler error here, remove your periodic() override and move your logic into
+   * rbsiPeriodic().
+   */
+  @Deprecated(forRemoval = false)
+  public final void periodic() {
+    long start = System.nanoTime();
+    rbsiPeriodic();
+    long end = System.nanoTime();
+    Logger.recordOutput("Loop/Mech/" + name + "_ms", (end - start) / 1e6);
+  }
+
+  /** Subclasses must implement this instead of periodic(). */
+  protected abstract void rbsiPeriodic();
 
   /**
    * Gets the power ports associated with this Subsystem.
