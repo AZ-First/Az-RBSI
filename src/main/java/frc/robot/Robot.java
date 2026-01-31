@@ -26,8 +26,10 @@ import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.LogFileUtil;
+import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
@@ -100,7 +102,7 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    // LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+    LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -112,35 +114,60 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
-  }
 
-  /** This function is called periodically during all modes. */
-  @Override
-  public void robotPeriodic() {
     // Switch thread to high priority to improve loop timing
     if (isReal()) {
       Threads.setCurrentThreadPriority(true, 99);
     }
+  }
 
-    // Run all virtual subsystems each time through the loop
+  // /** This function is called periodically during all modes. */
+  // @Override
+  // public void robotPeriodic() {
+
+  //   // Run all virtual subsystems each time through the loop
+  //   VirtualSubsystem.periodicAll();
+
+  //   // Runs the Scheduler. This is responsible for polling buttons, adding
+  //   // newly-scheduled commands, running already-scheduled commands, removing
+  //   // finished or interrupted commands, and running subsystem periodic() methods.
+  //   // This must be called from the robot's periodic block in order for anything in
+  //   // the Command-based framework to work.
+  //   CommandScheduler.getInstance().run();
+  // }
+
+  /** TESTING VERSION OF ROBOTPERIODIC FOR OVERRUN SOURCES */
+  @Override
+  public void robotPeriodic() {
+    final long t0 = System.nanoTime();
+
+    if (isReal()) {
+      Threads.setCurrentThreadPriority(true, 99);
+    }
+    final long t1 = System.nanoTime();
+
     VirtualSubsystem.periodicAll();
+    final long t2 = System.nanoTime();
 
-    // Runs the Scheduler. This is responsible for polling buttons, adding
-    // newly-scheduled commands, running already-scheduled commands, removing
-    // finished or interrupted commands, and running subsystem periodic() methods.
-    // This must be called from the robot's periodic block in order for anything in
-    // the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    final long t3 = System.nanoTime();
 
-    // Return to normal thread priority
     Threads.setCurrentThreadPriority(false, 10);
+    final long t4 = System.nanoTime();
+
+    Logger.recordOutput("Loop/RobotPeriodic_ms", (t4 - t0) / 1e6);
+    Logger.recordOutput("Loop/ThreadBoost_ms", (t1 - t0) / 1e6);
+    Logger.recordOutput("Loop/Virtual_ms", (t2 - t1) / 1e6);
+    Logger.recordOutput("Loop/Scheduler_ms", (t3 - t2) / 1e6);
+    Logger.recordOutput("Loop/ThreadRestore_ms", (t4 - t3) / 1e6);
   }
 
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
     // Set the brakes to stop robot motion
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
     m_disabledTimer.reset();
     m_disabledTimer.start();
   }
@@ -150,7 +177,7 @@ public class Robot extends LoggedRobot {
   public void disabledPeriodic() {
     // After WHEEL_LOCK_TIME has elapsed, release the drive brakes
     if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTime)) {
-      m_robotContainer.setMotorBrake(false);
+      m_robotContainer.getDrivebase().setMotorBrake(false);
       m_disabledTimer.stop();
     }
   }
@@ -161,7 +188,8 @@ public class Robot extends LoggedRobot {
 
     // Just in case, cancel all running commands
     CommandScheduler.getInstance().cancelAll();
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
     switch (Constants.getAutoType()) {
@@ -202,7 +230,8 @@ public class Robot extends LoggedRobot {
     } else {
       CommandScheduler.getInstance().cancelAll();
     }
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
 
     // In case this got set in sequential practice sessions or whatever
     FieldState.wonAuto = null;
@@ -246,6 +275,7 @@ public class Robot extends LoggedRobot {
   public void testInit() {
     // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
+    m_robotContainer.getDrivebase().resetHeadingController();
   }
 
   /** This function is called periodically during test mode. */

@@ -55,7 +55,7 @@ public class SparkOdometryThread {
 
   /** Registers a Spark signal to be read from the thread. */
   public Queue<Double> registerSignal(SparkBase spark, DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     Drive.odometryLock.lock();
     try {
       sparks.add(spark);
@@ -69,7 +69,7 @@ public class SparkOdometryThread {
 
   /** Registers a generic signal to be read from the thread. */
   public Queue<Double> registerSignal(DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     Drive.odometryLock.lock();
     try {
       genericSignals.add(signal);
@@ -82,7 +82,7 @@ public class SparkOdometryThread {
 
   /** Returns a new queue that returns timestamp values for each sample. */
   public Queue<Double> makeTimestampQueue() {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     Drive.odometryLock.lock();
     try {
       timestampQueues.add(queue);

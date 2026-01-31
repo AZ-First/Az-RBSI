@@ -10,9 +10,9 @@
 package frc.robot.subsystems.drive;
 
 import static edu.wpi.first.units.Units.RotationsPerSecond;
-import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -47,6 +47,7 @@ import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
+import frc.robot.util.RBSICANBusRegistry;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
 
@@ -60,6 +61,9 @@ public class ModuleIOTalonFX implements ModuleIO {
   private final SwerveModuleConstants<
           TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>
       constants;
+
+  // This module number (for logging)
+  private final int module;
 
   // Hardware objects
   private final TalonFX driveTalon;
@@ -93,6 +97,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
   // Inputs from drive motor
   private final StatusSignal<Angle> drivePosition;
+  private final StatusSignal<Angle> drivePositionOdom;
   private final Queue<Double> drivePositionQueue;
   private final StatusSignal<AngularVelocity> driveVelocity;
   private final StatusSignal<Voltage> driveAppliedVolts;
@@ -101,6 +106,7 @@ public class ModuleIOTalonFX implements ModuleIO {
   // Inputs from turn motor
   private final StatusSignal<Angle> turnAbsolutePosition;
   private final StatusSignal<Angle> turnPosition;
+  private final StatusSignal<Angle> turnPositionOdom;
   private final Queue<Double> turnPositionQueue;
   private final StatusSignal<AngularVelocity> turnVelocity;
   private final StatusSignal<Voltage> turnAppliedVolts;
@@ -126,6 +132,9 @@ public class ModuleIOTalonFX implements ModuleIO {
    * TalonFX I/O
    */
   public ModuleIOTalonFX(int module) {
+    // Record the module number for logging purposes
+    this.module = module;
+
     constants =
         switch (module) {
           case 0 -> TunerConstants.FrontLeft;
@@ -135,9 +144,10 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    driveTalon = new TalonFX(constants.DriveMotorId, kCANBus);
-    turnTalon = new TalonFX(constants.SteerMotorId, kCANBus);
-    cancoder = new CANcoder(constants.EncoderId, kCANBus);
+    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
+    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
+    turnTalon = new TalonFX(constants.SteerMotorId, canBus);
+    cancoder = new CANcoder(constants.EncoderId, canBus);
 
     // Configure drive motor
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -150,8 +160,8 @@ public class ModuleIOTalonFX implements ModuleIO {
             .withKV(DrivebaseConstants.kDriveV)
             .withKA(DrivebaseConstants.kDriveA);
     driveConfig.Feedback.SensorToMechanismRatio = SwerveConstants.kDriveGearRatio;
-    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = SwerveConstants.kDriveSlipCurrent;
-    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -SwerveConstants.kDriveSlipCurrent;
+    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DrivebaseConstants.kSlipCurrent;
+    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DrivebaseConstants.kSlipCurrent;
     driveConfig.CurrentLimits.StatorCurrentLimit = SwerveConstants.kDriveCurrentLimit;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
@@ -215,25 +225,30 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
-    drivePositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(driveTalon.getPosition());
+    drivePositionOdom = drivePosition.clone(); // NEW
+    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
 
     // Create turn status signals
-    turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = turnTalon.getPosition();
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnTalon.getPosition());
+    turnPositionOdom = turnPosition.clone(); // NEW
+    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnPositionOdom);
+
+    turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnVelocity = turnTalon.getVelocity();
     turnAppliedVolts = turnTalon.getMotorVoltage();
     turnCurrent = turnTalon.getStatorCurrent();
 
-    // Configure periodic frames
+    // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
     BaseStatusSignal.setUpdateFrequencyForAll(
-        SwerveConstants.kOdometryFrequency, drivePosition, turnPosition);
+        SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
     BaseStatusSignal.setUpdateFrequencyForAll(
         50.0,
+        drivePosition,
+        turnPosition,
         driveVelocity,
         driveAppliedVolts,
         driveCurrent,
@@ -241,17 +256,30 @@ public class ModuleIOTalonFX implements ModuleIO {
         turnVelocity,
         turnAppliedVolts,
         turnCurrent);
+
     ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
   }
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
-    // Refresh all signals
+
+    // Refresh most signals
     var driveStatus =
         BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
     var turnStatus =
         BaseStatusSignal.refreshAll(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
-    var turnEncoderStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+
+    // Log *which* groups are failing and what the code is
+    if (!driveStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+    }
+    if (!turnStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/TurnRefreshStatus", turnStatus.toString());
+    }
+    if (!encStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    }
 
     // Update drive inputs
     inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
@@ -262,7 +290,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Update turn inputs
     inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus.isOK());
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(turnEncoderStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());
@@ -280,6 +308,8 @@ public class ModuleIOTalonFX implements ModuleIO {
         turnPositionQueue.stream()
             .map((Double value) -> Rotation2d.fromRotations(value))
             .toArray(Rotation2d[]::new);
+
+    // Clear the queues
     timestampQueue.clear();
     drivePositionQueue.clear();
     turnPositionQueue.clear();

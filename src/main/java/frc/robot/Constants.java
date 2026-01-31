@@ -162,12 +162,19 @@ public final class Constants {
   }
 
   /************************************************************************* */
+  /** List of Robot CAN Busses ********************************************* */
+  public static final class CANBuses {
+    public static final String DRIVE = "DriveTrain";
+    public static final String RIO = "";
+  }
+
+  /************************************************************************* */
   /** List of Robot Device CAN and Power Distribution Circuit IDs ********** */
   public static class RobotDevices {
 
     /* DRIVETRAIN CAN DEVICE IDS */
     // Input the correct Power Distribution Module port for each motor!!!!
-    // NOTE: The CAN ID and bus are set in the Swerve Generator (Phoenix Tuner or YAGSL)
+    // NOTE: The CAN ID's are set in the Swerve Generator (Phoenix Tuner or YAGSL)
 
     // Front Left
     public static final RobotDeviceId FL_DRIVE =
@@ -204,8 +211,8 @@ public final class Constants {
     /* SUBSYSTEM CAN DEVICE IDS */
     // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
     // Example:
-    public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, "", 8);
-    public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, "", 9);
+    public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, CANBuses.RIO, 8);
+    public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, CANBuses.RIO, 9);
 
     /* BEAM BREAK and/or LIMIT SWITCH DIO CHANNELS */
     // This is where digital I/O feedback devices are defined
@@ -262,19 +269,27 @@ public final class Constants {
     // of YOUR ROBOT, and replace the estimate here with your measured value!
     public static final double kMaxLinearSpeed = Feet.of(18).in(Meters);
 
-    // Set 3/4 of a rotation per second as the max angular velocity (radians/sec)
-    public static final double kMaxAngularSpeed = 1.5 * Math.PI;
+    // Slip Current -- the current draw when the wheels start to slip
+    // Measure this against a wall.  CHECK WITH THE CARPET AT AN ACTUAL EVENT!!!
+    public static final double kSlipCurrent = 20.0; // Amps
+
+    // Characterized Wheel Radius (using the "Drive Wheel Radius Characterization" auto routine)
+    public static final double kWheelRadiusMeters = Inches.of(2.000).in(Meters);
 
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
     public static final double kMaxLinearAccel = 4.0; // m/s/s
-    public static final double kMaxAngularAccel = Degrees.of(720).in(Radians);
 
-    // For Profiled PID Motion, these are the rotational PID Constants:
-    // TODO: Need tuning!
-    public static final double kPTheta = 5.0;
-    public static final double kITheta = 0.0;
-    public static final double kDTheta = 0.0;
+    // For Profiled PID Motion -- NEED TUNING!
+    // Used in a variety of contexts, including PathPlanner and AutoPilot
+    // Chassis (not module) across-the-field strafing motion
+    public static final double kPStrafe = 5.0;
+    public static final double kIStrafe = 0.0;
+    public static final double kDStrafe = 0.0;
+    // Chassis (not module) solid-body rotation
+    public static final double kPSPin = 5.0;
+    public static final double kISPin = 0.0;
+    public static final double kDSpin = 0.0;
 
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTime = 10; // seconds
@@ -326,17 +341,21 @@ public final class Constants {
 
     // MODE == REAL / REPLAY
     // Feedforward constants
-    public static final double kStaticGainReal = 0.1;
-    public static final double kVelocityGainReal = 0.05;
+    public static final double kSreal = 0.1;
+    public static final double kVreal = 0.05;
+    public static final double kAreal = 0.0;
     // Feedback (PID) constants
-    public static final PIDConstants pidReal = new PIDConstants(1.0, 0.0, 0.0);
+    public static final double kPreal = 1.0;
+    public static final double kDreal = 0.0;
 
     // MODE == SIM
     // Feedforward constants
-    public static final double kStaticGainSim = 0.0;
-    public static final double kVelocityGainSim = 0.03;
+    public static final double kSsim = 0.0;
+    public static final double kVsim = 0.03;
+    public static final double kAsim = 0.0;
     // Feedback (PID) constants
-    public static final PIDConstants pidSim = new PIDConstants(1.0, 0.0, 0.0);
+    public static final double kPsim = 0.0;
+    public static final double kDsim = 0.0;
   }
 
   /************************************************************************* */
@@ -350,21 +369,17 @@ public final class Constants {
   public static final class AutoConstants {
 
     // ********** PATHPLANNER CONSTANTS *******************
-    // Drive and Turn PID constants used for PathPlanner
-    public static final PIDConstants kPPdrivePID = new PIDConstants(5.0, 0.0, 0.0);
-    public static final PIDConstants kPPsteerPID = new PIDConstants(5.0, 0.0, 0.0);
-
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(
             RobotConstants.kRobotMass.in(Kilograms),
             RobotConstants.kRobotMOI,
             new ModuleConfig(
-                SwerveConstants.kWheelRadiusMeters,
+                DrivebaseConstants.kWheelRadiusMeters,
                 DrivebaseConstants.kMaxLinearSpeed,
                 RobotConstants.kWheelCOF,
                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
-                SwerveConstants.kDriveSlipCurrent,
+                DrivebaseConstants.kSlipCurrent,
                 1),
             Drive.getModuleTranslations());
 
