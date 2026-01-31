@@ -21,6 +21,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.DoubleSupplier;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -41,6 +42,9 @@ public class PhoenixOdometryThread extends Thread {
 
   private static boolean isCANFD = TunerConstants.kCANBus.isNetworkFD();
   private static PhoenixOdometryThread instance = null;
+
+  private long droppedSamples = 0;
+  private long loopCount = 0;
 
   public static PhoenixOdometryThread getInstance() {
     if (instance == null) {
@@ -63,7 +67,7 @@ public class PhoenixOdometryThread extends Thread {
 
   /** Registers a Phoenix signal to be read from the thread. */
   public Queue<Double> registerSignal(StatusSignal<Angle> signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     signalsLock.lock();
     Drive.odometryLock.lock();
     try {
@@ -81,7 +85,7 @@ public class PhoenixOdometryThread extends Thread {
 
   /** Registers a generic signal to be read from the thread. */
   public Queue<Double> registerSignal(DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     signalsLock.lock();
     Drive.odometryLock.lock();
     try {
@@ -96,7 +100,7 @@ public class PhoenixOdometryThread extends Thread {
 
   /** Returns a new queue that returns timestamp values for each sample. */
   public Queue<Double> makeTimestampQueue() {
-    Queue<Double> queue = new ArrayBlockingQueue<>(20);
+    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
     Drive.odometryLock.lock();
     try {
       timestampQueues.add(queue);
@@ -144,16 +148,21 @@ public class PhoenixOdometryThread extends Thread {
 
         // Add new samples to queues
         for (int i = 0; i < phoenixSignals.length; i++) {
-          phoenixQueues.get(i).offer(phoenixSignals[i].getValueAsDouble());
+          if (!phoenixQueues.get(i).offer(phoenixSignals[i].getValueAsDouble())) droppedSamples++;
         }
         for (int i = 0; i < genericSignals.size(); i++) {
           genericQueues.get(i).offer(genericSignals.get(i).getAsDouble());
         }
         for (int i = 0; i < timestampQueues.size(); i++) {
-          timestampQueues.get(i).offer(timestamp);
+          if (!timestampQueues.get(i).offer(timestamp)) droppedSamples++;
         }
       } finally {
         Drive.odometryLock.unlock();
+      }
+
+      // every ~1s
+      if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
+        Logger.recordOutput("Drive/OdomThread/DroppedSamples", droppedSamples);
       }
     }
   }

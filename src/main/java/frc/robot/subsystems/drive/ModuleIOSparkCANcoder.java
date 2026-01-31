@@ -9,8 +9,6 @@
 
 package frc.robot.subsystems.drive;
 
-import static frc.robot.subsystems.drive.SwerveConstants.*;
-
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.CANcoder;
@@ -38,6 +36,7 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.SparkUtil;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
@@ -90,59 +89,59 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
   public ModuleIOSparkCANcoder(int module) {
     zeroRotation =
         switch (module) {
-          case 0 -> new Rotation2d(kFLEncoderOffset);
-          case 1 -> new Rotation2d(kFREncoderOffset);
-          case 2 -> new Rotation2d(kBLEncoderOffset);
-          case 3 -> new Rotation2d(kBREncoderOffset);
+          case 0 -> new Rotation2d(SwerveConstants.kFLEncoderOffset);
+          case 1 -> new Rotation2d(SwerveConstants.kFREncoderOffset);
+          case 2 -> new Rotation2d(SwerveConstants.kBLEncoderOffset);
+          case 3 -> new Rotation2d(SwerveConstants.kBREncoderOffset);
           default -> Rotation2d.kZero;
         };
     driveSpark =
         new SparkFlex(
             switch (module) {
-              case 0 -> kFLDriveMotorId;
-              case 1 -> kFRDriveMotorId;
-              case 2 -> kBLDriveMotorId;
-              case 3 -> kBRDriveMotorId;
+              case 0 -> SwerveConstants.kFLDriveMotorId;
+              case 1 -> SwerveConstants.kFRDriveMotorId;
+              case 2 -> SwerveConstants.kBLDriveMotorId;
+              case 3 -> SwerveConstants.kBRDriveMotorId;
               default -> 0;
             },
             MotorType.kBrushless);
     turnSpark =
         new SparkMax(
             switch (module) {
-              case 0 -> kFLSteerMotorId;
-              case 1 -> kFRSteerMotorId;
-              case 2 -> kBLSteerMotorId;
-              case 3 -> kBRSteerMotorId;
+              case 0 -> SwerveConstants.kFLSteerMotorId;
+              case 1 -> SwerveConstants.kFRSteerMotorId;
+              case 2 -> SwerveConstants.kBLSteerMotorId;
+              case 3 -> SwerveConstants.kBRSteerMotorId;
               default -> 0;
             },
             MotorType.kBrushless);
     turnInverted =
         switch (module) {
-          case 0 -> kFLSteerInvert;
-          case 1 -> kFRSteerInvert;
-          case 2 -> kBLSteerInvert;
-          case 3 -> kBRSteerInvert;
+          case 0 -> SwerveConstants.kFLSteerInvert;
+          case 1 -> SwerveConstants.kFRSteerInvert;
+          case 2 -> SwerveConstants.kBLSteerInvert;
+          case 3 -> SwerveConstants.kBRSteerInvert;
           default -> false;
         };
     turnEncoderInverted =
         switch (module) {
-          case 0 -> kFLEncoderInvert;
-          case 1 -> kFREncoderInvert;
-          case 2 -> kBLEncoderInvert;
-          case 3 -> kBREncoderInvert;
+          case 0 -> SwerveConstants.kFLEncoderInvert;
+          case 1 -> SwerveConstants.kFREncoderInvert;
+          case 2 -> SwerveConstants.kBLEncoderInvert;
+          case 3 -> SwerveConstants.kBREncoderInvert;
           default -> false;
         };
     driveEncoder = driveSpark.getEncoder();
     cancoder =
         new CANcoder(
             switch (module) {
-              case 0 -> kFLEncoderId;
-              case 1 -> kFREncoderId;
-              case 2 -> kBLEncoderId;
-              case 3 -> kBREncoderId;
+              case 0 -> SwerveConstants.kFLEncoderId;
+              case 1 -> SwerveConstants.kFREncoderId;
+              case 2 -> SwerveConstants.kBLEncoderId;
+              case 3 -> SwerveConstants.kBREncoderId;
               default -> 0;
             },
-            kCANBus);
+            RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
     driveController = driveSpark.getClosedLoopController();
     turnController = turnSpark.getClosedLoopController();
 
@@ -150,12 +149,12 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     var driveConfig = new SparkFlexConfig();
     driveConfig
         .idleMode(IdleMode.kBrake)
-        .smartCurrentLimit((int) kDriveCurrentLimit)
+        .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
         .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
     driveConfig
         .encoder
-        .positionConversionFactor(driveEncoderPositionFactor)
-        .velocityConversionFactor(driveEncoderVelocityFactor)
+        .positionConversionFactor(SwerveConstants.driveEncoderPositionFactor)
+        .velocityConversionFactor(SwerveConstants.driveEncoderVelocityFactor)
         .uvwMeasurementPeriod(10)
         .uvwAverageDepth(2);
     driveConfig
@@ -168,7 +167,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     driveConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
-        .primaryEncoderPositionPeriodMs((int) (1000.0 / kOdometryFrequency))
+        .primaryEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .primaryEncoderVelocityAlwaysOn(true)
         .primaryEncoderVelocityPeriodMs(20)
         .appliedOutputPeriodMs(20)
@@ -192,21 +191,22 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     turnConfig
         .absoluteEncoder
         .inverted(turnEncoderInverted)
-        .positionConversionFactor(turnEncoderPositionFactor)
-        .velocityConversionFactor(turnEncoderVelocityFactor)
+        .positionConversionFactor(SwerveConstants.turnEncoderPositionFactor)
+        .velocityConversionFactor(SwerveConstants.turnEncoderVelocityFactor)
         .averageDepth(2);
     turnConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
-        .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
+        .positionWrappingInputRange(
+            SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
         .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
         .kV(0.0);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
-        .absoluteEncoderPositionPeriodMs((int) (1000.0 / kOdometryFrequency))
+        .absoluteEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
         .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
         .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
@@ -362,7 +362,9 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
   public void setTurnPosition(Rotation2d rotation) {
     double setpoint =
         MathUtil.inputModulus(
-            rotation.plus(zeroRotation).getRadians(), turnPIDMinInput, turnPIDMaxInput);
+            rotation.plus(zeroRotation).getRadians(),
+            SwerveConstants.turnPIDMinInput,
+            SwerveConstants.turnPIDMaxInput);
     turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 }
