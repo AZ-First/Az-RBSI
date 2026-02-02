@@ -16,7 +16,11 @@ package frc.robot.subsystems.drive;
 import com.ctre.phoenix6.CANBus;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
+import frc.robot.Constants.CANBuses;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.imu.ImuIO;
+import frc.robot.subsystems.imu.ImuIONavX;
+import frc.robot.subsystems.imu.ImuIOPigeon2;
 import frc.robot.util.YagslConstants;
 
 /**
@@ -32,10 +36,7 @@ public class SwerveConstants {
   public static final double kCoupleRatio;
   public static final double kDriveGearRatio;
   public static final double kSteerGearRatio;
-  public static final double kWheelRadiusInches;
-  public static final double kWheelRadiusMeters;
   public static final String kCANbusName;
-  public static final CANBus kCANBus;
   public static final int kPigeonId;
   public static final double kSteerInertia;
   public static final double kDriveInertia;
@@ -43,7 +44,6 @@ public class SwerveConstants {
   public static final double kDriveFrictionVoltage;
   public static final double kSteerCurrentLimit;
   public static final double kDriveCurrentLimit;
-  public static final double kDriveSlipCurrent;
   public static final int kFLDriveMotorId;
   public static final int kFLSteerMotorId;
   public static final int kFLEncoderId;
@@ -113,10 +113,7 @@ public class SwerveConstants {
         kCoupleRatio = TunerConstants.FrontLeft.CouplingGearRatio;
         kDriveGearRatio = TunerConstants.FrontLeft.DriveMotorGearRatio;
         kSteerGearRatio = TunerConstants.FrontLeft.SteerMotorGearRatio;
-        kWheelRadiusMeters = TunerConstants.FrontLeft.WheelRadius;
-        kWheelRadiusInches = Units.metersToInches(kWheelRadiusMeters);
-        kCANbusName = TunerConstants.DrivetrainConstants.CANBusName;
-        kCANBus = new CANBus(TunerConstants.DrivetrainConstants.CANBusName);
+        kCANbusName = CANBuses.DRIVE;
         kPigeonId = TunerConstants.DrivetrainConstants.Pigeon2Id;
         kSteerInertia = TunerConstants.FrontLeft.SteerInertia;
         kDriveInertia = TunerConstants.FrontLeft.DriveInertia;
@@ -124,14 +121,13 @@ public class SwerveConstants {
         kDriveFrictionVoltage = 0.1;
         kSteerCurrentLimit = 40.0; // Example from CTRE documentation
         kDriveCurrentLimit = 120.0; // Example from CTRE documentation
-        kDriveSlipCurrent = TunerConstants.FrontLeft.SlipCurrent;
         // Front Left
         kFLDriveMotorId = TunerConstants.FrontLeft.DriveMotorId;
         kFLSteerMotorId = TunerConstants.FrontLeft.SteerMotorId;
         kFLEncoderId = TunerConstants.FrontLeft.EncoderId;
-        kFLDriveCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kFLSteerCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kFLEncoderCanbus = TunerConstants.DrivetrainConstants.CANBusName;
+        kFLDriveCanbus = kCANbusName;
+        kFLSteerCanbus = kCANbusName;
+        kFLEncoderCanbus = kCANbusName;
         kFLDriveType = "kraken";
         kFLSteerType = "kraken";
         kFLEncoderType = "cancoder";
@@ -146,9 +142,9 @@ public class SwerveConstants {
         kFRDriveMotorId = TunerConstants.FrontRight.DriveMotorId;
         kFRSteerMotorId = TunerConstants.FrontRight.SteerMotorId;
         kFREncoderId = TunerConstants.FrontRight.EncoderId;
-        kFRDriveCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kFRSteerCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kFREncoderCanbus = TunerConstants.DrivetrainConstants.CANBusName;
+        kFRDriveCanbus = kCANbusName;
+        kFRSteerCanbus = kCANbusName;
+        kFREncoderCanbus = kCANbusName;
         kFRDriveType = "kraken";
         kFRSteerType = "kraken";
         kFREncoderType = "cancoder";
@@ -162,9 +158,9 @@ public class SwerveConstants {
         kBLDriveMotorId = TunerConstants.BackLeft.DriveMotorId;
         kBLSteerMotorId = TunerConstants.BackLeft.SteerMotorId;
         kBLEncoderId = TunerConstants.BackLeft.EncoderId;
-        kBLDriveCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kBLSteerCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kBLEncoderCanbus = TunerConstants.DrivetrainConstants.CANBusName;
+        kBLDriveCanbus = kCANbusName;
+        kBLSteerCanbus = kCANbusName;
+        kBLEncoderCanbus = kCANbusName;
         kBLDriveType = "kraken";
         kBLSteerType = "kraken";
         kBLEncoderType = "cancoder";
@@ -179,9 +175,9 @@ public class SwerveConstants {
         kBRDriveMotorId = TunerConstants.BackRight.DriveMotorId;
         kBRSteerMotorId = TunerConstants.BackRight.SteerMotorId;
         kBREncoderId = TunerConstants.BackRight.EncoderId;
-        kBRDriveCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kBRSteerCanbus = TunerConstants.DrivetrainConstants.CANBusName;
-        kBREncoderCanbus = TunerConstants.DrivetrainConstants.CANBusName;
+        kBRDriveCanbus = kCANbusName;
+        kBRSteerCanbus = kCANbusName;
+        kBREncoderCanbus = kCANbusName;
         kBRDriveType = "kraken";
         kBRSteerType = "kraken";
         kBREncoderType = "cancoder";
@@ -198,10 +194,7 @@ public class SwerveConstants {
         kCoupleRatio = YagslConstants.kCoupleRatio;
         kDriveGearRatio = YagslConstants.kDriveGearRatio;
         kSteerGearRatio = YagslConstants.kSteerGearRatio;
-        kWheelRadiusInches = YagslConstants.kWheelRadiusInches;
-        kWheelRadiusMeters = Units.inchesToMeters(kWheelRadiusInches);
         kCANbusName = YagslConstants.kCANbusName;
-        kCANBus = new CANBus(YagslConstants.kCANbusName);
         kPigeonId = YagslConstants.kPigeonId;
         kSteerInertia = YagslConstants.kSteerInertia;
         kDriveInertia = YagslConstants.kDriveInertia;
@@ -209,7 +202,6 @@ public class SwerveConstants {
         kDriveFrictionVoltage = YagslConstants.kDriveFrictionVoltage;
         kSteerCurrentLimit = YagslConstants.kSteerCurrentLimit;
         kDriveCurrentLimit = YagslConstants.kDriveCurrentLimit;
-        kDriveSlipCurrent = 120.0;
         // Front Left
         kFLDriveMotorId = YagslConstants.kFrontLeftDriveMotorId;
         kFLSteerMotorId = YagslConstants.kFrontLeftSteerMotorId;
@@ -281,6 +273,9 @@ public class SwerveConstants {
     }
   }
 
+  // Derived constant AFTER the static block
+  public static final ImuType kImu = ImuType.fromString(kImuType);
+
   // Computed quantities
   public static final double kDriveBaseRadiusMeters =
       Math.max(
@@ -308,4 +303,30 @@ public class SwerveConstants {
   // Turn PID configuration0
   public static final double turnPIDMinInput = 0; // Radians
   public static final double turnPIDMaxInput = 2 * Math.PI; // Radians
+
+  /** IMU Type enum */
+  public enum ImuType {
+    PIGEON(new String[] {"pigeon", "pigeon2"}, ImuIOPigeon2::new),
+    NAVX(new String[] {"navx", "navx_spi"}, ImuIONavX::new);
+
+    private final String[] keys;
+    public final java.util.function.Supplier<ImuIO> factory;
+
+    ImuType(String[] keys, java.util.function.Supplier<ImuIO> factory) {
+      this.keys = keys;
+      this.factory = factory;
+    }
+
+    public static ImuType fromString(String s) {
+      if (s == null) throw new IllegalArgumentException("IMU type string is null");
+      String norm = s.trim().toLowerCase();
+
+      for (ImuType t : values()) {
+        for (String k : t.keys) {
+          if (norm.equals(k)) return t;
+        }
+      }
+      throw new IllegalArgumentException("Unknown IMU type: '" + s + "'");
+    }
+  }
 }

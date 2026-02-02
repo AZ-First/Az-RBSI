@@ -17,77 +17,107 @@
 
 package frc.robot.subsystems.imu;
 
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.Timer;
-import java.util.LinkedList;
-import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
 
-/** Simulated IMU for full robot simulation & replay logging */
+/** Simulated IMU for full robot simulation & replay logging (primitive-only) */
 public class ImuIOSim implements ImuIO {
+  private static final double RAD_TO_DEG = 180.0 / Math.PI;
 
-  // --- AUTHORITATIVE SIM STATE ---
-  private Rotation2d yaw = Rotation2d.kZero;
+  // --- AUTHORITATIVE SIM STATE (PRIMITIVES) ---
+  private double yawRad = 0.0;
   private double yawRateRadPerSec = 0.0;
-  private Translation3d linearAccel = Translation3d.kZero;
+  private double ax = 0.0, ay = 0.0, az = 0.0; // m/s^2
 
-  // --- ODOMETRY HISTORY FOR LOGGING/LATENCY ---
-  private final Queue<Double> odomTimestamps = new LinkedList<>();
-  private final Queue<Rotation2d> odomYaws = new LinkedList<>();
+  // --- ODOMETRY HISTORY (PRIMITIVE RING BUFFER) ---
+  private static final int ODOM_CAP = 50;
+  private final double[] odomTs = new double[ODOM_CAP];
+  private final double[] odomYawRad = new double[ODOM_CAP];
+  private int odomSize = 0;
+  private int odomHead = 0; // next write index
 
   public ImuIOSim() {}
 
   // ---------------- SIMULATION INPUTS (PUSH) ----------------
 
-  /** Set yaw from authoritative physics */
-  public void simulationSetYaw(Rotation2d yaw) {
-    this.yaw = yaw;
+  @Override
+  public void simulationSetYawRad(double yawRad) {
+    this.yawRad = yawRad;
   }
 
-  /** Set angular velocity from authoritative physics */
-  public void simulationSetOmega(double omegaRadPerSec) {
+  @Override
+  public void simulationSetOmegaRadPerSec(double omegaRadPerSec) {
     this.yawRateRadPerSec = omegaRadPerSec;
   }
 
-  /** Set linear acceleration from physics (optional) */
-  public void setLinearAccel(Translation3d accelMps2) {
-    this.linearAccel = accelMps2;
+  @Override
+  public void simulationSetLinearAccelMps2(double ax, double ay, double az) {
+    this.ax = ax;
+    this.ay = ay;
+    this.az = az;
   }
 
   // ---------------- IO UPDATE (PULL) ----------------
 
-  /** Populate the IMUIOInputs object with the current SIM state */
   @Override
   public void updateInputs(ImuIOInputs inputs) {
     inputs.connected = true;
+    inputs.timestampNs = System.nanoTime();
 
-    // Authoritative physics
-    inputs.yawPosition = yaw;
-    inputs.yawVelocityRadPerSec = RadiansPerSecond.of(yawRateRadPerSec);
-    inputs.linearAccel = linearAccel;
+    // Authoritative sim state
+    inputs.yawPositionRad = yawRad;
+    inputs.yawRateRadPerSec = yawRateRadPerSec;
+    inputs.linearAccelX = ax;
+    inputs.linearAccelY = ay;
+    inputs.linearAccelZ = az;
 
-    // Maintain odometry history for logging / latency purposes
-    double now = Timer.getFPGATimestamp();
-    odomTimestamps.add(now);
-    odomYaws.add(yaw);
+    // Jerk: SIM doesn’t have a prior accel here unless you want it; set to 0 by default.
+    // If you do want jerk, you can add prevAx/prevAy/prevAz + dt just like the real IO.
+    inputs.jerkX = 0.0;
+    inputs.jerkY = 0.0;
+    inputs.jerkZ = 0.0;
 
-    while (odomTimestamps.size() > 50) odomTimestamps.poll();
-    while (odomYaws.size() > 50) odomYaws.poll();
+    // Maintain odometry history
+    pushOdomSample(Timer.getFPGATimestamp(), yawRad);
 
-    inputs.odometryYawTimestamps = odomTimestamps.stream().mapToDouble(d -> d).toArray();
-    inputs.odometryYawPositions = odomYaws.toArray(Rotation2d[]::new);
+    // Export odometry arrays (copy out in chronological order)
+    final int n = odomSize;
+    final double[] tsOut = new double[n];
+    final double[] yawOut = new double[n];
 
-    // Logging for SIM analysis
-    Logger.recordOutput("IMU/Yaw", yaw);
-    Logger.recordOutput("IMU/YawRateDps", Math.toDegrees(yawRateRadPerSec));
+    // Oldest sample index:
+    int idx = (odomHead - odomSize);
+    while (idx < 0) idx += ODOM_CAP;
+
+    for (int i = 0; i < n; i++) {
+      tsOut[i] = odomTs[idx];
+      yawOut[i] = odomYawRad[idx];
+      idx++;
+      if (idx == ODOM_CAP) idx = 0;
+    }
+
+    inputs.odometryYawTimestamps = tsOut;
+    inputs.odometryYawPositionsRad = yawOut;
+
+    // Optional: SIM logging (primitive-friendly)
+    Logger.recordOutput("IMU/YawRad", yawRad);
+    Logger.recordOutput("IMU/YawDeg", yawRad * RAD_TO_DEG);
+    Logger.recordOutput("IMU/YawRateDps", yawRateRadPerSec * RAD_TO_DEG);
   }
 
   @Override
-  public void zeroYaw(Rotation2d yaw) {
-    this.yaw = yaw;
+  public void zeroYawRad(double yawRad) {
+    this.yawRad = yawRad;
     this.yawRateRadPerSec = 0.0;
+  }
+
+  private void pushOdomSample(double timestampSec, double yawRad) {
+    odomTs[odomHead] = timestampSec;
+    odomYawRad[odomHead] = yawRad;
+
+    odomHead++;
+    if (odomHead == ODOM_CAP) odomHead = 0;
+
+    if (odomSize < ODOM_CAP) odomSize++;
   }
 }

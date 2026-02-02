@@ -10,22 +10,18 @@
 package frc.robot.commands;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import frc.robot.Constants.AutoConstants;
-import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
@@ -117,16 +113,6 @@ public class DriveCommands {
       DoubleSupplier ySupplier,
       Supplier<Rotation2d> rotationSupplier) {
 
-    // Create PID controller
-    ProfiledPIDController angleController =
-        new ProfiledPIDController(
-            AutoConstants.kPPsteerPID.kP,
-            AutoConstants.kPPsteerPID.kI,
-            AutoConstants.kPPsteerPID.kD,
-            new TrapezoidProfile.Constraints(
-                DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
-    angleController.enableContinuousInput(-Math.PI, Math.PI);
-
     // Construct command
     return Commands.run(
             () -> {
@@ -136,8 +122,10 @@ public class DriveCommands {
 
               // Calculate angular speed
               double omega =
-                  angleController.calculate(
-                      drive.getHeading().getRadians(), rotationSupplier.get().getRadians());
+                  drive
+                      .getAngleController()
+                      .calculate(
+                          drive.getHeading().getRadians(), rotationSupplier.get().getRadians());
 
               // Convert to field relative speeds & send command
               ChassisSpeeds speeds =
@@ -157,8 +145,9 @@ public class DriveCommands {
             },
             drive)
 
-        // Reset PID controller when command starts
-        .beforeStarting(() -> angleController.reset(drive.getHeading().getRadians()));
+        // Reset PID controller when command starts & ends;
+        .beforeStarting(() -> drive.resetHeadingController())
+        .finallyDo(() -> drive.resetHeadingController());
   }
 
   /** Utility functions needed by commands in this module ****************** */

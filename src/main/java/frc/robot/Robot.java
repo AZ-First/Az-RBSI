@@ -18,17 +18,16 @@
 package frc.robot;
 
 import com.revrobotics.util.StatusLogger;
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.LogFileUtil;
+import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
@@ -37,7 +36,6 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
-import org.photonvision.simulation.SimCameraProperties;
 import org.photonvision.simulation.VisionSystemSim;
 
 /**
@@ -102,7 +100,7 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    // LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+    LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -114,38 +112,64 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
-  }
-
-  /** This function is called periodically during all modes. */
-  @Override
-  public void robotPeriodic() {
-
-    isBlueAlliance = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue;
 
     // Switch thread to high priority to improve loop timing
     if (isReal()) {
       Threads.setCurrentThreadPriority(true, 99);
     }
+  }
 
-    // Run all virtual subsystems each time through the loop
+  // /** This function is called periodically during all modes. */
+  // @Override
+  // public void robotPeriodic() {
+
+  //   // Run all virtual subsystems each time through the loop
+  //   VirtualSubsystem.periodicAll();
+
+  //   // Runs the Scheduler. This is responsible for polling buttons, adding
+  //   // newly-scheduled commands, running already-scheduled commands, removing
+  //   // finished or interrupted commands, and running subsystem periodic() methods.
+  //   // This must be called from the robot's periodic block in order for anything in
+  //   // the Command-based framework to work.
+  //   CommandScheduler.getInstance().run();
+  // }
+
+  /** TESTING VERSION OF ROBOTPERIODIC FOR OVERRUN SOURCES */
+  @Override
+  public void robotPeriodic() {
+
+    isBlueAlliance = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue;
+
+    final long t0 = System.nanoTime();
+
+    if (isReal()) {
+      // Switch thread to high priority to improve loop timing
+      Threads.setCurrentThreadPriority(true, 99);
+    }
+    final long t1 = System.nanoTime();
+
     VirtualSubsystem.periodicAll();
+    final long t2 = System.nanoTime();
 
-    // Runs the Scheduler. This is responsible for polling buttons, adding
-    // newly-scheduled commands, running already-scheduled commands, removing
-    // finished or interrupted commands, and running subsystem periodic() methods.
-    // This must be called from the robot's periodic block in order for anything in
-    // the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    final long t3 = System.nanoTime();
 
-    // Return to normal thread priority
     Threads.setCurrentThreadPriority(false, 10);
+    final long t4 = System.nanoTime();
+
+    Logger.recordOutput("Loop/RobotPeriodic_ms", (t4 - t0) / 1e6);
+    Logger.recordOutput("Loop/ThreadBoost_ms", (t1 - t0) / 1e6);
+    Logger.recordOutput("Loop/Virtual_ms", (t2 - t1) / 1e6);
+    Logger.recordOutput("Loop/Scheduler_ms", (t3 - t2) / 1e6);
+    Logger.recordOutput("Loop/ThreadRestore_ms", (t4 - t3) / 1e6);
   }
 
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
     // Set the brakes to stop robot motion
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
     m_disabledTimer.reset();
     m_disabledTimer.start();
   }
@@ -155,7 +179,7 @@ public class Robot extends LoggedRobot {
   public void disabledPeriodic() {
     // After WHEEL_LOCK_TIME has elapsed, release the drive brakes
     if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTime)) {
-      m_robotContainer.setMotorBrake(false);
+      m_robotContainer.getDrivebase().setMotorBrake(false);
       m_disabledTimer.stop();
     }
   }
@@ -166,7 +190,8 @@ public class Robot extends LoggedRobot {
 
     // Just in case, cancel all running commands
     CommandScheduler.getInstance().cancelAll();
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
     switch (Constants.getAutoType()) {
@@ -207,7 +232,8 @@ public class Robot extends LoggedRobot {
     } else {
       CommandScheduler.getInstance().cancelAll();
     }
-    m_robotContainer.setMotorBrake(true);
+    m_robotContainer.getDrivebase().setMotorBrake(true);
+    m_robotContainer.getDrivebase().resetHeadingController();
 
     // In case this got set in sequential practice sessions or whatever
     FieldState.wonAuto = null;
@@ -251,6 +277,7 @@ public class Robot extends LoggedRobot {
   public void testInit() {
     // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
+    m_robotContainer.getDrivebase().resetHeadingController();
   }
 
   /** This function is called periodically during test mode. */
@@ -260,31 +287,32 @@ public class Robot extends LoggedRobot {
   /** This function is called once when the robot is first started up. */
   @Override
   public void simulationInit() {
-    visionSim = new VisionSystemSim("main");
+    // ---------------- SIM-ONLY: vision simulation world + camera sims ----------------
+    // 1) Create the vision simulation world
+    visionSim = new VisionSystemSim("CameraSweepWorld");
 
-    // Load AprilTag field layout
-    AprilTagFieldLayout fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+    // 2) Add AprilTags (field layout)
+    visionSim.addAprilTags(FieldConstants.aprilTagLayout);
 
-    // Register AprilTags with vision simulation
-    visionSim.addAprilTags(fieldLayout);
+    // 3) Build PhotonCameraSim objects from Constants camera configs
+    final Constants.Cameras.CameraConfig[] camConfigs = Constants.Cameras.ALL;
 
-    // Simulated Camera Properties
-    SimCameraProperties cameraProp = new SimCameraProperties();
-    // A 1280 x 800 camera with a 100 degree diagonal FOV.
-    cameraProp.setCalibration(1280, 800, Rotation2d.fromDegrees(100));
-    // Approximate detection noise with average and standard deviation error in pixels.
-    cameraProp.setCalibError(0.25, 0.08);
-    // Set the camera image capture framerate (Note: this is limited by robot loop rate).
-    cameraProp.setFPS(20);
-    // The average and standard deviation in milliseconds of image data latency.
-    cameraProp.setAvgLatencyMs(35);
-    cameraProp.setLatencyStdDevMs(5);
+    PhotonCameraSim[] simCams = new PhotonCameraSim[camConfigs.length];
 
-    // Define Cameras and add to simulation
-    PhotonCamera camera0 = new PhotonCamera("frontCam");
-    PhotonCamera camera1 = new PhotonCamera("backCam");
-    visionSim.addCamera(new PhotonCameraSim(camera0, cameraProp), Constants.Cameras.robotToCamera0);
-    visionSim.addCamera(new PhotonCameraSim(camera1, cameraProp), Constants.Cameras.robotToCamera1);
+    for (int i = 0; i < camConfigs.length; i++) {
+      final var cfg = camConfigs[i];
+
+      // Name must match the VisionIOPhotonVisionSim name
+      PhotonCamera photonCam = new PhotonCamera(cfg.name());
+
+      // 2026 API: wrap camera with sim properties from Constants
+      PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
+
+      // Register camera with the sim using the robot-to-camera transform
+      visionSim.addCamera(camSim, cfg.robotToCamera());
+
+      simCams[i] = camSim;
+    }
   }
 
   /** This function is called periodically whilst in simulation. */

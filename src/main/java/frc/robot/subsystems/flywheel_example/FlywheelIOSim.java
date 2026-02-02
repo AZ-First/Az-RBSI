@@ -11,6 +11,7 @@ package frc.robot.subsystems.flywheel_example;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.system.LinearSystem;
 import edu.wpi.first.math.system.plant.DCMotor;
@@ -33,6 +34,7 @@ public class FlywheelIOSim implements FlywheelIO {
 
   private final FlywheelSim sim = new FlywheelSim(m_plant, m_gearbox);
   private PIDController pid = new PIDController(0.0, 0.0, 0.0);
+  private SimpleMotorFeedforward ff = new SimpleMotorFeedforward(0.0, 0.0, 0.0);
 
   private boolean closedLoop = false;
   private double ffVolts = 0.0;
@@ -62,10 +64,10 @@ public class FlywheelIOSim implements FlywheelIO {
   }
 
   @Override
-  public void setVelocity(double velocityRadPerSec, double ffVolts) {
+  public void setVelocity(double velocityRadPerSec) {
     closedLoop = true;
     pid.setSetpoint(velocityRadPerSec);
-    this.ffVolts = ffVolts;
+    this.ffVolts = ff.calculate(velocityRadPerSec);
   }
 
   @Override
@@ -73,8 +75,20 @@ public class FlywheelIOSim implements FlywheelIO {
     setVoltage(0.0);
   }
 
+  /** Set gain constants -- no kA */
   @Override
-  public void configurePID(double kP, double kI, double kD) {
+  public void configureGains(double kP, double kI, double kD, double kS, double kV) {
     pid.setPID(kP, kI, kD);
+    ff.setKs(kS);
+    ff.setKv(kV);
+    ff.setKa(0.0);
+  }
+
+  /** Set gain constants - with kA */
+  public void configureGains(double kP, double kI, double kD, double kS, double kV, double kA) {
+    pid.setPID(kP, kI, kD);
+    ff.setKs(kS);
+    ff.setKv(kV);
+    ff.setKa(kA);
   }
 }

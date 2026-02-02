@@ -16,6 +16,7 @@ import choreo.trajectory.SwerveSample;
 import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PathPlannerLogging;
@@ -29,7 +30,6 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.interpolation.TimeInterpolatableBuffer;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -44,39 +44,36 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.RobotConstants;
-import frc.robot.subsystems.imu.ImuIO;
+import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
-import java.util.Arrays;
+import frc.robot.util.RBSISubsystem;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
-public class Drive extends SubsystemBase {
+public class Drive extends RBSISubsystem {
 
   private SwerveDriveState cachedState = null;
   private final TimeInterpolatableBuffer<Pose2d> poseBuffer =
       TimeInterpolatableBuffer.createBuffer(2);
 
   static final Lock odometryLock = new ReentrantLock();
-  private final ImuIO imuIO;
-  private final ImuIO.ImuIOInputs imuInputs = new ImuIO.ImuIOInputs();
+  private final Imu imu;
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
   private final SysIdRoutine sysId;
   private final Alert gyroDisconnectedAlert =
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
 
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
-  private Rotation2d rawGyroRotation = imuInputs.yawPosition;
   private SwerveModulePosition[] lastModulePositions = // For delta tracking
       new SwerveModulePosition[] {
         new SwerveModulePosition(),
@@ -85,22 +82,27 @@ public class Drive extends SubsystemBase {
         new SwerveModulePosition()
       };
   private SwerveDrivePoseEstimator m_PoseEstimator =
-      new SwerveDrivePoseEstimator(kinematics, rawGyroRotation, lastModulePositions, Pose2d.kZero);
+      new SwerveDrivePoseEstimator(kinematics, Rotation2d.kZero, lastModulePositions, Pose2d.kZero);
 
-  private final ProfiledPIDController thetaController =
-      new ProfiledPIDController(
-          DrivebaseConstants.kPTheta,
-          DrivebaseConstants.kITheta,
-          DrivebaseConstants.kDTheta,
-          new TrapezoidProfile.Constraints(
-              DrivebaseConstants.kMaxAngularSpeed, DrivebaseConstants.kMaxAngularAccel));
+  private ProfiledPIDController angleController;
 
   private DriveSimPhysics simPhysics;
 
   // Constructor
-  public Drive(ImuIO imuIO) {
-    this.imuIO = imuIO;
+  public Drive(Imu imu) {
+    this.imu = imu;
 
+    // Define the Angle Controller
+    angleController =
+        new ProfiledPIDController(
+            DrivebaseConstants.kPSPin,
+            DrivebaseConstants.kISPin,
+            DrivebaseConstants.kDSpin,
+            new TrapezoidProfile.Constraints(
+                getMaxAngularSpeedRadPerSec(), getMaxLinearAccelMetersPerSecPerSec()));
+    angleController.enableContinuousInput(-Math.PI, Math.PI);
+
+    // If REAL (i.e., NOT simulation), parse out the module types
     if (Constants.getMode() == Mode.REAL) {
 
       // Case out the swerve types because Az-RBSI supports a lot
@@ -118,7 +120,7 @@ public class Drive extends SubsystemBase {
           for (int i = 0; i < 4; i++) {
             switch (modType) {
               case 0b00000000: // ALL-CTRE
-                if (kImuType == "navx" || kImuType == "navx_spi") {
+                if (kImuType.equals("navx") || kImuType.equals("navx_spi")) {
                   modules[i] = new Module(new ModuleIOTalonFX(i), i);
                 } else {
                   throw new RuntimeException(
@@ -174,7 +176,15 @@ public class Drive extends SubsystemBase {
               this::resetPose,
               this::getChassisSpeeds,
               (speeds, feedforwards) -> runVelocity(speeds),
-              new PPHolonomicDriveController(AutoConstants.kPPdrivePID, AutoConstants.kPPsteerPID),
+              new PPHolonomicDriveController(
+                  new PIDConstants(
+                      DrivebaseConstants.kPStrafe,
+                      DrivebaseConstants.kIStrafe,
+                      DrivebaseConstants.kDStrafe),
+                  new PIDConstants(
+                      DrivebaseConstants.kPSPin,
+                      DrivebaseConstants.kISPin,
+                      DrivebaseConstants.kDSpin)),
               AutoConstants.kPathPlannerConfig,
               () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
               this);
@@ -213,31 +223,36 @@ public class Drive extends SubsystemBase {
 
   /** Periodic function that is called each robot cycle by the command scheduler */
   @Override
-  public void periodic() {
+  public void rbsiPeriodic() {
     odometryLock.lock();
+
+    // Get the IMU inputs
+    final var imuInputs = imu.getInputs(); // primitive inputs
 
     // Stop modules & log empty setpoint states if disabled
     if (DriverStation.isDisabled()) {
       for (var module : modules) {
         module.stop();
-        Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
-        Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
       }
+      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
+      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
     }
 
-    // Update the IMU inputs -- logging happens automatically
-    imuIO.updateInputs(imuInputs);
+    // Module periodic updates, which drains queues this cycle
+    for (var module : modules) {
+      module.periodic();
+    }
 
     // Feed historical samples into odometry if REAL robot
     if (Constants.getMode() != Mode.SIM) {
-      double[] sampleTimestamps = modules[0].getOdometryTimestamps();
-      int sampleCount = sampleTimestamps.length;
+      final double[] sampleTimestamps = modules[0].getOdometryTimestamps();
+      final int sampleCount = sampleTimestamps.length;
+
+      // Reuse arrays to reduce GC (you likely already have lastModulePositions as a field)
+      final SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
+      final SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
 
       for (int i = 0; i < sampleCount; i++) {
-        // Read wheel positions and deltas from each module
-        SwerveModulePosition[] modulePositions = new SwerveModulePosition[4];
-        SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
-
         for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
           modulePositions[moduleIndex] = modules[moduleIndex].getOdometryPositions()[i];
           moduleDeltas[moduleIndex] =
@@ -248,26 +263,25 @@ public class Drive extends SubsystemBase {
           lastModulePositions[moduleIndex] = modulePositions[moduleIndex];
         }
 
-        // Update gyro angle for odometry
-        Rotation2d yaw =
-            imuInputs.connected && imuInputs.odometryYawPositions.length > i
-                ? imuInputs.odometryYawPositions[i]
-                : imuInputs.yawPosition;
+        // Pick yaw sample if available; otherwise fall back to current yaw
+        final double yawRad =
+            (imuInputs.connected
+                    && imuInputs.odometryYawPositionsRad != null
+                    && imuInputs.odometryYawPositionsRad.length > i)
+                ? imuInputs.odometryYawPositionsRad[i]
+                : imuInputs.yawPositionRad;
+
+        // Boundary conversion: PoseEstimator requires Rotation2d
+        final Rotation2d yaw = Rotation2d.fromRadians(yawRad);
 
         // Apply to pose estimator
         m_PoseEstimator.updateWithTime(sampleTimestamps[i], yaw, modulePositions);
       }
+
       Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
     }
-
-    // Module periodic updates
-    for (var module : modules) {
-      module.periodic();
-    }
-
     odometryLock.unlock();
 
-    // Update gyro/IMU alert
     gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
   }
 
@@ -277,46 +291,54 @@ public class Drive extends SubsystemBase {
     final double dt = Constants.loopPeriodSecs;
 
     // 1) Advance module wheel physics
-    for (Module module : modules) {
-      module.simulationPeriodic();
+    for (int i = 0; i < modules.length; i++) {
+      modules[i].simulationPeriodic();
     }
 
-    // 2) Get module states from modules (authoritative)
-    SwerveModuleState[] moduleStates =
-        Arrays.stream(modules).map(Module::getState).toArray(SwerveModuleState[]::new);
+    // 2) Get module states from modules (authoritative) - NO STREAMS
+    final SwerveModuleState[] moduleStates = new SwerveModuleState[modules.length];
+    for (int i = 0; i < modules.length; i++) {
+      moduleStates[i] = modules[i].getState();
+    }
 
     // 3) Update SIM physics (linear + angular)
     simPhysics.update(moduleStates, dt);
 
-    // 4) Feed IMU from authoritative physics
-    imuIO.simulationSetYaw(simPhysics.getYaw());
-    imuIO.simulationSetOmega(simPhysics.getOmegaRadPerSec());
-    imuIO.setLinearAccel(
-        new Translation3d(
-            simPhysics.getLinearAccel().getX(), simPhysics.getLinearAccel().getY(), 0.0));
+    // 4) Feed IMU from authoritative physics (primitive-only boundary)
+    final double yawRad =
+        simPhysics.getYaw().getRadians(); // or simPhysics.getYawRad() if you have it
+    final double omegaRadPerSec = simPhysics.getOmegaRadPerSec();
+
+    final double ax = simPhysics.getLinearAccel().getX();
+    final double ay = simPhysics.getLinearAccel().getY();
+
+    imu.simulationSetYawRad(yawRad);
+    imu.simulationSetOmegaRadPerSec(omegaRadPerSec);
+    imu.simulationSetLinearAccelMps2(ax, ay, 0.0);
 
     // 5) Feed PoseEstimator with authoritative yaw and module positions
-    SwerveModulePosition[] modulePositions =
-        Arrays.stream(modules).map(Module::getPosition).toArray(SwerveModulePosition[]::new);
+    // (PoseEstimator still wants objects -> boundary conversion stays here)
+    final SwerveModulePosition[] modulePositions = new SwerveModulePosition[modules.length];
+    for (int i = 0; i < modules.length; i++) {
+      modulePositions[i] = modules[i].getPosition();
+    }
 
     m_PoseEstimator.resetPosition(
-        simPhysics.getYaw(), // gyro reading (authoritative)
-        modulePositions, // wheel positions
-        simPhysics.getPose() // pose is authoritative
-        );
+        Rotation2d.fromRadians(yawRad), modulePositions, simPhysics.getPose());
 
     // 6) Optional: inject vision measurement in SIM
     if (simulatedVisionAvailable) {
-      Pose2d visionPose = getSimulatedVisionPose();
-      double visionTimestamp = Timer.getFPGATimestamp();
-      var visionStdDevs = getSimulatedVisionStdDevs();
+      final Pose2d visionPose = getSimulatedVisionPose();
+      final double visionTimestamp = Timer.getFPGATimestamp();
+      final var visionStdDevs = getSimulatedVisionStdDevs();
       m_PoseEstimator.addVisionMeasurement(visionPose, visionTimestamp, visionStdDevs);
     }
 
     // 7) Logging
     Logger.recordOutput("Sim/Pose", simPhysics.getPose());
-    Logger.recordOutput("Sim/Yaw", simPhysics.getYaw());
-    Logger.recordOutput("Sim/LinearAccel", simPhysics.getLinearAccel());
+    Logger.recordOutput("Sim/YawRad", yawRad);
+    Logger.recordOutput("Sim/OmegaRadPerSec", simPhysics.getOmegaRadPerSec());
+    Logger.recordOutput("Sim/LinearAccelXY_mps2", new double[] {ax, ay});
   }
 
   /** Drive Base Action Functions ****************************************** */
@@ -361,7 +383,7 @@ public class Drive extends SubsystemBase {
     // Calculate module setpoints
     ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, Constants.loopPeriodSecs);
     SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(discreteSpeeds);
-    SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, DrivebaseConstants.kMaxLinearSpeed);
+    SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, getMaxLinearSpeedMetersPerSec());
 
     // Log unoptimized setpoints and setpoint speeds
     Logger.recordOutput("SwerveStates/Setpoints", setpointStates);
@@ -384,14 +406,17 @@ public class Drive extends SubsystemBase {
   }
 
   /**
-   * Reset the heading ProfiledPIDController
-   *
-   * <p>TODO: CALL THIS FUNCTION!!!
+   * Reset the heading for the ProfiledPIDController
    *
    * <p>Call this when: (A) robot is disabled, (B) gyro is zeroed, (C) autonomous starts
    */
   public void resetHeadingController() {
-    thetaController.reset(getHeading().getRadians());
+    angleController.reset(getHeading().getRadians());
+  }
+
+  /** Getter function for the angle controller */
+  public ProfiledPIDController getAngleController() {
+    return angleController;
   }
 
   /** SysId Characterization Routines ************************************** */
@@ -451,7 +476,7 @@ public class Drive extends SubsystemBase {
     if (Constants.getMode() == Mode.SIM) {
       return simPhysics.getYaw();
     }
-    return imuInputs.yawPosition;
+    return imu.getYaw();
   }
 
   /** Returns an array of module translations. */
@@ -517,24 +542,36 @@ public class Drive extends SubsystemBase {
     return getMaxLinearSpeedMetersPerSec() / kDriveBaseRadiusMeters;
   }
 
+  /** Returns the maximum linear acceleration in meters per sec per sec. */
+  public double getMaxLinearAccelMetersPerSecPerSec() {
+    return DrivebaseConstants.kMaxLinearAccel;
+  }
+
+  /** Returns the maximum angular acceleration in radians per sec per sec */
+  public double getMaxAngularAccelRadPerSecPerSec() {
+    return getMaxLinearAccelMetersPerSecPerSec() / kDriveBaseRadiusMeters;
+  }
+
   /* Setter Functions ****************************************************** */
 
   /** Resets the current odometry pose. */
   public void resetPose(Pose2d pose) {
-    m_PoseEstimator.resetPosition(rawGyroRotation, getModulePositions(), pose);
+    m_PoseEstimator.resetPosition(getHeading(), getModulePositions(), pose);
   }
 
   /** Zeros the gyro based on alliance color */
   public void zeroHeadingForAlliance() {
-    imuIO.zeroYaw(
+    imu.zeroYaw(
         DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue
             ? Rotation2d.kZero
             : Rotation2d.k180deg);
+    resetHeadingController();
   }
 
   /** Zeros the heading */
   public void zeroHeading() {
-    imuIO.zeroYaw(Rotation2d.kZero);
+    imu.zeroYaw(Rotation2d.kZero);
+    resetHeadingController();
   }
 
   /** Adds a new timestamped vision measurement. */
