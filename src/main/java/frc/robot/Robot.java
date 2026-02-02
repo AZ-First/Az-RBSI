@@ -18,9 +18,6 @@
 package frc.robot;
 
 import com.revrobotics.util.StatusLogger;
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
@@ -38,7 +35,6 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
-import org.photonvision.simulation.SimCameraProperties;
 import org.photonvision.simulation.VisionSystemSim;
 
 /**
@@ -285,31 +281,32 @@ public class Robot extends LoggedRobot {
   /** This function is called once when the robot is first started up. */
   @Override
   public void simulationInit() {
-    visionSim = new VisionSystemSim("main");
+    // ---------------- SIM-ONLY: vision simulation world + camera sims ----------------
+    // 1) Create the vision simulation world
+    visionSim = new VisionSystemSim("CameraSweepWorld");
 
-    // Load AprilTag field layout
-    AprilTagFieldLayout fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+    // 2) Add AprilTags (field layout)
+    visionSim.addAprilTags(FieldConstants.aprilTagLayout);
 
-    // Register AprilTags with vision simulation
-    visionSim.addAprilTags(fieldLayout);
+    // 3) Build PhotonCameraSim objects from Constants camera configs
+    final Constants.Cameras.CameraConfig[] camConfigs = Constants.Cameras.ALL;
 
-    // Simulated Camera Properties
-    SimCameraProperties cameraProp = new SimCameraProperties();
-    // A 1280 x 800 camera with a 100 degree diagonal FOV.
-    cameraProp.setCalibration(1280, 800, Rotation2d.fromDegrees(100));
-    // Approximate detection noise with average and standard deviation error in pixels.
-    cameraProp.setCalibError(0.25, 0.08);
-    // Set the camera image capture framerate (Note: this is limited by robot loop rate).
-    cameraProp.setFPS(20);
-    // The average and standard deviation in milliseconds of image data latency.
-    cameraProp.setAvgLatencyMs(35);
-    cameraProp.setLatencyStdDevMs(5);
+    PhotonCameraSim[] simCams = new PhotonCameraSim[camConfigs.length];
 
-    // Define Cameras and add to simulation
-    PhotonCamera camera0 = new PhotonCamera("frontCam");
-    PhotonCamera camera1 = new PhotonCamera("backCam");
-    visionSim.addCamera(new PhotonCameraSim(camera0, cameraProp), Constants.Cameras.robotToCamera0);
-    visionSim.addCamera(new PhotonCameraSim(camera1, cameraProp), Constants.Cameras.robotToCamera1);
+    for (int i = 0; i < camConfigs.length; i++) {
+      final var cfg = camConfigs[i];
+
+      // Name must match the VisionIOPhotonVisionSim name
+      PhotonCamera photonCam = new PhotonCamera(cfg.name());
+
+      // 2026 API: wrap camera with sim properties from Constants
+      PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
+
+      // Register camera with the sim using the robot-to-camera transform
+      visionSim.addCamera(camSim, cfg.robotToCamera());
+
+      simCams[i] = camSim;
+    }
   }
 
   /** This function is called periodically whilst in simulation. */
