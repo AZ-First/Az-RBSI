@@ -126,19 +126,18 @@ public final class Constants {
     // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
     //   frame.
-    // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
-    public static final Rotation2d kRioOrientation =
+    public static final Rotation3d kRioOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(-90.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
+          case COMPBOT -> new Rotation3d(0, 0, -90);
+          case DEVBOT -> Rotation3d.kZero;
+          default -> Rotation3d.kZero;
         };
     // IMU can be one of Pigeon2 or NavX
-    public static final Rotation2d kIMUOrientation =
+    public static final Rotation3d kIMUOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
+          case COMPBOT -> Rotation3d.kZero;
+          case DEVBOT -> Rotation3d.kZero;
+          default -> Rotation3d.kZero;
         };
   }
 

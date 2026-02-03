@@ -17,12 +17,13 @@
 
 package frc.robot.subsystems.imu;
 
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Timer;
 import org.littletonrobotics.junction.Logger;
 
-/** Simulated IMU for full robot simulation & replay logging (primitive-only) */
+/** Simulated IMU for full robot simulation & replay logging */
 public class ImuIOSim implements ImuIO {
-  private static final double RAD_TO_DEG = 180.0 / Math.PI;
 
   // --- AUTHORITATIVE SIM STATE (PRIMITIVES) ---
   private double yawRad = 0.0;
@@ -39,7 +40,6 @@ public class ImuIOSim implements ImuIO {
   public ImuIOSim() {}
 
   // ---------------- SIMULATION INPUTS (PUSH) ----------------
-
   @Override
   public void simulationSetYawRad(double yawRad) {
     this.yawRad = yawRad;
@@ -58,7 +58,6 @@ public class ImuIOSim implements ImuIO {
   }
 
   // ---------------- IO UPDATE (PULL) ----------------
-
   @Override
   public void updateInputs(ImuIOInputs inputs) {
     inputs.connected = true;
@@ -67,15 +66,11 @@ public class ImuIOSim implements ImuIO {
     // Authoritative sim state
     inputs.yawPositionRad = yawRad;
     inputs.yawRateRadPerSec = yawRateRadPerSec;
-    inputs.linearAccelX = ax;
-    inputs.linearAccelY = ay;
-    inputs.linearAccelZ = az;
+    inputs.linearAccel = new Translation3d(ax, ay, az);
 
     // Jerk: SIM doesn’t have a prior accel here unless you want it; set to 0 by default.
     // If you do want jerk, you can add prevAx/prevAy/prevAz + dt just like the real IO.
-    inputs.jerkX = 0.0;
-    inputs.jerkY = 0.0;
-    inputs.jerkZ = 0.0;
+    inputs.linearJerk = Translation3d.kZero;
 
     // Maintain odometry history
     pushOdomSample(Timer.getFPGATimestamp(), yawRad);
@@ -101,10 +96,15 @@ public class ImuIOSim implements ImuIO {
 
     // Optional: SIM logging (primitive-friendly)
     Logger.recordOutput("IMU/YawRad", yawRad);
-    Logger.recordOutput("IMU/YawDeg", yawRad * RAD_TO_DEG);
-    Logger.recordOutput("IMU/YawRateDps", yawRateRadPerSec * RAD_TO_DEG);
+    Logger.recordOutput("IMU/YawDeg", Units.radiansToDegrees(yawRad));
+    Logger.recordOutput("IMU/YawRateDps", Units.radiansToDegrees(yawRateRadPerSec));
   }
 
+  /**
+   * Zero the YAW to this radian value
+   *
+   * @param yawRad The radian value to which to zero
+   */
   @Override
   public void zeroYawRad(double yawRad) {
     this.yawRad = yawRad;
