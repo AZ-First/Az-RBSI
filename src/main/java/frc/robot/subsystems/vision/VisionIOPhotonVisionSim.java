@@ -22,34 +22,50 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   private static VisionSystemSim visionSim;
 
   private final Supplier<Pose2d> poseSupplier;
+
+  @SuppressWarnings("unused")
   private final PhotonCameraSim cameraSim;
 
   /**
    * Creates a new VisionIOPhotonVisionSim.
    *
-   * @param name The name of the camera.
-   * @param poseSupplier Supplier for the robot pose to use in simulation.
+   * @param name The name of the camera (PhotonVision camera name).
+   * @param robotToCamera Camera pose relative to robot frame.
+   * @param poseSupplier Supplier for the robot pose (field->robot) to use in simulation.
    */
   public VisionIOPhotonVisionSim(
       String name, Transform3d robotToCamera, Supplier<Pose2d> poseSupplier) {
     super(name, robotToCamera);
     this.poseSupplier = poseSupplier;
 
-    // Initialize vision sim
+    // Initialize VisionSystemSim once for all cameras
     if (visionSim == null) {
       visionSim = new VisionSystemSim("main");
       visionSim.addAprilTags(FieldConstants.aprilTagLayout);
     }
 
-    // Add sim camera
+    // Camera properties:
+    // - If you have per-camera SimCameraProperties in Constants, pass them here instead.
+    // - Otherwise keep the default and tune later.
     var cameraProperties = new SimCameraProperties();
+
+    // Recommended defaults (feel free to tune)
+    // cameraProperties.setCalibration(1280, 800, Rotation2d.fromDegrees(100));
+    // cameraProperties.setFPS(20);
+    // cameraProperties.setAvgLatencyMs(35);
+    // cameraProperties.setLatencyStdDevMs(5);
+
     cameraSim = new PhotonCameraSim(camera, cameraProperties);
     visionSim.addCamera(cameraSim, robotToCamera);
   }
 
   @Override
   public void updateInputs(VisionIOInputs inputs) {
+    // NOTE: This updates the sim world every time a sim camera is polled.
+    // That's fine (fast enough), but if you want “update once per loop,” see note below.
     visionSim.update(poseSupplier.get());
+
+    // Then pull results like normal (and emit PoseObservation + usedTagIds sets)
     super.updateInputs(inputs);
   }
 }

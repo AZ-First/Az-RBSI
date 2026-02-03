@@ -416,6 +416,16 @@ public final class Constants {
   /** Vision Constants (Assuming PhotonVision) ***************************** */
   public static class VisionConstants {
 
+    public static final java.util.Set<Integer> kTrustedTags =
+        java.util.Set.of(2, 3, 4, 5, 8, 9, 10, 11, 18, 19, 20, 21, 24, 25, 26, 27); // HUB AprilTags
+
+    // Noise scaling factors (lower = more trusted)
+    public static final double kTrustedTagStdDevScale = 0.6; // 40% more weight
+    public static final double kUntrustedTagStdDevScale = 1.3; // 30% less weight
+
+    // Optional: if true, reject observations that contain no trusted tags
+    public static final boolean kRequireTrustedTag = false;
+
     // AprilTag Identification Constants
     public static final double kAmbiguityThreshold = 0.4;
     public static final double kTargetLogTimeSecs = 0.1;
