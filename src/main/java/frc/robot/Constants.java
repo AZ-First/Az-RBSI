@@ -323,6 +323,9 @@ public final class Constants {
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
     public static final double kSteerP = 400.0;
     public static final double kSteerD = 20.0;
+
+    // Odometry-related constants
+    public static final double kHistorySize = 1.5; // seconds
   }
 
   /************************************************************************* */
