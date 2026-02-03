@@ -34,6 +34,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
+import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
@@ -167,7 +168,7 @@ public class RobotContainer {
         m_flywheel = new Flywheel(new FlywheelIOSim());
 
         // ---------------- Vision IOs (robot code) ----------------
-        var cams = frc.robot.Constants.Cameras.ALL;
+        var cams = Cameras.ALL;
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsSim(m_drivebase));
