@@ -68,7 +68,7 @@ public class ImuIOSim implements ImuIO {
     inputs.yawRateRadPerSec = yawRateRadPerSec;
     inputs.linearAccel = new Translation3d(ax, ay, az);
 
-    // Jerk: SIM doesn’t have a prior accel here unless you want it; set to 0 by default.
+    // Jerk: SIM doesn't have a prior accel here unless you want it; set to 0 by default.
     // If you do want jerk, you can add prevAx/prevAy/prevAz + dt just like the real IO.
     inputs.linearJerk = Translation3d.kZero;
 
