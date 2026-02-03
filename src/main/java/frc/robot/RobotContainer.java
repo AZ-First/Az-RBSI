@@ -13,8 +13,6 @@
 
 package frc.robot;
 
-import static frc.robot.Constants.Cameras.*;
-
 import choreo.auto.AutoChooser;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
@@ -23,7 +21,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Filesystem;
@@ -37,8 +34,8 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
+import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.Constants.SimCameras;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
@@ -49,9 +46,6 @@ import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
 import frc.robot.subsystems.flywheel_example.FlywheelIOSim;
 import frc.robot.subsystems.imu.Imu;
-import frc.robot.subsystems.imu.ImuIO;
-import frc.robot.subsystems.imu.ImuIONavX;
-import frc.robot.subsystems.imu.ImuIOPigeon2;
 import frc.robot.subsystems.imu.ImuIOSim;
 import frc.robot.subsystems.vision.CameraSweepEvaluator;
 import frc.robot.subsystems.vision.Vision;
@@ -70,6 +64,8 @@ import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.DriveStyle;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIPowerMonitor;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.photonvision.PhotonCamera;
@@ -111,7 +107,7 @@ public class RobotContainer {
   private final Vision m_vision;
 
   @SuppressWarnings("unused")
-  private RBSICANHealth m_can0, m_can1;
+  private List<RBSICANHealth> canHealth;
 
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
@@ -132,6 +128,37 @@ public class RobotContainer {
   // Alerts
   private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
 
+  // Vision Factories
+  private VisionIO[] buildVisionIOsReal(Drive drive) {
+    return switch (Constants.getVisionType()) {
+      case PHOTON ->
+          Arrays.stream(Cameras.ALL)
+              .map(c -> (VisionIO) new VisionIOPhotonVision(c.name(), c.robotToCamera()))
+              .toArray(VisionIO[]::new);
+
+      case LIMELIGHT ->
+          Arrays.stream(Cameras.ALL)
+              .map(c -> (VisionIO) new VisionIOLimelight(c.name(), drive::getHeading))
+              .toArray(VisionIO[]::new);
+
+      case NONE -> new VisionIO[] {new VisionIO() {}};
+    };
+  }
+
+  private static VisionIO[] buildVisionIOsSim(Drive drive) {
+    var cams = Constants.Cameras.ALL;
+    VisionIO[] ios = new VisionIO[cams.length];
+    for (int i = 0; i < cams.length; i++) {
+      var cfg = cams[i];
+      ios[i] = new VisionIOPhotonVisionSim(cfg.name(), cfg.robotToCamera(), drive::getPose);
+    }
+    return ios;
+  }
+
+  private VisionIO[] buildVisionIOsReplay() {
+    return new VisionIO[] {new VisionIO() {}};
+  }
+
   /**
    * Constructor for the Robot Container. This container holds subsystems, opertator interface
    * devices, and commands.
@@ -148,74 +175,54 @@ public class RobotContainer {
 
         // YAGSL drivebase, get config from deploy directory
         // Get the IMU instance
-        ImuIO imuIO =
-            switch (SwerveConstants.kImuType) {
-              case "pigeon2" -> new ImuIOPigeon2();
-              case "navx", "navx_spi" -> new ImuIONavX();
-              default -> throw new RuntimeException("Invalid IMU type");
-            };
-        m_imu = new Imu(imuIO);
+        m_imu = new Imu(SwerveConstants.kImu.factory.get());
 
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
-        m_vision =
-            switch (Constants.getVisionType()) {
-              case PHOTON ->
-                  new Vision(
-                      m_drivebase::addVisionMeasurement,
-                      new VisionIOPhotonVision(camera0Name, robotToCamera0),
-                      new VisionIOPhotonVision(camera1Name, robotToCamera1));
-              case LIMELIGHT ->
-                  new Vision(
-                      m_drivebase::addVisionMeasurement,
-                      new VisionIOLimelight(camera0Name, m_drivebase::getHeading),
-                      new VisionIOLimelight(camera1Name, m_drivebase::getHeading));
-              case NONE ->
-                  new Vision(
-                      m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
-              default -> null;
-            };
+        m_vision = new Vision(m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
         m_accel = new Accelerometer(m_imu);
         sweep = null;
-        m_can0 = new RBSICANHealth(CANBuses.RIO);
-        m_can1 = new RBSICANHealth(CANBuses.DRIVE);
-
         break;
 
       case SIM:
-        // Sim robot, instantiate physics sim IO implementations
         RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
-        m_imu = new Imu(new ImuIOSim() {});
+
+        m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
-        m_flywheel = new Flywheel(new FlywheelIOSim() {});
-        m_vision =
-            new Vision(
-                m_drivebase::addVisionMeasurement,
-                new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, m_drivebase::getPose),
-                new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, m_drivebase::getPose));
+        m_flywheel = new Flywheel(new FlywheelIOSim());
+
+        // ---------------- Vision IOs (robot code) ----------------
+        var cams = frc.robot.Constants.Cameras.ALL;
+
+        // If you keep Vision expecting exactly two cameras:
+        VisionIO[] visionIOs = buildVisionIOsSim(m_drivebase);
+        m_vision = new Vision(m_drivebase::addVisionMeasurement, visionIOs);
+
         m_accel = new Accelerometer(m_imu);
 
-        // CameraSweepEvaluator Construct
-        // 1) Create the vision simulation world
+        // ---------------- CameraSweepEvaluator (sim-only analysis) ----------------
         VisionSystemSim visionSim = new VisionSystemSim("CameraSweepWorld");
-        // 2) Add AprilTags (field layout)
         visionSim.addAprilTags(FieldConstants.aprilTagLayout);
-        // 3) Create two simulated cameras
-        // Create PhotonCamera objects (names must match VisionIOPhotonVisionSim)
-        PhotonCamera camera1 = new PhotonCamera(camera0Name);
-        PhotonCamera camera2 = new PhotonCamera(camera1Name);
 
-        // Wrap them with simulation + properties (2026 API)
-        PhotonCameraSim cam1 = new PhotonCameraSim(camera1, SimCameras.kSimCamera1Props);
-        PhotonCameraSim cam2 = new PhotonCameraSim(camera2, SimCameras.kSimCamera2Props);
+        PhotonCameraSim[] simCams = new PhotonCameraSim[cams.length];
 
-        // 4) Register cameras with the sim
-        visionSim.addCamera(cam1, Transform3d.kZero);
-        visionSim.addCamera(cam2, Transform3d.kZero);
-        // 5) Create the sweep evaluator
-        sweep = new CameraSweepEvaluator(visionSim, cam1, cam2);
-        m_can0 = new RBSICANHealth(CANBuses.RIO);
-        m_can1 = new RBSICANHealth(CANBuses.DRIVE);
+        for (int i = 0; i < cams.length; i++) {
+          var cfg = cams[i];
+
+          PhotonCamera photonCam = new PhotonCamera(cfg.name());
+          PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
+
+          visionSim.addCamera(camSim, cfg.robotToCamera());
+          simCams[i] = camSim;
+        }
+
+        // Create the sweep evaluator (expects two cameras; adapt if you add more later)
+        if (simCams.length >= 2) {
+          sweep = new CameraSweepEvaluator(visionSim, simCams[0], simCams[1]);
+        } else {
+          sweep = null; // or throw if you require exactly 2 cameras
+        }
+
         break;
 
       default:
@@ -224,14 +231,15 @@ public class RobotContainer {
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIO() {});
-        m_vision =
-            new Vision(m_drivebase::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
+        m_vision = new Vision(m_drivebase::addVisionMeasurement, buildVisionIOsReplay());
         m_accel = new Accelerometer(m_imu);
         sweep = null;
-        m_can0 = new RBSICANHealth(CANBuses.RIO);
-        m_can1 = new RBSICANHealth(CANBuses.DRIVE);
         break;
     }
+
+    // Init all CAN busses specified in the `Constants.CANBuses` class
+    RBSICANBusRegistry.initReal(Constants.CANBuses.ALL);
+    canHealth = Arrays.stream(Constants.CANBuses.ALL).map(RBSICANHealth::new).toList();
 
     // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
     // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
