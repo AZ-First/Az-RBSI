@@ -129,7 +129,7 @@ public class ModuleIOTalonFX implements ModuleIO {
   private long lastTimestampNano = System.nanoTime();
 
   /*
-   * TalonFX I/O
+   * TalonFX I/O Constructor
    */
   public ModuleIOTalonFX(int module) {
     // Record the module number for logging purposes
@@ -260,6 +260,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
   }
 
+  /** Input Updating Loop ************************************************** */
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
 
@@ -315,6 +316,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     turnPositionQueue.clear();
   }
 
+  /** Module Action Functions ********************************************** */
   /**
    * Set the drive motor to an open-loop voltage, scaled to battery voltage
    *
