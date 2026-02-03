@@ -18,6 +18,9 @@ import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
 import frc.robot.Constants.CANBuses;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.imu.ImuIO;
+import frc.robot.subsystems.imu.ImuIONavX;
+import frc.robot.subsystems.imu.ImuIOPigeon2;
 import frc.robot.util.YagslConstants;
 
 /**
@@ -270,6 +273,9 @@ public class SwerveConstants {
     }
   }
 
+  // Derived constant AFTER the static block
+  public static final ImuType kImu = ImuType.fromString(kImuType);
+
   // Computed quantities
   public static final double kDriveBaseRadiusMeters =
       Math.max(
@@ -297,4 +303,30 @@ public class SwerveConstants {
   // Turn PID configuration0
   public static final double turnPIDMinInput = 0; // Radians
   public static final double turnPIDMaxInput = 2 * Math.PI; // Radians
+
+  /** IMU Type enum */
+  public enum ImuType {
+    PIGEON(new String[] {"pigeon", "pigeon2"}, ImuIOPigeon2::new),
+    NAVX(new String[] {"navx", "navx_spi"}, ImuIONavX::new);
+
+    private final String[] keys;
+    public final java.util.function.Supplier<ImuIO> factory;
+
+    ImuType(String[] keys, java.util.function.Supplier<ImuIO> factory) {
+      this.keys = keys;
+      this.factory = factory;
+    }
+
+    public static ImuType fromString(String s) {
+      if (s == null) throw new IllegalArgumentException("IMU type string is null");
+      String norm = s.trim().toLowerCase();
+
+      for (ImuType t : values()) {
+        for (String k : t.keys) {
+          if (norm.equals(k)) return t;
+        }
+      }
+      throw new IllegalArgumentException("Unknown IMU type: '" + s + "'");
+    }
+  }
 }
