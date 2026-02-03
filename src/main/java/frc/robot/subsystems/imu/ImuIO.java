@@ -17,6 +17,7 @@
 
 package frc.robot.subsystems.imu;
 
+import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.util.RBSIIO;
 import org.littletonrobotics.junction.AutoLog;
 
@@ -43,16 +44,10 @@ public interface ImuIO extends RBSIIO {
     public double yawRateRadPerSec = 0.0;
 
     /** Linear acceleration in robot frame (m/s^2) */
-    public double linearAccelX = 0.0;
-
-    public double linearAccelY = 0.0;
-    public double linearAccelZ = 0.0;
+    public Translation3d linearAccel = Translation3d.kZero;
 
     /** Linear jerk in robot frame (m/s^3) */
-    public double jerkX = 0.0;
-
-    public double jerkY = 0.0;
-    public double jerkZ = 0.0;
+    public Translation3d linearJerk = Translation3d.kZero;
 
     /** Time spent in the IO update call (seconds) */
     public double latencySeconds = 0.0;

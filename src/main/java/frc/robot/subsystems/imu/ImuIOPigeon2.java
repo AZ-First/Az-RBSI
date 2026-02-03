@@ -22,6 +22,8 @@ import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
 import com.ctre.phoenix6.hardware.Pigeon2;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.LinearAcceleration;
@@ -31,12 +33,13 @@ import frc.robot.util.RBSICANBusRegistry;
 import java.util.Iterator;
 import java.util.Queue;
 
-/** IMU IO for CTRE Pigeon2 (primitive-only hot path) */
+/** IMU IO for CTRE Pigeon2 */
 public class ImuIOPigeon2 implements ImuIO {
 
-  private static final double DEG_TO_RAD = Math.PI / 180.0;
+  // Constants
   private static final double G_TO_MPS2 = 9.80665;
 
+  // Define the Pigeon2
   private final Pigeon2 pigeon =
       new Pigeon2(
           SwerveConstants.kPigeonId, RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
@@ -53,13 +56,14 @@ public class ImuIOPigeon2 implements ImuIO {
   private final Queue<Double> odomYawsDeg;
 
   // Previous accel for jerk (m/s^2)
-  private double prevAx = 0.0, prevAy = 0.0, prevAz = 0.0;
+  private Translation3d prevAcc = Translation3d.kZero;
   private long prevTimestampNs = 0L;
 
   // Reusable buffers for queue-drain (avoid streams)
   private double[] odomTsBuf = new double[8];
   private double[] odomYawRadBuf = new double[8];
 
+  // Constructor
   public ImuIOPigeon2() {
     pigeon.getConfigurator().apply(new Pigeon2Configuration());
     pigeon.getConfigurator().setYaw(0.0);
@@ -77,6 +81,7 @@ public class ImuIOPigeon2 implements ImuIO {
     odomYawsDeg = PhoenixOdometryThread.getInstance().registerSignal(yawSignal);
   }
 
+  /** Update the Inputs */
   @Override
   public void updateInputs(ImuIOInputs inputs) {
     final long start = System.nanoTime();
@@ -88,33 +93,25 @@ public class ImuIOPigeon2 implements ImuIO {
     final double yawDeg = yawSignal.getValueAsDouble();
     final double yawRateDegPerSec = yawRateSignal.getValueAsDouble();
 
-    inputs.yawPositionRad = yawDeg * DEG_TO_RAD;
-    inputs.yawRateRadPerSec = yawRateDegPerSec * DEG_TO_RAD;
+    inputs.yawPositionRad = Units.degreesToRadians(yawDeg);
+    inputs.yawRateRadPerSec = Units.degreesToRadians(yawRateDegPerSec);
 
     // Accel: Phoenix returns "g" for these signals (common for Pigeon2). Convert to m/s^2
-    final double ax = accelX.getValueAsDouble() * G_TO_MPS2;
-    final double ay = accelY.getValueAsDouble() * G_TO_MPS2;
-    final double az = accelZ.getValueAsDouble() * G_TO_MPS2;
-
-    inputs.linearAccelX = ax;
-    inputs.linearAccelY = ay;
-    inputs.linearAccelZ = az;
+    inputs.linearAccel =
+        new Translation3d(
+                accelX.getValueAsDouble(), accelY.getValueAsDouble(), accelZ.getValueAsDouble())
+            .times(G_TO_MPS2);
 
     // Jerk from delta accel / dt
     if (prevTimestampNs != 0L) {
       final double dt = (start - prevTimestampNs) * 1e-9;
       if (dt > 1e-6) {
-        final double invDt = 1.0 / dt;
-        inputs.jerkX = (ax - prevAx) * invDt;
-        inputs.jerkY = (ay - prevAy) * invDt;
-        inputs.jerkZ = (az - prevAz) * invDt;
+        inputs.linearJerk = inputs.linearAccel.minus(prevAcc).div(dt);
       }
     }
 
     prevTimestampNs = start;
-    prevAx = ax;
-    prevAy = ay;
-    prevAz = az;
+    prevAcc = inputs.linearAccel;
 
     inputs.timestampNs = start;
 
@@ -136,9 +133,14 @@ public class ImuIOPigeon2 implements ImuIO {
     inputs.latencySeconds = (end - start) * 1e-9;
   }
 
+  /**
+   * Zero the YAW to this radian value
+   *
+   * @param yawRad The radian value to which to zero
+   */
   @Override
   public void zeroYawRad(double yawRad) {
-    pigeon.setYaw(yawRad / DEG_TO_RAD);
+    pigeon.setYaw(Units.radiansToDegrees(yawRad));
   }
 
   private int drainOdometryQueuesIntoBuffers() {
@@ -160,7 +162,7 @@ public class ImuIOPigeon2 implements ImuIO {
     int i = 0;
     while (i < n && itT.hasNext() && itY.hasNext()) {
       odomTsBuf[i] = itT.next();
-      odomYawRadBuf[i] = itY.next() * DEG_TO_RAD;
+      odomYawRadBuf[i] = Units.degreesToRadians(itY.next());
       i++;
     }
 
