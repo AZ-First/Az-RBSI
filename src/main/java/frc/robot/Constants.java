@@ -28,7 +28,6 @@ import com.therekrab.autopilot.Autopilot;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Mass;
@@ -229,46 +228,6 @@ public final class Constants {
     // public static final int INTAKE_SERVO = 0;
   }
 
-  public static class DriveToPositionConstatnts {
-
-    // The robot is facing AWAY from the tag, so its pose angle matches that of the tag.
-    // Scoring position has the bumpers 3" from the tag.  Bumper-to-center distance is 18", ergo the
-    // robot pose is 21" from the tag.
-    public static Translation2d kLeftReefPost =
-        new Translation2d(Units.inchesToMeters(17.5), Units.inchesToMeters(-5.9));
-    // public static Translation2d kLeftReefPostClose =
-    //     new Translation2d(Units.inchesToMeters(16.75), Units.inchesToMeters(-6.75));
-    public static Translation2d kRightReefPost =
-        new Translation2d(Units.inchesToMeters(17.5), Units.inchesToMeters(+6.5));
-    public static Translation2d kRightReefPostClose =
-        new Translation2d(Units.inchesToMeters(16.75), Units.inchesToMeters(+6));
-    public static Translation2d kAlgaeGrab =
-        new Translation2d(Units.inchesToMeters(26.0), Units.inchesToMeters(0.0));
-
-    public static Translation2d kProcessor =
-        new Translation2d(Units.inchesToMeters(26.0), Units.inchesToMeters(+6.0));
-
-    public static Translation2d kStation =
-        new Translation2d(Units.inchesToMeters(18.0), Units.inchesToMeters(0.0));
-
-    // Constants used by the DriveToPose Command
-    public static final double drivekP = AutoConstants.kPPdrivePID.kP; // 0.8;
-    public static final double drivekD = AutoConstants.kPPdrivePID.kD; // 0.0;
-    public static final double thetakP = AutoConstants.kPPsteerPID.kP; // 4.0;
-    public static final double thetakD = AutoConstants.kPPsteerPID.kD; // 0.0;
-
-    // Values in m/s
-    public static final double driveMaxVelocity = 3.8;
-    public static final double driveMaxAcceleration = 3.5;
-    public static final double thetaMaxVelocity = Units.degreesToRadians(360.0);
-    public static final double thetaMaxAcceleration = Units.degreesToRadians(480.0);
-
-    public static final double driveTolerance = 0.01;
-    public static final double thetaTolerance = Units.degreesToRadians(1.0);
-    public static final double ffMinRadius = 0.05; // 0.2;
-    public static final double ffMaxRadius = 0.1; // 0.8;
-  }
-
   /************************************************************************* */
   /** Operator Constants *************************************************** */
   public static class OperatorConstants {
@@ -456,6 +415,16 @@ public final class Constants {
   /************************************************************************* */
   /** Vision Constants (Assuming PhotonVision) ***************************** */
   public static class VisionConstants {
+
+    public static final java.util.Set<Integer> kTrustedTags =
+        java.util.Set.of(2, 3, 4, 5, 8, 9, 10, 11, 18, 19, 20, 21, 24, 25, 26, 27); // HUB AprilTags
+
+    // Noise scaling factors (lower = more trusted)
+    public static final double kTrustedTagStdDevScale = 0.6; // 40% more weight
+    public static final double kUntrustedTagStdDevScale = 1.3; // 30% less weight
+
+    // Optional: if true, reject observations that contain no trusted tags
+    public static final boolean kRequireTrustedTag = false;
 
     // AprilTag Identification Constants
     public static final double kAmbiguityThreshold = 0.4;

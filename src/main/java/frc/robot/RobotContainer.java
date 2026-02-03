@@ -34,7 +34,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
-import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
@@ -131,37 +130,6 @@ public class RobotContainer {
   // Alerts
   private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
 
-  // Vision Factories
-  private VisionIO[] buildVisionIOsReal(Drive drive) {
-    return switch (Constants.getVisionType()) {
-      case PHOTON ->
-          Arrays.stream(Cameras.ALL)
-              .map(c -> (VisionIO) new VisionIOPhotonVision(c.name(), c.robotToCamera()))
-              .toArray(VisionIO[]::new);
-
-      case LIMELIGHT ->
-          Arrays.stream(Cameras.ALL)
-              .map(c -> (VisionIO) new VisionIOLimelight(c.name(), drive::getHeading))
-              .toArray(VisionIO[]::new);
-
-      case NONE -> new VisionIO[] {new VisionIO() {}};
-    };
-  }
-
-  private static VisionIO[] buildVisionIOsSim(Drive drive) {
-    var cams = Constants.Cameras.ALL;
-    VisionIO[] ios = new VisionIO[cams.length];
-    for (int i = 0; i < cams.length; i++) {
-      var cfg = cams[i];
-      ios[i] = new VisionIOPhotonVisionSim(cfg.name(), cfg.robotToCamera(), drive::getPose);
-    }
-    return ios;
-  }
-
-  private VisionIO[] buildVisionIOsReplay() {
-    return new VisionIO[] {new VisionIO() {}};
-  }
-
   public static RobotContainer instance;
 
   /**
@@ -184,7 +152,9 @@ public class RobotContainer {
 
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
-        m_vision = new Vision(m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
+        m_vision =
+            new Vision(
+                m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
@@ -198,11 +168,9 @@ public class RobotContainer {
 
         // ---------------- Vision IOs (robot code) ----------------
         var cams = frc.robot.Constants.Cameras.ALL;
-
-        // If you keep Vision expecting exactly two cameras:
-        VisionIO[] visionIOs = buildVisionIOsSim(m_drivebase);
-        m_vision = new Vision(m_drivebase::addVisionMeasurement, visionIOs);
-
+        m_vision =
+            new Vision(
+                m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsSim(m_drivebase));
         m_accel = new Accelerometer(m_imu);
 
         // ---------------- CameraSweepEvaluator (sim-only analysis) ----------------
@@ -236,7 +204,8 @@ public class RobotContainer {
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
         m_flywheel = new Flywheel(new FlywheelIO() {});
-        m_vision = new Vision(m_drivebase::addVisionMeasurement, buildVisionIOsReplay());
+        m_vision =
+            new Vision(m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay());
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
@@ -498,6 +467,11 @@ public class RobotContainer {
     return m_drivebase;
   }
 
+  /** Vision getter method for use with Robot.java */
+  public Vision getVision() {
+    return m_vision;
+  }
+
   /**
    * Set up the SysID routines from AdvantageKit
    *
@@ -539,6 +513,40 @@ public class RobotContainer {
           "Flywheel SysId (Dynamic Reverse)",
           m_flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
     }
+  }
+
+  // Vision Factories
+  // Vision Factories (REAL)
+  private VisionIO[] buildVisionIOsReal(Drive drive) {
+    return switch (Constants.getVisionType()) {
+      case PHOTON ->
+          java.util.Arrays.stream(Constants.Cameras.ALL)
+              .map(c -> (VisionIO) new VisionIOPhotonVision(c.name(), c.robotToCamera()))
+              .toArray(VisionIO[]::new);
+
+      case LIMELIGHT ->
+          java.util.Arrays.stream(Constants.Cameras.ALL)
+              .map(c -> (VisionIO) new VisionIOLimelight(c.name(), drive::getHeading))
+              .toArray(VisionIO[]::new);
+
+      case NONE -> new VisionIO[] {}; // recommended: no cameras
+    };
+  }
+
+  // Vision Factories (SIM)
+  private VisionIO[] buildVisionIOsSim(Drive drive) {
+    var cams = Constants.Cameras.ALL;
+    VisionIO[] ios = new VisionIO[cams.length];
+    for (int i = 0; i < cams.length; i++) {
+      var cfg = cams[i];
+      ios[i] = new VisionIOPhotonVisionSim(cfg.name(), cfg.robotToCamera(), drive::getPose);
+    }
+    return ios;
+  }
+
+  // Vision Factories (REPLAY)
+  private VisionIO[] buildVisionIOsReplay() {
+    return new VisionIO[] {}; // simplest: Vision does nothing during replay
   }
 
   /**

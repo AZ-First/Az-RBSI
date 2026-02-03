@@ -192,6 +192,7 @@ public class Robot extends LoggedRobot {
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
+    m_robotContainer.getVision().resetPoseGate(Timer.getFPGATimestamp());
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
     switch (Constants.getAutoType()) {
