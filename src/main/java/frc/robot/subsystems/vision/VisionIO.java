@@ -19,7 +19,7 @@ public interface VisionIO {
   class VisionIOInputs {
     public boolean connected = false;
 
-    /** Latest "servo to target" observation (optional) */
+    /** Latest "camera to target" observation (optional) */
     public TargetObservation latestTargetObservation =
         new TargetObservation(Rotation2d.kZero, Rotation2d.kZero);
 

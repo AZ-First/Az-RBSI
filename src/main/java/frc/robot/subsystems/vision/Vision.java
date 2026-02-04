@@ -43,6 +43,7 @@ import org.littletonrobotics.junction.Logger;
 
 public class Vision extends VirtualSubsystem {
 
+  /** Vision Consumer definition */
   @FunctionalInterface
   public interface VisionConsumer {
     void accept(Pose2d visionRobotPoseMeters, double timestampSeconds, Matrix<N3, N1> stdDevs);
@@ -59,18 +60,16 @@ public class Vision extends VirtualSubsystem {
 
   private final Constants.Cameras.CameraConfig[] camConfigs = Constants.Cameras.ALL;
 
-  // --- Per-camera monotonic gate ---
+  // Per-camera monotonic and pose reset gates
   private final double[] lastAcceptedTsPerCam;
-
-  // --- Pose reset gate ---
   private volatile double lastPoseResetTimestamp = Double.NEGATIVE_INFINITY;
 
-  // --- Smoothing buffer (recent fused estimates) ---
+  // Smoothing buffer (recent fused estimates)
   private final ArrayDeque<TimedEstimate> fusedBuffer = new ArrayDeque<>();
   private final double smoothWindowSec = 0.25;
   private final int smoothMaxSize = 12;
 
-  // --- Trusted tags configuration (swappable per event/field) ---
+  // Trusted tags configuration (swappable per event/field)
   private final AtomicReference<Set<Integer>> trustedTags = new AtomicReference<>(Set.of());
   private volatile boolean requireTrustedTag = false;
 
@@ -78,11 +77,12 @@ public class Vision extends VirtualSubsystem {
   private volatile double trustedTagStdDevScale = 0.70; // < 1 => more trusted
   private volatile double untrustedTagStdDevScale = 1.40; // > 1 => less trusted
 
-  // --- Optional 254-style yaw gate for single-tag ---
+  // Yaw-rate gate for single-tag measurements
   private volatile boolean enableSingleTagYawGate = true;
   private volatile double yawGateLookbackSec = 0.30;
   private volatile double yawGateLimitRadPerSec = 5.0;
 
+  /** Constructor */
   public Vision(Drive drive, VisionConsumer consumer, VisionIO... io) {
     this.drive = drive;
     this.consumer = consumer;
@@ -103,37 +103,7 @@ public class Vision extends VirtualSubsystem {
     }
   }
 
-  // -------- Runtime configuration hooks --------
-
-  /** Call when you reset odometry (e.g. auto start, manual reset, etc). */
-  public void resetPoseGate(double fpgaNowSeconds) {
-    lastPoseResetTimestamp = fpgaNowSeconds;
-    fusedBuffer.clear();
-    Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
-  }
-
-  /** Swap trusted tag set per event/field without redeploy. */
-  public void setTrustedTags(Set<Integer> tags) {
-    trustedTags.set(Set.copyOf(tags));
-  }
-
-  public void setRequireTrustedTag(boolean require) {
-    requireTrustedTag = require;
-  }
-
-  public void setTrustedTagStdDevScales(double trustedScale, double untrustedScale) {
-    trustedTagStdDevScale = trustedScale;
-    untrustedTagStdDevScale = untrustedScale;
-  }
-
-  public void setSingleTagYawGate(boolean enabled, double lookbackSec, double limitRadPerSec) {
-    enableSingleTagYawGate = enabled;
-    yawGateLookbackSec = lookbackSec;
-    yawGateLimitRadPerSec = limitRadPerSec;
-  }
-
-  // -------- Core periodic --------
-
+  /** Periodic Function */
   @Override
   public void rbsiPeriodic() {
 
@@ -146,13 +116,13 @@ public class Vision extends VirtualSubsystem {
       Logger.recordOutput("Vision/PoseGateResetFromDrive", false);
     }
 
-    // 1) Update/log camera inputs
+    // Update/log camera inputs
     for (int i = 0; i < io.length; i++) {
       io[i].updateInputs(inputs[i]);
       Logger.processInputs("Vision/Camera" + i, inputs[i]);
     }
 
-    // 2) Pick one best accepted estimate per camera for this loop
+    // Pick one best accepted estimate per camera for this loop
     final ArrayList<TimedEstimate> perCamAccepted = new ArrayList<>(io.length);
 
     for (int cam = 0; cam < io.length; cam++) {
@@ -209,20 +179,20 @@ public class Vision extends VirtualSubsystem {
 
     if (perCamAccepted.isEmpty()) return;
 
-    // 3) Fusion time is the newest timestamp among accepted per-camera samples
+    // Fusion time is the newest timestamp among accepted per-camera samples
     double tF = perCamAccepted.stream().mapToDouble(e -> e.ts).max().orElse(Double.NaN);
     if (!Double.isFinite(tF)) return;
 
-    // 4) Time-align camera estimates to tF using odometry buffer, then inverse-variance fuse
+    // Time-align camera estimates to tF using odometry buffer, then inverse-variance fuse
     TimedEstimate fused = fuseAtTime(perCamAccepted, tF);
     if (fused == null) return;
 
-    // 5) Smooth by fusing recent fused estimates (also aligned to tF)
+    // Smooth by fusing recent fused estimates (also aligned to tF)
     pushFused(fused);
     TimedEstimate smoothed = smoothAtTime(tF);
     if (smoothed == null) return;
 
-    // 6) Inject
+    // Inject the pose
     consumer.accept(smoothed.pose, smoothed.ts, smoothed.stdDevs);
 
     Logger.recordOutput("Vision/FusedPose", fused.pose);
@@ -230,8 +200,62 @@ public class Vision extends VirtualSubsystem {
     Logger.recordOutput("Vision/FusedTimestamp", tF);
   }
 
-  // -------- Gating + scoring --------
+  /** Runtime configuration hooks ****************************************** */
 
+  /**
+   * Call when you reset odometry (e.g. auto start, manual reset, etc).
+   *
+   * @param fpgaNowSeconds Timestamp for the pose gate reset
+   */
+  public void resetPoseGate(double fpgaNowSeconds) {
+    lastPoseResetTimestamp = fpgaNowSeconds;
+    fusedBuffer.clear();
+    Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
+  }
+
+  /**
+   * Swap trusted tag set per event/field without redeploy
+   *
+   * @param tags Set of trusted tags to use
+   */
+  public void setTrustedTags(Set<Integer> tags) {
+    trustedTags.set(Set.copyOf(tags));
+  }
+
+  /**
+   * Set whether to requite trusted tags
+   *
+   * @param require Boolean
+   */
+  public void setRequireTrustedTag(boolean require) {
+    requireTrustedTag = require;
+  }
+
+  /**
+   * Set the (un)trusted standard deviation scales
+   *
+   * @param trustedScale The scale for trusted tags
+   * @param untrustedScale The scale for untrusted tags
+   */
+  public void setTrustedTagStdDevScales(double trustedScale, double untrustedScale) {
+    trustedTagStdDevScale = trustedScale;
+    untrustedTagStdDevScale = untrustedScale;
+  }
+
+  /**
+   * Set the yaw gate for single-tag measurements
+   *
+   * @param enabled Enable the gate?
+   * @param lookbackSec Lookback time
+   * @param limitRadPerSec Yaw rate above which single-tag measurements will be ignored
+   */
+  public void setSingleTagYawGate(boolean enabled, double lookbackSec, double limitRadPerSec) {
+    enableSingleTagYawGate = enabled;
+    yawGateLookbackSec = lookbackSec;
+    yawGateLimitRadPerSec = limitRadPerSec;
+  }
+
+  /** Gating + Scoring ***************************************************** */
   private static final class GateResult {
     final boolean accepted;
 
@@ -344,8 +368,7 @@ public class Vision extends VirtualSubsystem {
     return ta < tb;
   }
 
-  // -------- Time alignment + fusion --------
-
+  /** Time alignment & fusion ********************************************** */
   private TimedEstimate fuseAtTime(ArrayList<TimedEstimate> estimates, double tF) {
     final ArrayList<TimedEstimate> aligned = new ArrayList<>(estimates.size());
     for (var e : estimates) {
@@ -411,8 +434,7 @@ public class Vision extends VirtualSubsystem {
     return new TimedEstimate(fused, tF, fusedStd);
   }
 
-  // -------- Smoothing buffer --------
-
+  /** Smoothing buffer ***************************************************** */
   private void pushFused(TimedEstimate fused) {
     fusedBuffer.addLast(fused);
 
