@@ -45,6 +45,7 @@ import frc.robot.util.RBSIEnum.MotorIdleMode;
 import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
+import java.util.Set;
 import org.photonvision.simulation.SimCameraProperties;
 import swervelib.math.Matter;
 
@@ -418,8 +419,8 @@ public final class Constants {
   /** Vision Constants (Assuming PhotonVision) ***************************** */
   public static class VisionConstants {
 
-    public static final java.util.Set<Integer> kTrustedTags =
-        java.util.Set.of(2, 3, 4, 5, 8, 9, 10, 11, 18, 19, 20, 21, 24, 25, 26, 27); // HUB AprilTags
+    public static final Set<Integer> kTrustedTags =
+        Set.of(2, 3, 4, 5, 8, 9, 10, 11, 18, 19, 20, 21, 24, 25, 26, 27); // HUB AprilTags
 
     // Noise scaling factors (lower = more trusted)
     public static final double kTrustedTagStdDevScale = 0.6; // 40% more weight

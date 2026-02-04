@@ -277,17 +277,13 @@ public class Drive extends RBSISubsystem {
         final double[] ts = modules[0].getOdometryTimestamps();
         final int n = (ts == null) ? 0 : ts.length;
 
-        if (n == 0) {
-          // Still keep yaw buffers updated for yaw-gating callers
-          double now = Timer.getFPGATimestamp();
-          yawBuffer.addSample(now, imuInputs.yawPositionRad);
-          yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
-
-          gyroDisconnectedAlert.set(!imuInputs.connected);
-          return;
+        // Cache per-module histories ONCE (avoid repeated getters in the loop)
+        final SwerveModulePosition[][] modHist = new SwerveModulePosition[4][];
+        for (int m = 0; m < 4; m++) {
+          modHist[m] = modules[m].getOdometryPositions();
         }
 
-        // Optional IMU odometry yaw queue (preferred if aligned)
+        // Determine yaw queue availability
         final boolean hasYawQueue =
             imuInputs.connected
                 && imuInputs.odometryYawTimestamps != null
@@ -299,13 +295,59 @@ public class Drive extends RBSISubsystem {
         final double[] yawTs = hasYawQueue ? imuInputs.odometryYawTimestamps : null;
         final double[] yawPos = hasYawQueue ? imuInputs.odometryYawPositionsRad : null;
 
+        // If we have no module samples, still keep yaw buffers “alive” for gating callers
+        if (n == 0) {
+          final double now = Timer.getFPGATimestamp();
+          yawBuffer.addSample(now, imuInputs.yawPositionRad);
+          yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
+
+          gyroDisconnectedAlert.set(!imuInputs.connected);
+          return;
+        }
+
+        // Decide whether yaw queue is index-aligned with module[0] timestamps.
+        // We only trust index alignment if BOTH:
+        //  - yaw has at least n samples
+        //  - yawTs[i] ~= ts[i] for i in range (tight epsilon)
+        boolean yawIndexAligned = false;
+        if (hasYawQueue && yawTs.length >= n) {
+          yawIndexAligned = true;
+          final double eps = 1e-3; // 1 ms
+          for (int i = 0; i < n; i++) {
+            if (Math.abs(yawTs[i] - ts[i]) > eps) {
+              yawIndexAligned = false;
+              break;
+            }
+          }
+        }
+
+        // If yaw is NOT index-aligned but we have a yaw queue, build yaw/yawRate buffers ONCE.
+        if (hasYawQueue && !yawIndexAligned) {
+          for (int k = 0; k < yawTs.length; k++) {
+            yawBuffer.addSample(yawTs[k], yawPos[k]);
+            if (k > 0) {
+              final double dt = yawTs[k] - yawTs[k - 1];
+              if (dt > 1e-6) {
+                yawRateBuffer.addSample(yawTs[k], (yawPos[k] - yawPos[k - 1]) / dt);
+              }
+            }
+          }
+        }
+
+        // If NO yaw queue, add a single “now” sample once (don’t do this per replay sample)
+        if (!hasYawQueue) {
+          final double now = Timer.getFPGATimestamp();
+          yawBuffer.addSample(now, imuInputs.yawPositionRad);
+          yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
+        }
+
         // Replay each odometry sample
         for (int i = 0; i < n; i++) {
-          // Build module positions at this sample index
-          for (int m = 0; m < 4; m++) {
-            SwerveModulePosition[] hist = modules[m].getOdometryPositions();
+          final double t = ts[i];
 
-            // Defensive: if one module returned fewer samples, clamp to last available
+          // Build module positions at this sample index (clamp defensively)
+          for (int m = 0; m < 4; m++) {
+            final SwerveModulePosition[] hist = modHist[m];
             if (hist == null || hist.length == 0) {
               odomPositions[m] = modules[m].getPosition();
             } else if (i < hist.length) {
@@ -316,48 +358,30 @@ public class Drive extends RBSISubsystem {
           }
 
           // Determine yaw at this timestamp
-          final double t = ts[i];
           double yawRad = imuInputs.yawPositionRad; // fallback
 
           if (hasYawQueue) {
-            // If yaw queue is index-aligned with module timestamps, use by index.
-            // Otherwise, fall back to interpolating from yawBuffer.
-            if (yawTs.length > i && Math.abs(yawTs[i] - t) < 1e-3) {
+            if (yawIndexAligned) {
               yawRad = yawPos[i];
 
-              // Keep yaw/yawRate buffers updated in the same timebase for gating queries
+              // Keep yaw/yawRate buffers updated in odometry timebase (good for yaw-gate)
               yawBuffer.addSample(t, yawRad);
-              if (i > 0 && yawTs.length > (i - 1)) {
-                double dt = yawTs[i] - yawTs[i - 1];
+              if (i > 0) {
+                final double dt = yawTs[i] - yawTs[i - 1];
                 if (dt > 1e-6) {
                   yawRateBuffer.addSample(t, (yawPos[i] - yawPos[i - 1]) / dt);
                 }
               }
             } else {
-              // Not index-aligned; build yaw buffer from queue once, then sample it
-              // (cheap enough; queue is short)
-              for (int k = 0; k < yawTs.length; k++) {
-                yawBuffer.addSample(yawTs[k], yawPos[k]);
-                if (k > 0) {
-                  double dt = yawTs[k] - yawTs[k - 1];
-                  if (dt > 1e-6) {
-                    yawRateBuffer.addSample(yawTs[k], (yawPos[k] - yawPos[k - 1]) / dt);
-                  }
-                }
-              }
+              // yawBuffer was pre-filled above; interpolate here
               yawRad = yawBuffer.getSample(t).orElse(imuInputs.yawPositionRad);
             }
-          } else {
-            // No yaw queue: store "now" primitives for gating users (still useful)
-            double now = Timer.getFPGATimestamp();
-            yawBuffer.addSample(now, imuInputs.yawPositionRad);
-            yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
           }
 
           // Feed estimator at this historical timestamp
           m_PoseEstimator.updateWithTime(t, Rotation2d.fromRadians(yawRad), odomPositions);
 
-          // Maintain pose history in the SAME timebase as estimator
+          // Maintain pose history in SAME timebase as estimator
           poseBuffer.addSample(t, m_PoseEstimator.getEstimatedPosition());
         }
 

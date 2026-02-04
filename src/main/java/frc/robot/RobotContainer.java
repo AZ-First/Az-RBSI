@@ -525,12 +525,12 @@ public class RobotContainer {
   private VisionIO[] buildVisionIOsReal(Drive drive) {
     return switch (Constants.getVisionType()) {
       case PHOTON ->
-          java.util.Arrays.stream(Constants.Cameras.ALL)
+          Arrays.stream(Constants.Cameras.ALL)
               .map(c -> (VisionIO) new VisionIOPhotonVision(c.name(), c.robotToCamera()))
               .toArray(VisionIO[]::new);
 
       case LIMELIGHT ->
-          java.util.Arrays.stream(Constants.Cameras.ALL)
+          Arrays.stream(Constants.Cameras.ALL)
               .map(c -> (VisionIO) new VisionIOLimelight(c.name(), drive::getHeading))
               .toArray(VisionIO[]::new);
 

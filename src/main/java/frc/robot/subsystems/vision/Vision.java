@@ -34,6 +34,7 @@ import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
 import frc.robot.util.VirtualSubsystem;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
@@ -93,7 +94,7 @@ public class Vision extends VirtualSubsystem {
     }
 
     this.lastAcceptedTsPerCam = new double[io.length];
-    java.util.Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
+    Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
 
     // Log robot->camera transforms if available
     int n = Math.min(camConfigs.length, io.length);
@@ -108,7 +109,7 @@ public class Vision extends VirtualSubsystem {
   public void resetPoseGate(double fpgaNowSeconds) {
     lastPoseResetTimestamp = fpgaNowSeconds;
     fusedBuffer.clear();
-    java.util.Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
+    Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
   }
 
   /** Swap trusted tag set per event/field without redeploy. */
