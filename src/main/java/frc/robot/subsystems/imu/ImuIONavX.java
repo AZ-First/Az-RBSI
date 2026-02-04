@@ -19,6 +19,7 @@ package frc.robot.subsystems.imu;
 
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.subsystems.drive.PhoenixOdometryThread;
@@ -38,7 +39,7 @@ public class ImuIONavX implements ImuIO {
   private final Queue<Double> yawTimestampQueue;
 
   // Previous accel (m/s^2) for jerk
-  private double prevAx = 0.0, prevAy = 0.0, prevAz = 0.0;
+  private Translation3d prevAcc = Translation3d.kZero;
   private long prevTimestampNs = 0L;
 
   // Reusable buffers for queue drain
@@ -82,29 +83,23 @@ public class ImuIONavX implements ImuIO {
     inputs.yawRateRadPerSec = yawRateDegPerSec * DEG_TO_RAD;
 
     // World linear accel (NavX returns "g" typically). Convert to m/s^2.
-    final double ax = navx.getWorldLinearAccelX() * G_TO_MPS2;
-    final double ay = navx.getWorldLinearAccelY() * G_TO_MPS2;
-    final double az = navx.getWorldLinearAccelZ() * G_TO_MPS2;
-
-    inputs.linearAccelX = ax;
-    inputs.linearAccelY = ay;
-    inputs.linearAccelZ = az;
+    inputs.linearAccel =
+        new Translation3d(
+                navx.getWorldLinearAccelX(),
+                navx.getWorldLinearAccelY(),
+                navx.getWorldLinearAccelZ())
+            .times(G_TO_MPS2);
 
     // Jerk
     if (prevTimestampNs != 0L) {
       final double dt = (start - prevTimestampNs) * 1e-9;
       if (dt > 1e-6) {
-        final double invDt = 1.0 / dt;
-        inputs.jerkX = (ax - prevAx) * invDt;
-        inputs.jerkY = (ay - prevAy) * invDt;
-        inputs.jerkZ = (az - prevAz) * invDt;
+        inputs.linearJerk = inputs.linearAccel.minus(prevAcc).div(dt);
       }
     }
 
     prevTimestampNs = start;
-    prevAx = ax;
-    prevAy = ay;
-    prevAz = az;
+    prevAcc = inputs.linearAccel;
 
     inputs.timestampNs = start;
 
@@ -126,6 +121,11 @@ public class ImuIONavX implements ImuIO {
     inputs.latencySeconds = (end - start) * 1e-9;
   }
 
+  /**
+   * Zero the YAW to this radian value
+   *
+   * @param yawRad The radian value to which to zero
+   */
   @Override
   public void zeroYawRad(double yawRad) {
     navx.setAngleAdjustment(yawRad / DEG_TO_RAD);
@@ -133,7 +133,7 @@ public class ImuIONavX implements ImuIO {
 
     // Reset jerk history so you don't spike on the next frame
     prevTimestampNs = 0L;
-    prevAx = prevAy = prevAz = 0.0;
+    prevAcc = Translation3d.kZero;
   }
 
   private int drainOdomQueues() {
@@ -174,25 +174,4 @@ public class ImuIONavX implements ImuIO {
     odomTsBuf = new double[newCap];
     odomYawRadBuf = new double[newCap];
   }
-
-  // /**
-  //  * Zero the NavX
-  //  *
-  //  * <p>This method should always rezero the pigeon in ALWAYS-BLUE-ORIGIN orientation. Testing,
-  //  * however, shows that it's not doing what I think it should be doing. There is likely
-  //  * interference with something else in the odometry
-  //  */
-  // @Override
-  // public void zero() {
-  //   // With the Pigeon facing forward, forward depends on the alliance selected.
-  //   // Set Angle Adjustment based on alliance
-  //   if (DriverStation.getAlliance().get() == Alliance.Blue) {
-  //     navx.setAngleAdjustment(0.0);
-  //   } else {
-  //     navx.setAngleAdjustment(180.0);
-  //   }
-  //   System.out.println("Setting YAW to " + navx.getAngleAdjustment());
-  //   navx.zeroYaw();
-  // }
-
 }

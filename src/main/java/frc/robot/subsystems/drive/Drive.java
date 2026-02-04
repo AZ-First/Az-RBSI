@@ -60,25 +60,33 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
+/**
+ * Drive subsystem (RBSISubsystem)
+ *
+ * <p>The Drive subsystem controls the individual swerve Modules and owns the odometry of the robot.
+ * The odometry is updated from both the swerve modules and (optionally) the vision subsystem.
+ */
 public class Drive extends RBSISubsystem {
 
-  // --- buffers for time-aligned pose + yaw + yawRate history ---
-  private final ConcurrentTimeInterpolatableBuffer<Pose2d> poseBuffer =
-      frc.robot.util.ConcurrentTimeInterpolatableBuffer.createBuffer(1.5);
-
-  private final ConcurrentTimeInterpolatableBuffer<Double> yawBuffer =
-      frc.robot.util.ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(1.5);
-
-  private final ConcurrentTimeInterpolatableBuffer<Double> yawRateBuffer =
-      frc.robot.util.ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(1.5);
-
-  static final Lock odometryLock = new ReentrantLock();
+  // Declare Hardware
   private final Imu imu;
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
   private final SysIdRoutine sysId;
+
+  // Buffers for necessary things
+  private final ConcurrentTimeInterpolatableBuffer<Pose2d> poseBuffer =
+      ConcurrentTimeInterpolatableBuffer.createBuffer(DrivebaseConstants.kHistorySize);
+  private final ConcurrentTimeInterpolatableBuffer<Double> yawBuffer =
+      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(DrivebaseConstants.kHistorySize);
+  private final ConcurrentTimeInterpolatableBuffer<Double> yawRateBuffer =
+      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(DrivebaseConstants.kHistorySize);
+
+  // Declare an alert
   private final Alert gyroDisconnectedAlert =
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
 
+  // Declare odometry and pose-related variables
+  static final Lock odometryLock = new ReentrantLock();
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
   private SwerveModulePosition[] lastModulePositions = // For delta tracking
       new SwerveModulePosition[] {
@@ -87,15 +95,24 @@ public class Drive extends RBSISubsystem {
         new SwerveModulePosition(),
         new SwerveModulePosition()
       };
-  private final SwerveModulePosition[] odomPositions = new SwerveModulePosition[4];
+  private final SwerveModulePosition[] odomPositions = {
+    new SwerveModulePosition(),
+    new SwerveModulePosition(),
+    new SwerveModulePosition(),
+    new SwerveModulePosition()
+  };
   private SwerveDrivePoseEstimator m_PoseEstimator =
       new SwerveDrivePoseEstimator(kinematics, Rotation2d.kZero, lastModulePositions, Pose2d.kZero);
 
+  // Declare PID controller and siumulation physics
   private ProfiledPIDController angleController;
-
   private DriveSimPhysics simPhysics;
 
-  // Constructor
+  // Pose reset gate (vision + anything latency-sensitive)
+  private volatile long poseResetEpoch = 0; // monotonic counter
+  private volatile double lastPoseResetTimestamp = Double.NEGATIVE_INFINITY;
+
+  /** Constructor */
   public Drive(Imu imu) {
     this.imu = imu;
 
@@ -151,8 +168,8 @@ public class Drive extends RBSISubsystem {
         default:
           throw new RuntimeException("Invalid Swerve Drive Type");
       }
-      // Start odometry thread (for the real robot)
 
+      // Start odometry thread (for the real robot)
       PhoenixOdometryThread.getInstance().start();
 
     } else {
@@ -211,12 +228,16 @@ public class Drive extends RBSISubsystem {
         break;
 
       case CHOREO:
-        // TODO: Probably need to add something here for Choreo autonomous path building
+        // TODO: If your team is using Choreo, you'll know what to do here...
+        break;
+
+      case MANUAL:
+        // Nothing to be done for MANUAL; may just use AutoPilot
         break;
       default:
     }
 
-    // Configure SysId
+    // Configure SysId for drivebase characterization
     sysId =
         new SysIdRoutine(
             new SysIdRoutine.Config(
@@ -228,126 +249,188 @@ public class Drive extends RBSISubsystem {
                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
   }
 
+  /************************************************************************* */
   /** Periodic function that is called each robot cycle by the command scheduler */
   @Override
   public void rbsiPeriodic() {
     odometryLock.lock();
     try {
-      // Get the IMU inputs
+      // Ensure IMU inputs are fresh for this cycle
       final var imuInputs = imu.getInputs();
 
       // Stop modules & log empty setpoint states if disabled
       if (DriverStation.isDisabled()) {
-        for (var module : modules) module.stop();
+        for (var module : modules) {
+          module.stop();
+        }
         Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
         Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
       }
 
-      // Module periodic updates, which drains queues this cycle
-      for (var module : modules) module.periodic();
+      // Drain per-module odometry queues for this cycle
+      for (var module : modules) {
+        module.periodic();
+      }
 
-      // Feed historical samples into odometry if REAL robot
+      // -------- REAL ODOMETRY REPLAY (canonical timestamps from module[0]) --------
       if (Constants.getMode() != Mode.SIM) {
+        final double[] ts = modules[0].getOdometryTimestamps();
+        final int n = (ts == null) ? 0 : ts.length;
 
-        // ---- Gather per-module histories ----
-        final double[][] perModuleTs = new double[4][];
-        final SwerveModulePosition[][] perModulePos = new SwerveModulePosition[4][];
-        int unionCap = 0;
-
+        // Cache per-module histories ONCE (avoid repeated getters in the loop)
+        final SwerveModulePosition[][] modHist = new SwerveModulePosition[4][];
         for (int m = 0; m < 4; m++) {
-          perModuleTs[m] = modules[m].getOdometryTimestamps();
-          perModulePos[m] = modules[m].getOdometryPositions();
-          unionCap += perModuleTs[m].length;
+          modHist[m] = modules[m].getOdometryPositions();
         }
 
-        if (unionCap == 0) {
+        // Determine yaw queue availability
+        final boolean hasYawQueue =
+            imuInputs.connected
+                && imuInputs.odometryYawTimestamps != null
+                && imuInputs.odometryYawPositionsRad != null
+                && imuInputs.odometryYawTimestamps.length
+                    == imuInputs.odometryYawPositionsRad.length
+                && imuInputs.odometryYawTimestamps.length > 0;
+
+        final double[] yawTs = hasYawQueue ? imuInputs.odometryYawTimestamps : null;
+        final double[] yawPos = hasYawQueue ? imuInputs.odometryYawPositionsRad : null;
+
+        // If we have no module samples, still keep yaw buffers “alive” for gating callers
+        if (n == 0) {
+          final double now = Timer.getFPGATimestamp();
+          yawBuffer.addSample(now, imuInputs.yawPositionRad);
+          yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
+
           gyroDisconnectedAlert.set(!imuInputs.connected);
           return;
         }
 
-        // ---- Fill yaw buffer from IMU odometry samples (preferred) ----
-        // These timestamps are authoritative for yaw interpolation and yaw-rate gating.
-        if (imuInputs.connected
-            && imuInputs.odometryYawTimestamps != null
-            && imuInputs.odometryYawPositionsRad != null
-            && imuInputs.odometryYawTimestamps.length == imuInputs.odometryYawPositionsRad.length
-            && imuInputs.odometryYawTimestamps.length > 0) {
+        // Decide whether yaw queue is index-aligned with module[0] timestamps.
+        // We only trust index alignment if BOTH:
+        //  - yaw has at least n samples
+        //  - yawTs[i] ~= ts[i] for i in range (tight epsilon)
+        boolean yawIndexAligned = false;
+        if (hasYawQueue && yawTs.length >= n) {
+          yawIndexAligned = true;
+          final double eps = 1e-3; // 1 ms
+          for (int i = 0; i < n; i++) {
+            if (Math.abs(yawTs[i] - ts[i]) > eps) {
+              yawIndexAligned = false;
+              break;
+            }
+          }
+        }
 
-          final double[] yts = imuInputs.odometryYawTimestamps;
-          final double[] yaws = imuInputs.odometryYawPositionsRad;
-
-          for (int i = 0; i < yts.length; i++) {
-            yawBuffer.addSample(yts[i], yaws[i]);
-            if (i > 0) {
-              double dt = yts[i] - yts[i - 1];
+        // If yaw is NOT index-aligned but we have a yaw queue, build yaw/yawRate buffers ONCE.
+        if (hasYawQueue && !yawIndexAligned) {
+          for (int k = 0; k < yawTs.length; k++) {
+            yawBuffer.addSample(yawTs[k], yawPos[k]);
+            if (k > 0) {
+              final double dt = yawTs[k] - yawTs[k - 1];
               if (dt > 1e-6) {
-                yawRateBuffer.addSample(yts[i], (yaws[i] - yaws[i - 1]) / dt);
+                yawRateBuffer.addSample(yawTs[k], (yawPos[k] - yawPos[k - 1]) / dt);
               }
             }
           }
-        } else {
-          // fallback: buffer "now" yaw only
-          double now = Timer.getFPGATimestamp();
+        }
+
+        // If NO yaw queue, add a single “now” sample once (don’t do this per replay sample)
+        if (!hasYawQueue) {
+          final double now = Timer.getFPGATimestamp();
           yawBuffer.addSample(now, imuInputs.yawPositionRad);
           yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
         }
 
-        // ---- Build union timeline ----
-        final double[] unionTs = new double[Math.max(unionCap, 1)];
-        final double EPS = 1e-4; // 0.1 ms
-        final int unionN = buildUnionTimeline(perModuleTs, unionTs, EPS);
+        // Replay each odometry sample
+        for (int i = 0; i < n; i++) {
+          final double t = ts[i];
 
-        // ---- Replay at union times ----
-        for (int i = 0; i < unionN; i++) {
-          final double t = unionTs[i];
-
-          // Interpolate each module to union time
+          // Build module positions at this sample index (clamp defensively)
           for (int m = 0; m < 4; m++) {
-            SwerveModulePosition p = interpolateModulePosition(perModuleTs[m], perModulePos[m], t);
-            odomPositions[m] = p;
+            final SwerveModulePosition[] hist = modHist[m];
+            if (hist == null || hist.length == 0) {
+              odomPositions[m] = modules[m].getPosition();
+            } else if (i < hist.length) {
+              odomPositions[m] = hist[i];
+            } else {
+              odomPositions[m] = hist[hist.length - 1];
+            }
           }
 
-          // Interpolate yaw at union time
-          final double yawRad = yawBuffer.getSample(t).orElse(imuInputs.yawPositionRad);
+          // Determine yaw at this timestamp
+          double yawRad = imuInputs.yawPositionRad; // fallback
 
+          if (hasYawQueue) {
+            if (yawIndexAligned) {
+              yawRad = yawPos[i];
+
+              // Keep yaw/yawRate buffers updated in odometry timebase (good for yaw-gate)
+              yawBuffer.addSample(t, yawRad);
+              if (i > 0) {
+                final double dt = yawTs[i] - yawTs[i - 1];
+                if (dt > 1e-6) {
+                  yawRateBuffer.addSample(t, (yawPos[i] - yawPos[i - 1]) / dt);
+                }
+              }
+            } else {
+              // yawBuffer was pre-filled above; interpolate here
+              yawRad = yawBuffer.getSample(t).orElse(imuInputs.yawPositionRad);
+            }
+          }
+
+          // Feed estimator at this historical timestamp
           m_PoseEstimator.updateWithTime(t, Rotation2d.fromRadians(yawRad), odomPositions);
 
-          // keep buffer in the same timebase as estimator
+          // Maintain pose history in SAME timebase as estimator
           poseBuffer.addSample(t, m_PoseEstimator.getEstimatedPosition());
         }
 
         Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
+        gyroDisconnectedAlert.set(!imuInputs.connected);
+        return;
       }
 
-      gyroDisconnectedAlert.set(!imuInputs.connected && Constants.getMode() != Mode.SIM);
+      // SIMULATION: Keep sim pose buffer time-aligned, too
+      double now = Timer.getFPGATimestamp();
+      poseBuffer.addSample(now, simPhysics.getPose());
+      yawBuffer.addSample(now, simPhysics.getYaw().getRadians());
+      yawRateBuffer.addSample(now, simPhysics.getOmegaRadPerSec());
+
+      Logger.recordOutput("Drive/Pose", simPhysics.getPose());
+      gyroDisconnectedAlert.set(false);
 
     } finally {
       odometryLock.unlock();
     }
   }
 
-  /** Simulation Periodic Method */
+  /**
+   * Simulation Periodic Method
+   *
+   * <p>This function runs only for simulation, but does similar processing to the REAL periodic
+   * function. Instead of reading back what the modules actually say, use physics to predict where
+   * the module would have gone.
+   */
   @Override
   public void simulationPeriodic() {
     final double dt = Constants.loopPeriodSecs;
 
-    // 1) Advance module wheel physics
+    // Advance module wheel physics
     for (int i = 0; i < modules.length; i++) {
       modules[i].simulationPeriodic();
     }
 
-    // 2) Get module states from modules (authoritative) - NO STREAMS
+    // Get module states from modules
     final SwerveModuleState[] moduleStates = new SwerveModuleState[modules.length];
     for (int i = 0; i < modules.length; i++) {
       moduleStates[i] = modules[i].getState();
     }
 
-    // 3) Update SIM physics (linear + angular)
+    // Update SIM physics (linear & angular motion of the robot)
     simPhysics.update(moduleStates, dt);
 
-    // 4) Feed IMU from authoritative physics (primitive-only boundary)
-    final double yawRad =
-        simPhysics.getYaw().getRadians(); // or simPhysics.getYawRad() if you have it
+    // Feed the simulated IMU from authoritative physics
+    final double yawRad = simPhysics.getYaw().getRadians();
     final double omegaRadPerSec = simPhysics.getOmegaRadPerSec();
 
     final double ax = simPhysics.getLinearAccel().getX();
@@ -357,17 +440,15 @@ public class Drive extends RBSISubsystem {
     imu.simulationSetOmegaRadPerSec(omegaRadPerSec);
     imu.simulationSetLinearAccelMps2(ax, ay, 0.0);
 
-    // 5) Feed PoseEstimator with authoritative yaw and module positions
-    // (PoseEstimator still wants objects -> boundary conversion stays here)
+    // Feed PoseEstimator with authoritative yaw and module positions
     final SwerveModulePosition[] modulePositions = new SwerveModulePosition[modules.length];
     for (int i = 0; i < modules.length; i++) {
       modulePositions[i] = modules[i].getPosition();
     }
-
     m_PoseEstimator.resetPosition(
         Rotation2d.fromRadians(yawRad), modulePositions, simPhysics.getPose());
 
-    // 6) Optional: inject vision measurement in SIM
+    // If simulated vision available, inject vision measurement
     if (simulatedVisionAvailable) {
       final Pose2d visionPose = getSimulatedVisionPose();
       final double visionTimestamp = Timer.getFPGATimestamp();
@@ -377,7 +458,7 @@ public class Drive extends RBSISubsystem {
 
     poseBuffer.addSample(Timer.getFPGATimestamp(), simPhysics.getPose());
 
-    // 7) Logging
+    // Logging
     Logger.recordOutput("Sim/Pose", simPhysics.getPose());
     Logger.recordOutput("Sim/YawRad", yawRad);
     Logger.recordOutput("Sim/OmegaRadPerSec", simPhysics.getOmegaRadPerSec());
@@ -399,7 +480,7 @@ public class Drive extends RBSISubsystem {
     }
   }
 
-  /** Stops the drive. */
+  /** Stop the drive. */
   public void stop() {
     runVelocity(new ChassisSpeeds());
   }
@@ -513,24 +594,56 @@ public class Drive extends RBSISubsystem {
     return m_PoseEstimator.getEstimatedPosition();
   }
 
+  /** Returns the current odometry rotation. */
+  @AutoLogOutput(key = "Odometry/Yaw")
+  public Rotation2d getHeading() {
+    if (Constants.getMode() == Mode.SIM) {
+      return simPhysics.getYaw();
+    }
+    return imu.getYaw();
+  }
+
+  /**
+   * Returns the measured chassis speeds of the modules in FIELD coordinates.
+   *
+   * <p>+X = field forward +Y = field left CCW+ = counterclockwise
+   */
+  @AutoLogOutput(key = "SwerveChassisSpeeds/FieldMeasured")
+  public ChassisSpeeds getFieldRelativeSpeeds() {
+    // Robot-relative measured speeds from modules
+    ChassisSpeeds robotRelative = getChassisSpeeds();
+    // Convert to field-relative using authoritative yaw
+    return ChassisSpeeds.fromRobotRelativeSpeeds(robotRelative, getHeading());
+  }
+
+  /**
+   * Returns the FIELD-relative linear velocity of the robot's center.
+   *
+   * <p>+X = field forward +Y = field left
+   */
+  @AutoLogOutput(key = "Drive/FieldLinearVelocity")
+  public Translation2d getFieldLinearVelocity() {
+    ChassisSpeeds fieldSpeeds = getFieldRelativeSpeeds();
+    return new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
+  }
+
   /** Returns interpolated odometry pose at a given timestamp. */
   public Optional<Pose2d> getPoseAtTime(double timestampSeconds) {
     return poseBuffer.getSample(timestampSeconds);
   }
 
-  /** Adds a vision measurement safely into the PoseEstimator. */
-  public void addVisionMeasurement(Pose2d pose, double timestampSeconds, Matrix<N3, N1> stdDevs) {
-    odometryLock.lock();
-    try {
-      m_PoseEstimator.addVisionMeasurement(pose, timestampSeconds, stdDevs);
-    } finally {
-      odometryLock.unlock();
-    }
-  }
-
-  /** Max abs yaw rate over [t0, t1] using buffered yaw-rate history (no streams). */
+  /**
+   * Max abs yaw rate over [t0, t1] using buffered yaw-rate history
+   *
+   * @param t0 Interval start
+   * @param t1 interval end
+   * @return Maximum yaw rate
+   */
   public OptionalDouble getMaxAbsYawRateRadPerSec(double t0, double t1) {
+    // If end before start, return empty
     if (t1 < t0) return OptionalDouble.empty();
+
+    // Get the subset of entries from the buffer
     var sub = yawRateBuffer.getInternalBuffer().subMap(t0, true, t1, true);
     if (sub.isEmpty()) return OptionalDouble.empty();
 
@@ -541,16 +654,38 @@ public class Drive extends RBSISubsystem {
       double a = Math.abs(v);
       if (a > maxAbs) maxAbs = a;
     }
+    // Return a value if there's anything to report, else empty
     return any ? OptionalDouble.of(maxAbs) : OptionalDouble.empty();
   }
 
-  /** Returns the current odometry rotation. */
-  @AutoLogOutput(key = "Odometry/Yaw")
-  public Rotation2d getHeading() {
-    if (Constants.getMode() == Mode.SIM) {
-      return simPhysics.getYaw();
-    }
-    return imu.getYaw();
+  /** Get the last EPOCH of a pose reset */
+  public long getPoseResetEpoch() {
+    return poseResetEpoch;
+  }
+
+  /** Get the last TIMESTAMP of a pose reset */
+  public double getLastPoseResetTimestamp() {
+    return lastPoseResetTimestamp;
+  }
+
+  /** Returns the maximum linear speed in meters per sec. */
+  public double getMaxLinearSpeedMetersPerSec() {
+    return DrivebaseConstants.kMaxLinearSpeed;
+  }
+
+  /** Returns the maximum angular speed in radians per sec. */
+  public double getMaxAngularSpeedRadPerSec() {
+    return getMaxLinearSpeedMetersPerSec() / kDriveBaseRadiusMeters;
+  }
+
+  /** Returns the maximum linear acceleration in meters per sec per sec. */
+  public double getMaxLinearAccelMetersPerSecPerSec() {
+    return DrivebaseConstants.kMaxLinearAccel;
+  }
+
+  /** Returns the maximum angular acceleration in radians per sec per sec */
+  public double getMaxAngularAccelRadPerSecPerSec() {
+    return getMaxLinearAccelMetersPerSecPerSec() / kDriveBaseRadiusMeters;
   }
 
   /** Returns an array of module translations. */
@@ -572,31 +707,6 @@ public class Drive extends RBSISubsystem {
     return values;
   }
 
-  /**
-   * Returns the measured chassis speeds in FIELD coordinates.
-   *
-   * <p>+X = field forward +Y = field left CCW+ = counterclockwise
-   */
-  @AutoLogOutput(key = "SwerveChassisSpeeds/FieldMeasured")
-  public ChassisSpeeds getFieldRelativeSpeeds() {
-    // Robot-relative measured speeds from modules
-    ChassisSpeeds robotRelative = getChassisSpeeds();
-
-    // Convert to field-relative using authoritative yaw
-    return ChassisSpeeds.fromRobotRelativeSpeeds(robotRelative, getHeading());
-  }
-
-  /**
-   * Returns the FIELD-relative linear velocity of the robot's center.
-   *
-   * <p>+X = field forward +Y = field left
-   */
-  @AutoLogOutput(key = "Drive/FieldLinearVelocity")
-  public Translation2d getFieldLinearVelocity() {
-    ChassisSpeeds fieldSpeeds = getFieldRelativeSpeeds();
-    return new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
-  }
-
   /** Returns the average velocity of the modules in rotations/sec (Phoenix native units). */
   public double getFFCharacterizationVelocity() {
     double output = 0.0;
@@ -604,26 +714,6 @@ public class Drive extends RBSISubsystem {
       output += modules[i].getFFCharacterizationVelocity() / 4.0;
     }
     return output;
-  }
-
-  /** Returns the maximum linear speed in meters per sec. */
-  public double getMaxLinearSpeedMetersPerSec() {
-    return DrivebaseConstants.kMaxLinearSpeed;
-  }
-
-  /** Returns the maximum angular speed in radians per sec. */
-  public double getMaxAngularSpeedRadPerSec() {
-    return getMaxLinearSpeedMetersPerSec() / kDriveBaseRadiusMeters;
-  }
-
-  /** Returns the maximum linear acceleration in meters per sec per sec. */
-  public double getMaxLinearAccelMetersPerSecPerSec() {
-    return DrivebaseConstants.kMaxLinearAccel;
-  }
-
-  /** Returns the maximum angular acceleration in radians per sec per sec */
-  public double getMaxAngularAccelRadPerSecPerSec() {
-    return getMaxLinearAccelMetersPerSecPerSec() / kDriveBaseRadiusMeters;
   }
 
   /* Setter Functions ****************************************************** */
@@ -651,18 +741,21 @@ public class Drive extends RBSISubsystem {
     markPoseReset(Timer.getFPGATimestamp());
   }
 
-  // ---- Pose reset gate (vision + anything latency-sensitive) ----
-  private volatile long poseResetEpoch = 0; // monotonic counter
-  private volatile double lastPoseResetTimestamp = Double.NEGATIVE_INFINITY;
-
-  public long getPoseResetEpoch() {
-    return poseResetEpoch;
+  /** Adds a vision measurement safely into the PoseEstimator. */
+  public void addVisionMeasurement(Pose2d pose, double timestampSeconds, Matrix<N3, N1> stdDevs) {
+    odometryLock.lock();
+    try {
+      m_PoseEstimator.addVisionMeasurement(pose, timestampSeconds, stdDevs);
+    } finally {
+      odometryLock.unlock();
+    }
   }
 
-  public double getLastPoseResetTimestamp() {
-    return lastPoseResetTimestamp;
-  }
-
+  /**
+   * Sets the EPOCH and TIMESTAMP for a pose reset
+   *
+   * @param fpgaNow The FPGA timestamp of the pose reset
+   */
   private void markPoseReset(double fpgaNow) {
     lastPoseResetTimestamp = fpgaNow;
     poseResetEpoch++;
@@ -670,7 +763,10 @@ public class Drive extends RBSISubsystem {
     Logger.recordOutput("Drive/PoseResetTimestamp", lastPoseResetTimestamp);
   }
 
+  /** UTILITY FUNCTION SECTION ********************************************* */
+
   /** CHOREO SECTION (Ignore if AutoType == PATHPLANNER) ******************* */
+
   /** Choreo: Reset odometry */
   public Command resetOdometry(Pose2d orElseGet) {
     // TODO Auto-generated method stub
@@ -725,7 +821,7 @@ public class Drive extends RBSISubsystem {
     runVelocity(speeds);
   }
 
-  // ---------------- SIM VISION ----------------
+  /** SIMULATION VISION FUNCTIONS ****************************************** */
 
   // Vision measurement enabled in simulation
   private boolean simulatedVisionAvailable = true;
@@ -763,70 +859,5 @@ public class Drive extends RBSISubsystem {
     stdDevs.set(1, 0, 0.02); // Y standard deviation (meters)
     stdDevs.set(2, 0, Math.toRadians(2)); // rotation standard deviation (radians)
     return stdDevs;
-  }
-
-  private static SwerveModulePosition interpolateModulePosition(
-      double[] ts, SwerveModulePosition[] samples, double t) {
-
-    final int n = ts.length;
-    if (n == 0) return new SwerveModulePosition();
-
-    if (t <= ts[0]) return samples[0];
-    if (t >= ts[n - 1]) return samples[n - 1];
-
-    int lo = 0, hi = n - 1;
-    while (lo < hi) {
-      int mid = (lo + hi) >>> 1;
-      if (ts[mid] < t) lo = mid + 1;
-      else hi = mid;
-    }
-    int i1 = lo;
-    int i0 = i1 - 1;
-
-    double t0 = ts[i0];
-    double t1 = ts[i1];
-    if (t1 <= t0) return samples[i1];
-
-    double alpha = (t - t0) / (t1 - t0);
-
-    double dist =
-        samples[i0].distanceMeters
-            + (samples[i1].distanceMeters - samples[i0].distanceMeters) * alpha;
-
-    Rotation2d angle = samples[i0].angle.interpolate(samples[i1].angle, alpha);
-
-    return new SwerveModulePosition(dist, angle);
-  }
-
-  private static int buildUnionTimeline(double[][] perModuleTs, double[] outUnion, double epsSec) {
-    int[] idx = new int[perModuleTs.length];
-    int outN = 0;
-
-    while (true) {
-      double minT = Double.POSITIVE_INFINITY;
-      boolean any = false;
-
-      for (int m = 0; m < perModuleTs.length; m++) {
-        double[] ts = perModuleTs[m];
-        if (idx[m] >= ts.length) continue;
-        any = true;
-        minT = Math.min(minT, ts[idx[m]]);
-      }
-
-      if (!any) break;
-
-      if (outN == 0 || Math.abs(minT - outUnion[outN - 1]) > epsSec) {
-        outUnion[outN++] = minT;
-      }
-
-      for (int m = 0; m < perModuleTs.length; m++) {
-        double[] ts = perModuleTs[m];
-        while (idx[m] < ts.length && Math.abs(ts[idx[m]] - minT) <= epsSec) {
-          idx[m]++;
-        }
-      }
-    }
-
-    return outN;
   }
 }

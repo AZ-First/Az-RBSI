@@ -45,6 +45,7 @@ public class DriveSimPhysics {
 
   private final SwerveDriveKinematics kinematics;
 
+  /** Constructor */
   public DriveSimPhysics(
       SwerveDriveKinematics kinematics, double moiKgMetersSq, double maxTorqueNm) {
     this.kinematics = kinematics;
@@ -97,7 +98,7 @@ public class DriveSimPhysics {
     pose = new Pose2d(newTranslation, newYaw);
   }
 
-  /* ================== Getters ================== */
+  /** Getter Functions ***************************************************** */
   public Pose2d getPose() {
     return pose;
   }
@@ -114,7 +115,7 @@ public class DriveSimPhysics {
     return linearAccel;
   }
 
-  /* ================== Reset ================== */
+  /** Reset Functions ****************************************************** */
   public void reset(Pose2d pose) {
     this.pose = pose;
     this.omegaRadPerSec = 0.0;

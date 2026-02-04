@@ -62,7 +62,7 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   @Override
   public void updateInputs(VisionIOInputs inputs) {
     // NOTE: This updates the sim world every time a sim camera is polled.
-    // That's fine (fast enough), but if you want “update once per loop,” see note below.
+    // That's fine (fast enough), but if you want "update once per loop," see note below.
     visionSim.update(poseSupplier.get());
 
     // Then pull results like normal (and emit PoseObservation + usedTagIds sets)

@@ -19,8 +19,9 @@ package frc.robot.subsystems.imu;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import frc.robot.util.VirtualSubsystem;
 
-public class Imu {
+public class Imu extends VirtualSubsystem {
   private final ImuIO io;
   private final ImuIO.ImuIOInputs inputs = new ImuIO.ImuIOInputs();
 
@@ -30,11 +31,13 @@ public class Imu {
   private Translation3d cachedAccel = Translation3d.kZero;
   private Translation3d cachedJerk = Translation3d.kZero;
 
+  // Constructor
   public Imu(ImuIO io) {
     this.io = io;
   }
 
-  public void periodic() {
+  // Periodic function to read inputs
+  public void rbsiPeriodic() {
     io.updateInputs(inputs);
   }
 
@@ -70,12 +73,11 @@ public class Imu {
     cacheStampNs = stamp;
 
     cachedYaw = Rotation2d.fromRadians(inputs.yawPositionRad);
-    cachedAccel = new Translation3d(inputs.linearAccelX, inputs.linearAccelY, inputs.linearAccelZ);
-    cachedJerk = new Translation3d(inputs.jerkX, inputs.jerkY, inputs.jerkZ);
+    cachedAccel = inputs.linearAccel;
+    cachedJerk = inputs.linearJerk;
   }
 
   // ---------------- SIM PUSH (primitive-only boundary) ----------------
-
   /** Simulation: push authoritative yaw (radians) into the IO layer */
   public void simulationSetYawRad(double yawRad) {
     io.simulationSetYawRad(yawRad);

@@ -45,6 +45,7 @@ import frc.robot.util.RBSIEnum.MotorIdleMode;
 import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
+import java.util.Set;
 import org.photonvision.simulation.SimCameraProperties;
 import swervelib.math.Matter;
 
@@ -126,19 +127,18 @@ public final class Constants {
     // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
     //   frame.
-    // NOTE: It is assumed that both the Rio and the IMU are mounted such that +Z is UP
-    public static final Rotation2d kRioOrientation =
+    public static final Rotation3d kRioOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(-90.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
+          case COMPBOT -> new Rotation3d(0, 0, -90);
+          case DEVBOT -> Rotation3d.kZero;
+          default -> Rotation3d.kZero;
         };
     // IMU can be one of Pigeon2 or NavX
-    public static final Rotation2d kIMUOrientation =
+    public static final Rotation3d kIMUOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation2d.fromDegrees(0.);
-          case DEVBOT -> Rotation2d.fromDegrees(0.);
-          default -> Rotation2d.fromDegrees(0.);
+          case COMPBOT -> Rotation3d.kZero;
+          case DEVBOT -> Rotation3d.kZero;
+          default -> Rotation3d.kZero;
         };
   }
 
@@ -324,6 +324,9 @@ public final class Constants {
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
     public static final double kSteerP = 400.0;
     public static final double kSteerD = 20.0;
+
+    // Odometry-related constants
+    public static final double kHistorySize = 1.5; // seconds
   }
 
   /************************************************************************* */
@@ -416,8 +419,8 @@ public final class Constants {
   /** Vision Constants (Assuming PhotonVision) ***************************** */
   public static class VisionConstants {
 
-    public static final java.util.Set<Integer> kTrustedTags =
-        java.util.Set.of(2, 3, 4, 5, 8, 9, 10, 11, 18, 19, 20, 21, 24, 25, 26, 27); // HUB AprilTags
+    public static final Set<Integer> kTrustedTags =
+        Set.of(2, 3, 4, 5, 8, 9, 10, 11, 18, 19, 20, 21, 24, 25, 26, 27); // HUB AprilTags
 
     // Noise scaling factors (lower = more trusted)
     public static final double kTrustedTagStdDevScale = 0.6; // 40% more weight

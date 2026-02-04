@@ -3,9 +3,15 @@
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
 //
-// Use of this source code is governed by a BSD
-// license that can be found in the AdvantageKit-License.md file
-// at the root directory of this project.
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation or
+// available in the root directory of this project.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 //
 // Copyright (c) FIRST and other WPILib contributors.
 // Open Source Software; you can modify and/or share it under the terms of
@@ -34,6 +40,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
+import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
@@ -98,15 +105,13 @@ public class RobotContainer {
 
   // These are "Virtual Subsystems" that report information but have no motors
   private final Imu m_imu;
+  private final Vision m_vision;
 
   @SuppressWarnings("unused")
   private final Accelerometer m_accel;
 
   @SuppressWarnings("unused")
   private final RBSIPowerMonitor m_power;
-
-  @SuppressWarnings("unused")
-  private final Vision m_vision;
 
   @SuppressWarnings("unused")
   private List<RBSICANHealth> canHealth;
@@ -167,7 +172,7 @@ public class RobotContainer {
         m_flywheel = new Flywheel(new FlywheelIOSim());
 
         // ---------------- Vision IOs (robot code) ----------------
-        var cams = frc.robot.Constants.Cameras.ALL;
+        var cams = Cameras.ALL;
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsSim(m_drivebase));
@@ -520,12 +525,12 @@ public class RobotContainer {
   private VisionIO[] buildVisionIOsReal(Drive drive) {
     return switch (Constants.getVisionType()) {
       case PHOTON ->
-          java.util.Arrays.stream(Constants.Cameras.ALL)
+          Arrays.stream(Constants.Cameras.ALL)
               .map(c -> (VisionIO) new VisionIOPhotonVision(c.name(), c.robotToCamera()))
               .toArray(VisionIO[]::new);
 
       case LIMELIGHT ->
-          java.util.Arrays.stream(Constants.Cameras.ALL)
+          Arrays.stream(Constants.Cameras.ALL)
               .map(c -> (VisionIO) new VisionIOLimelight(c.name(), drive::getHeading))
               .toArray(VisionIO[]::new);
 
