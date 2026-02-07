@@ -74,7 +74,7 @@ public final class Constants {
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
   private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
-  private static VisionType visionType = VisionType.NONE; // PHOTON, LIMELIGHT, NONE
+  private static VisionType visionType = VisionType.PHOTON; //  PHOTON, LIMELIGHT, NONE
 
   /** Enumerate the robot types (name your robots here) */
   public static enum RobotType {
@@ -324,6 +324,7 @@ public final class Constants {
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
     public static final double kSteerP = 400.0;
     public static final double kSteerD = 20.0;
+    public static final double kSteerS = 2.0;
 
     // Odometry-related constants
     public static final double kHistorySize = 1.5; // seconds
@@ -466,7 +467,7 @@ public final class Constants {
     // Example Cameras are mounted in the back corners, 18" up from the floor, facing sideways
     public static final CameraConfig[] ALL = {
       new CameraConfig(
-          "camera_0",
+          "Photon_BW7",
           new Transform3d(
               Inches.of(-13.0),
               Inches.of(13.0),
@@ -483,23 +484,23 @@ public final class Constants {
             }
           }),
       //
-      new CameraConfig(
-          "camera_1",
-          new Transform3d(
-              Inches.of(-13.0),
-              Inches.of(-13.0),
-              Inches.of(12.0),
-              new Rotation3d(0.0, 0.0, -Math.PI / 2)),
-          1.0,
-          new SimCameraProperties() {
-            {
-              setCalibration(1280, 800, Rotation2d.fromDegrees(120));
-              setCalibError(0.25, 0.08);
-              setFPS(30);
-              setAvgLatencyMs(20);
-              setLatencyStdDevMs(5);
-            }
-          }),
+      // new CameraConfig(
+      //     "camera_1",
+      //     new Transform3d(
+      //         Inches.of(-13.0),
+      //         Inches.of(-13.0),
+      //         Inches.of(12.0),
+      //         new Rotation3d(0.0, 0.0, -Math.PI / 2)),
+      //     1.0,
+      //     new SimCameraProperties() {
+      //       {
+      //         setCalibration(1280, 800, Rotation2d.fromDegrees(120));
+      //         setCalibError(0.25, 0.08);
+      //         setFPS(30);
+      //         setAvgLatencyMs(20);
+      //         setLatencyStdDevMs(5);
+      //       }
+      //     }),
 
       // ... And more, if needed
     };

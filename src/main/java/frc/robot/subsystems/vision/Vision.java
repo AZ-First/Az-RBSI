@@ -25,12 +25,14 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
+import frc.robot.util.RBSIPose;
 import frc.robot.util.VirtualSubsystem;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -45,13 +47,11 @@ public class Vision extends VirtualSubsystem {
 
   /** Vision Consumer definition */
   @FunctionalInterface
-  public interface VisionConsumer {
-    void accept(Pose2d visionRobotPoseMeters, double timestampSeconds, Matrix<N3, N1> stdDevs);
+  public interface PoseMeasurementConsumer {
+    void accept(RBSIPose measurement);
   }
 
-  private record TimedEstimate(Pose2d pose, double ts, Matrix<N3, N1> stdDevs) {}
-
-  private final VisionConsumer consumer;
+  private final PoseMeasurementConsumer consumer;
   private final Drive drive;
   private long lastSeenPoseResetEpoch = -1;
 
@@ -65,7 +65,7 @@ public class Vision extends VirtualSubsystem {
   private volatile double lastPoseResetTimestamp = Double.NEGATIVE_INFINITY;
 
   // Smoothing buffer (recent fused estimates)
-  private final ArrayDeque<TimedEstimate> fusedBuffer = new ArrayDeque<>();
+  private final ArrayDeque<RBSIPose> fusedBuffer = new ArrayDeque<>();
   private final double smoothWindowSec = 0.25;
   private final int smoothMaxSize = 12;
 
@@ -82,8 +82,10 @@ public class Vision extends VirtualSubsystem {
   private volatile double yawGateLookbackSec = 0.30;
   private volatile double yawGateLimitRadPerSec = 5.0;
 
+  private static final double kMinVariance = 1e-12; // prevents divide-by-zero explosions
+
   /** Constructor */
-  public Vision(Drive drive, VisionConsumer consumer, VisionIO... io) {
+  public Vision(Drive drive, PoseMeasurementConsumer consumer, VisionIO... io) {
     this.drive = drive;
     this.consumer = consumer;
     this.io = io;
@@ -123,14 +125,14 @@ public class Vision extends VirtualSubsystem {
     }
 
     // Pick one best accepted estimate per camera for this loop
-    final ArrayList<TimedEstimate> perCamAccepted = new ArrayList<>(io.length);
+    final ArrayList<RBSIPose> perCamAccepted = new ArrayList<>(io.length);
 
     for (int cam = 0; cam < io.length; cam++) {
       int seen = 0;
       int accepted = 0;
       int rejected = 0;
 
-      TimedEstimate best = null;
+      RBSIPose best = null;
       double bestTrustScale = Double.NaN;
       int bestTrustedCount = 0;
       int bestTagCount = 0;
@@ -150,7 +152,7 @@ public class Vision extends VirtualSubsystem {
           continue;
         }
 
-        TimedEstimate est = built.estimate;
+        RBSIPose est = built.estimate;
         if (best == null || isBetter(est, best)) {
           best = est;
           bestTrustScale = built.trustScale;
@@ -161,12 +163,12 @@ public class Vision extends VirtualSubsystem {
 
       if (best != null) {
         accepted++;
-        lastAcceptedTsPerCam[cam] = best.ts;
+        lastAcceptedTsPerCam[cam] = best.timestampSeconds();
         perCamAccepted.add(best);
 
-        Logger.recordOutput("Vision/Camera" + cam + "/InjectedPose2d", best.pose);
-        Logger.recordOutput("Vision/Camera" + cam + "/InjectedTimestamp", best.ts);
-        Logger.recordOutput("Vision/Camera" + cam + "/InjectedStdDevs", best.stdDevs);
+        Logger.recordOutput("Vision/Camera" + cam + "/InjectedPose2d", best.pose());
+        Logger.recordOutput("Vision/Camera" + cam + "/InjectedTimestamp", best.timestampSeconds());
+        Logger.recordOutput("Vision/Camera" + cam + "/InjectedStdDevs", best.stdDevs());
         Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTrustScale", bestTrustScale);
         Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTrustedCount", bestTrustedCount);
         Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTagCount", bestTagCount);
@@ -180,23 +182,24 @@ public class Vision extends VirtualSubsystem {
     if (perCamAccepted.isEmpty()) return;
 
     // Fusion time is the newest timestamp among accepted per-camera samples
-    double tF = perCamAccepted.stream().mapToDouble(e -> e.ts).max().orElse(Double.NaN);
+    double tF =
+        perCamAccepted.stream().mapToDouble(e -> e.timestampSeconds()).max().orElse(Double.NaN);
     if (!Double.isFinite(tF)) return;
 
     // Time-align camera estimates to tF using odometry buffer, then inverse-variance fuse
-    TimedEstimate fused = fuseAtTime(perCamAccepted, tF);
+    RBSIPose fused = fuseAtTime(perCamAccepted, tF);
     if (fused == null) return;
 
     // Smooth by fusing recent fused estimates (also aligned to tF)
     pushFused(fused);
-    TimedEstimate smoothed = smoothAtTime(tF);
+    RBSIPose smoothed = smoothAtTime(tF);
     if (smoothed == null) return;
 
-    // Inject the pose
-    consumer.accept(smoothed.pose, smoothed.ts, smoothed.stdDevs);
+    // Inject the pose -- commented out for now...
+    consumer.accept(smoothed);
 
-    Logger.recordOutput("Vision/FusedPose", fused.pose);
-    Logger.recordOutput("Vision/SmoothedPose", smoothed.pose);
+    Logger.recordOutput("Vision/FusedPose", fused.pose());
+    Logger.recordOutput("Vision/SmoothedPose", smoothed.pose());
     Logger.recordOutput("Vision/FusedTimestamp", tF);
   }
 
@@ -301,11 +304,11 @@ public class Vision extends VirtualSubsystem {
   }
 
   private static final class BuiltEstimate {
-    final TimedEstimate estimate;
+    final RBSIPose estimate;
     final double trustScale;
     final int trustedCount;
 
-    BuiltEstimate(TimedEstimate estimate, double trustScale, int trustedCount) {
+    BuiltEstimate(RBSIPose estimate, double trustScale, int trustedCount) {
       this.estimate = estimate;
       this.trustScale = trustScale;
       this.trustedCount = trustedCount;
@@ -353,7 +356,7 @@ public class Vision extends VirtualSubsystem {
     Logger.recordOutput("Vision/Camera" + cam + "/InjectedFracTrusted", fracTrusted);
 
     return new BuiltEstimate(
-        new TimedEstimate(
+        new RBSIPose(
             obs.pose().toPose2d(),
             obs.timestamp(),
             VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev)),
@@ -361,20 +364,20 @@ public class Vision extends VirtualSubsystem {
         trustedCount);
   }
 
-  private boolean isBetter(TimedEstimate a, TimedEstimate b) {
+  private boolean isBetter(RBSIPose a, RBSIPose b) {
     // Lower trace of stddev vector (x+y+theta) is better
-    double ta = a.stdDevs.get(0, 0) + a.stdDevs.get(1, 0) + a.stdDevs.get(2, 0);
-    double tb = b.stdDevs.get(0, 0) + b.stdDevs.get(1, 0) + b.stdDevs.get(2, 0);
+    double ta = a.stdDevs().get(0, 0) + a.stdDevs().get(1, 0) + a.stdDevs().get(2, 0);
+    double tb = b.stdDevs().get(0, 0) + b.stdDevs().get(1, 0) + b.stdDevs().get(2, 0);
     return ta < tb;
   }
 
   /** Time alignment & fusion ********************************************** */
-  private TimedEstimate fuseAtTime(ArrayList<TimedEstimate> estimates, double tF) {
-    final ArrayList<TimedEstimate> aligned = new ArrayList<>(estimates.size());
+  private RBSIPose fuseAtTime(ArrayList<RBSIPose> estimates, double tF) {
+    final ArrayList<RBSIPose> aligned = new ArrayList<>(estimates.size());
     for (var e : estimates) {
-      Pose2d alignedPose = timeAlignPose(e.pose, e.ts, tF);
+      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tF);
       if (alignedPose == null) return null;
-      aligned.add(new TimedEstimate(alignedPose, tF, e.stdDevs));
+      aligned.add(new RBSIPose(alignedPose, tF, e.stdDevs()));
     }
     return inverseVarianceFuse(aligned, tF);
   }
@@ -394,48 +397,70 @@ public class Vision extends VirtualSubsystem {
     return visionPoseAtTs.transformBy(ts_T_tf);
   }
 
-  private TimedEstimate inverseVarianceFuse(ArrayList<TimedEstimate> alignedAtTF, double tF) {
-    if (alignedAtTF.isEmpty()) return null;
+  private RBSIPose inverseVarianceFuse(ArrayList<RBSIPose> alignedAtTF, double tF) {
+    if (alignedAtTF == null || alignedAtTF.isEmpty()) return null;
     if (alignedAtTF.size() == 1) return alignedAtTF.get(0);
 
-    double sumWx = 0, sumWy = 0, sumWth = 0;
-    double sumX = 0, sumY = 0;
-    double sumCos = 0, sumSin = 0;
+    double sumWx = 0.0, sumWy = 0.0, sumWth = 0.0;
+    double sumX = 0.0, sumY = 0.0;
+    double sumCos = 0.0, sumSin = 0.0;
 
-    for (var e : alignedAtTF) {
-      double sx = e.stdDevs.get(0, 0);
-      double sy = e.stdDevs.get(1, 0);
-      double sth = e.stdDevs.get(2, 0);
+    for (int i = 0; i < alignedAtTF.size(); i++) {
+      final RBSIPose e = alignedAtTF.get(i);
+      final Pose2d p = e.pose();
+      final Matrix<N3, N1> s = e.stdDevs();
 
-      double vx = sx * sx;
-      double vy = sy * sy;
-      double vth = sth * sth;
+      final double sx = s.get(0, 0);
+      final double sy = s.get(1, 0);
+      final double sth = s.get(2, 0);
 
-      double wx = 1.0 / vx;
-      double wy = 1.0 / vy;
-      double wth = 1.0 / vth;
+      // variance = std^2, clamp away from 0
+      final double vx = Math.max(sx * sx, kMinVariance);
+      final double vy = Math.max(sy * sy, kMinVariance);
+      final double vth = Math.max(sth * sth, kMinVariance);
+
+      final double wx = 1.0 / vx;
+      final double wy = 1.0 / vy;
+      final double wth = 1.0 / vth;
+
+      // If any weight goes NaN/Inf, skip this measurement rather than poisoning the fuse.
+      if (!Double.isFinite(wx) || !Double.isFinite(wy) || !Double.isFinite(wth)) {
+        continue;
+      }
 
       sumWx += wx;
       sumWy += wy;
       sumWth += wth;
 
-      sumX += e.pose.getX() * wx;
-      sumY += e.pose.getY() * wy;
+      sumX += p.getX() * wx;
+      sumY += p.getY() * wy;
 
-      sumCos += e.pose.getRotation().getCos() * wth;
-      sumSin += e.pose.getRotation().getSin() * wth;
+      final Rotation2d rot = p.getRotation();
+      sumCos += rot.getCos() * wth;
+      sumSin += rot.getSin() * wth;
     }
 
-    Pose2d fused = new Pose2d(sumX / sumWx, sumY / sumWy, new Rotation2d(sumCos, sumSin));
+    // If everything got skipped, fail closed.
+    if (sumWx <= 0.0 || sumWy <= 0.0 || sumWth <= 0.0) return null;
 
-    Matrix<N3, N1> fusedStd =
+    final Translation2d fusedTranslation = new Translation2d(sumX / sumWx, sumY / sumWy);
+
+    // Rotation2d(cos, sin) will normalize internally; if both are ~0, fall back to zero.
+    final Rotation2d fusedRotation =
+        (Math.abs(sumCos) < 1e-12 && Math.abs(sumSin) < 1e-12)
+            ? Rotation2d.kZero
+            : new Rotation2d(sumCos, sumSin);
+
+    final Pose2d fusedPose = new Pose2d(fusedTranslation, fusedRotation);
+
+    final Matrix<N3, N1> fusedStdDevs =
         VecBuilder.fill(Math.sqrt(1.0 / sumWx), Math.sqrt(1.0 / sumWy), Math.sqrt(1.0 / sumWth));
 
-    return new TimedEstimate(fused, tF, fusedStd);
+    return new RBSIPose(fusedPose, tF, fusedStdDevs);
   }
 
   /** Smoothing buffer ***************************************************** */
-  private void pushFused(TimedEstimate fused) {
+  private void pushFused(RBSIPose fused) {
     fusedBuffer.addLast(fused);
 
     while (fusedBuffer.size() > smoothMaxSize) {
@@ -443,20 +468,22 @@ public class Vision extends VirtualSubsystem {
     }
 
     // Trim by time window relative to newest
-    while (!fusedBuffer.isEmpty() && fused.ts - fusedBuffer.peekFirst().ts > smoothWindowSec) {
+    while (!fusedBuffer.isEmpty()
+        && fused.timestampSeconds() - fusedBuffer.peekFirst().timestampSeconds()
+            > smoothWindowSec) {
       fusedBuffer.removeFirst();
     }
   }
 
-  private TimedEstimate smoothAtTime(double tF) {
+  private RBSIPose smoothAtTime(double tF) {
     if (fusedBuffer.isEmpty()) return null;
     if (fusedBuffer.size() == 1) return fusedBuffer.peekLast();
 
-    final ArrayList<TimedEstimate> aligned = new ArrayList<>(fusedBuffer.size());
+    final ArrayList<RBSIPose> aligned = new ArrayList<>(fusedBuffer.size());
     for (var e : fusedBuffer) {
-      Pose2d alignedPose = timeAlignPose(e.pose, e.ts, tF);
+      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tF);
       if (alignedPose == null) continue;
-      aligned.add(new TimedEstimate(alignedPose, tF, e.stdDevs));
+      aligned.add(new RBSIPose(alignedPose, tF, e.stdDevs()));
     }
 
     if (aligned.isEmpty()) return fusedBuffer.peekLast();
