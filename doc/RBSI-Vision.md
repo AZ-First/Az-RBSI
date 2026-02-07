@@ -37,7 +37,7 @@ Download the appropriate [disk image](
 https://github.com/PhotonVision/photonvision/releases/tag/v2026.2.1) for your
 coprocessor and burn it to an SD card using the [Raspberry Pi Imager](
 https://www.raspberrypi.com/software).  Connect the powered-on coprocessor
-to a network switch via ethernet, and connect to the PhotonVision software
+to the Vivivid radio (port 2 or 3) via ethernet, or connect to a network switch connected to the radio via ethernet, and connect to the PhotonVision software
 at the address ``http://photonvision.local:5800``.
 
 Before you connect the coprocessor to your robot, be sure to set your team

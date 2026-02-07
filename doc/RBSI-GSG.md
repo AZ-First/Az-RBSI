@@ -132,7 +132,7 @@ section of [each release](https://github.com/AZ-First/Az-RBSI/releases).
 
    See the [PhotonVision Wiring documentation
    ](https://docs.photonvision.org/en/latest/docs/quick-start/wiring.html) for
-   more details.
+   more details. DO NOT put the orange pi's (or any devices that cannnot loose power) on port 23 of the PDH. It is a mechanical switch, and if the robot is hit, it briefly will loose power.
 
    Mounting the case to the robot requires 4x #10-32 nylock nuts (placed in the
    hex-shaped mounts inside the case) and 4x #10-32 bolts.
