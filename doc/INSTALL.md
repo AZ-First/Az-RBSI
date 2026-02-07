@@ -13,7 +13,7 @@ following components on your laptop and devices.
   This includes all motors, CANivore, Pigeon 2.0, and all CANcoders!
 * Rev Hardware Client `2.0`, with the PDH and all SparkMax's, and other devices
   running firmware `26.1` or newer.
-* Vivid Hosting Radio firmware `2.0` or newer is required for competition this
+* Vivid Hosting Radio firmware `2.0.1` or newer is required for competition this
   year.
 * Photon Vision ([Orange Pi or other device](https://docs.photonvision.org/en/latest/docs/quick-start/quick-install.html))
   **running `26.1` or newer** (make sure you are **not** acidentially running
@@ -21,6 +21,8 @@ following components on your laptop and devices.
   in your co-processor instead of trying to upgrade it.
 
 It is highly recommmended to update all you devices, and label what can id's or ip adresses and firmware versions they are running. This helps your team, and the FRC field staff quickly identify issues.
+
+If you are running a RoboRIO 1.0 (no sd card) you also neeed to disable the web server ([Instructions Here](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/roborio-team-number-setter/index.html))
 
 --------
 
