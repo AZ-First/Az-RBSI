@@ -388,6 +388,7 @@ public class Drive extends RBSISubsystem {
         Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
         gyroDisconnectedAlert.set(!imuInputs.connected);
         return;
+
       } else {
 
         // SIMULATION: Keep sim pose buffer time-aligned, too

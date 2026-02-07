@@ -243,7 +243,8 @@ public class ModuleIOBlended implements ModuleIO {
             SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
         .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
-        .kV(0.0);
+        .kV(0.0)
+        .kS(DrivebaseConstants.kSteerS);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)

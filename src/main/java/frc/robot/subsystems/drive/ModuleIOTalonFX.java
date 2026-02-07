@@ -192,7 +192,7 @@ public class ModuleIOTalonFX implements ModuleIO {
             .withKP(DrivebaseConstants.kSteerP)
             .withKI(0.0)
             .withKD(DrivebaseConstants.kSteerD)
-            .withKS(0.0)
+            .withKS(DrivebaseConstants.kSteerS)
             .withKV(0.0)
             .withKA(0.0)
             .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign);
