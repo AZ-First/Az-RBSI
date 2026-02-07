@@ -388,17 +388,17 @@ public class Drive extends RBSISubsystem {
         Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
         gyroDisconnectedAlert.set(!imuInputs.connected);
         return;
+      } else {
+
+        // SIMULATION: Keep sim pose buffer time-aligned, too
+        double now = Timer.getFPGATimestamp();
+        poseBuffer.addSample(now, simPhysics.getPose());
+        yawBuffer.addSample(now, simPhysics.getYaw().getRadians());
+        yawRateBuffer.addSample(now, simPhysics.getOmegaRadPerSec());
+
+        Logger.recordOutput("Drive/Pose", simPhysics.getPose());
+        gyroDisconnectedAlert.set(false);
       }
-
-      // SIMULATION: Keep sim pose buffer time-aligned, too
-      double now = Timer.getFPGATimestamp();
-      poseBuffer.addSample(now, simPhysics.getPose());
-      yawBuffer.addSample(now, simPhysics.getYaw().getRadians());
-      yawRateBuffer.addSample(now, simPhysics.getOmegaRadPerSec());
-
-      Logger.recordOutput("Drive/Pose", simPhysics.getPose());
-      gyroDisconnectedAlert.set(false);
-
     } finally {
       odometryLock.unlock();
     }
