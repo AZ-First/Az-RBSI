@@ -41,6 +41,10 @@ modifications to extant RBSI code will be done to files within the
 
 ### Tuning constants for optimal performance
 
+**It cannot be overemphasized the importance of tuning your drivetrain for
+smooth and consistent performance, battery longevity, and not tearing up the
+field.**
+
 4. Over the course of your robot project, you will need to tune PID parameters
    for both your drivebase and any mechanisms you build to play the game.
    AdvantageKit includes detailed instructions for how to tune the various
@@ -128,7 +132,22 @@ section of [each release](https://github.com/AZ-First/Az-RBSI/releases).
 
    See the [PhotonVision Wiring documentation
    ](https://docs.photonvision.org/en/latest/docs/quick-start/wiring.html) for
-   more details.
+   more details. DO NOT put the orange pi's (or any devices that cannnot loose power) on port 23 of the PDH. It is a mechanical switch, and if the robot is hit, it briefly will loose power.
 
    Mounting the case to the robot requires 4x #10-32 nylock nuts (placed in the
    hex-shaped mounts inside the case) and 4x #10-32 bolts.
+
+   Order of addembly of the Orange Pi Double Case matters given tight clearances:
+   1. Super-glue the nylock nuts into the hex mounting holes.
+   2. Intall the fans and grates into the case side.
+   3. Assemble the Pi's into the standoffs outside the box.
+   4. Solder / mount the Voltage Regular solution of your choice.
+   5. Connect the USB-C power cables to the Pi's.
+   6. Connect the fan power to the 5V (red) and GND (black) pins in the Pi's.
+   7. Install the Pi/standoff assembly into the case using screws at the bottom,
+      be careful of the tight clearance between the USB sockets and the case opening.
+   8. Tie a knot in the incoing power line _to be placed inside the box
+      for strain relief_, and pass the incoming power line through the notch
+      in the lower case.
+   9. Install the cover on the box using screws.
+   10. Mount the case to your robot using the #10-32 screws.
