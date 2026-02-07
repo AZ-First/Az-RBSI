@@ -22,7 +22,6 @@ import com.pathplanner.lib.util.PathPlannerLogging;
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
@@ -52,6 +51,7 @@ import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
+import frc.robot.util.RBSIPose;
 import frc.robot.util.RBSISubsystem;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -743,10 +743,11 @@ public class Drive extends RBSISubsystem {
   }
 
   /** Adds a vision measurement safely into the PoseEstimator. */
-  public void addVisionMeasurement(Pose2d pose, double timestampSeconds, Matrix<N3, N1> stdDevs) {
+  public void addVisionMeasurement(RBSIPose rbsiPose) {
     odometryLock.lock();
     try {
-      m_PoseEstimator.addVisionMeasurement(pose, timestampSeconds, stdDevs);
+      m_PoseEstimator.addVisionMeasurement(
+          rbsiPose.pose(), rbsiPose.timestampSeconds(), rbsiPose.stdDevs());
     } finally {
       odometryLock.unlock();
     }
