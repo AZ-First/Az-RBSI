@@ -51,8 +51,8 @@ import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
 import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
-import frc.robot.util.RBSIPose;
 import frc.robot.util.RBSISubsystem;
+import frc.robot.util.TimedPose;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.locks.Lock;
@@ -743,7 +743,7 @@ public class Drive extends RBSISubsystem {
   }
 
   /** Adds a vision measurement safely into the PoseEstimator. */
-  public void addVisionMeasurement(RBSIPose rbsiPose) {
+  public void addVisionMeasurement(TimedPose rbsiPose) {
     odometryLock.lock();
     try {
       m_PoseEstimator.addVisionMeasurement(
