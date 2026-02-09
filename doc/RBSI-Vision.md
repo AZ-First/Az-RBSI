@@ -60,13 +60,21 @@ Configs page (see below).  Activate the cameras.
 
 #### Configuring and Calibrating your Cameras
 
-This is the most important part, and the description of which is left as an
-exercise for the user.
+This is the most important part!
 
-Good luck!
+Instructions are in the [PhotonVision Documentation](
+https://docs.photonvision.org/en/latest/docs/calibration/calibration.html).
+
+You should consider calibrating your cameras early and often, including daily
+during a competition to ensure that the cameras are reporting as accurate a
+pose as possible for your odometry.  Also, double-check your calibration by
+using a measuring tape to compare the reported vision-derived distance from
+each camera to one or more AprilTags with reality.
+
 
 #### Using PhotonVision for vision simulation
 
-This is an advanced topic, and is therefore in the Restricted Section.
+This is an advanced topic, and is therefore in the Restricted Section.  (More
+information about vision simulation to come in a future release.)
 
 ![Restricted Section](restricted_section.jpg)
