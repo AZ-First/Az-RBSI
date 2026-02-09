@@ -82,7 +82,8 @@ public class Vision extends VirtualSubsystem {
   private volatile double yawGateLookbackSec = 0.30;
   private volatile double yawGateLimitRadPerSec = 5.0;
 
-  private static final double kMinVariance = 1e-12; // prevents divide-by-zero explosions
+  // Variance minimum for fusing poses to prevent divide-by-zero explosions
+  private static final double kMinVariance = 1e-12;
 
   /** Constructor */
   public Vision(Drive drive, PoseMeasurementConsumer consumer, VisionIO... io) {
@@ -109,43 +110,52 @@ public class Vision extends VirtualSubsystem {
   @Override
   public void rbsiPeriodic() {
 
+    // Pose reset logic and logging
     long epoch = drive.getPoseResetEpoch();
     if (epoch != lastSeenPoseResetEpoch) {
       lastSeenPoseResetEpoch = epoch;
-      resetPoseGate(drive.getLastPoseResetTimestamp()); // your existing method
+      resetPoseGate(drive.getLastPoseResetTimestamp());
       Logger.recordOutput("Vision/PoseGateResetFromDrive", true);
     } else {
       Logger.recordOutput("Vision/PoseGateResetFromDrive", false);
     }
 
-    // Update/log camera inputs
+    // Update & log camera inputs
     for (int i = 0; i < io.length; i++) {
       io[i].updateInputs(inputs[i]);
       Logger.processInputs("Vision/Camera" + i, inputs[i]);
     }
 
-    // Pick one best accepted estimate per camera for this loop
+    // Pick the one best accepted estimate per camera for this loop
     final ArrayList<RBSIPose> perCamAccepted = new ArrayList<>(io.length);
 
+    // Loop over cameras
     for (int cam = 0; cam < io.length; cam++) {
+
+      // Instantiate variables for this camera
       int seen = 0;
       int accepted = 0;
       int rejected = 0;
-
       RBSIPose best = null;
       double bestTrustScale = Double.NaN;
       int bestTrustedCount = 0;
       int bestTagCount = 0;
 
+      // Loop over observations for this camera this loop
       for (var obs : inputs[cam].poseObservations) {
+
+        // Increment
         seen++;
 
+        // Check the gating criteria; move on if bad
         GateResult gate = passesHardGatesAndYawGate(cam, obs);
+        Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
         if (!gate.accepted) {
           rejected++;
           continue;
         }
 
+        // Build a pose estimate; move on if bad
         BuiltEstimate built = buildEstimate(cam, obs);
         if (built == null) {
           rejected++;
@@ -261,9 +271,11 @@ public class Vision extends VirtualSubsystem {
   /** Gating + Scoring ***************************************************** */
   private static final class GateResult {
     final boolean accepted;
+    final String reason;
 
-    GateResult(boolean accepted) {
+    GateResult(boolean accepted, String reason) {
       this.accepted = accepted;
+      this.reason = reason;
     }
   }
 
@@ -271,36 +283,37 @@ public class Vision extends VirtualSubsystem {
     final double ts = obs.timestamp();
 
     // Monotonic per-camera time
-    if (ts <= lastAcceptedTsPerCam[cam]) return new GateResult(false);
+    if (ts <= lastAcceptedTsPerCam[cam]) return new GateResult(false, "monotonic time");
 
     // Reject anything older than last pose reset
-    if (ts < lastPoseResetTimestamp) return new GateResult(false);
+    if (ts < lastPoseResetTimestamp) return new GateResult(false, "older than pose reset");
 
     // Must have tags
-    if (obs.tagCount() <= 0) return new GateResult(false);
+    if (obs.tagCount() <= 0) return new GateResult(false, "no tags");
 
     // Single-tag ambiguity gate
-    if (obs.tagCount() == 1 && obs.ambiguity() > maxAmbiguity) return new GateResult(false);
+    if (obs.tagCount() == 1 && obs.ambiguity() > maxAmbiguity)
+      return new GateResult(false, "highly ambiguous");
 
     // Z sanity
-    if (Math.abs(obs.pose().getZ()) > maxZError) return new GateResult(false);
+    if (Math.abs(obs.pose().getZ()) > maxZError) return new GateResult(false, "z not sane");
 
     // Field bounds
     Pose3d p = obs.pose();
     if (p.getX() < 0.0 || p.getX() > FieldConstants.aprilTagLayout.getFieldLength())
-      return new GateResult(false);
+      return new GateResult(false, "out of bounds field X");
     if (p.getY() < 0.0 || p.getY() > FieldConstants.aprilTagLayout.getFieldWidth())
-      return new GateResult(false);
+      return new GateResult(false, "out of bounds field Y");
 
-    // Optional 254-style yaw gate: only meaningful for single-tag
+    // Optional yaw gate: only meaningful for single-tag
     if (enableSingleTagYawGate && obs.tagCount() == 1) {
       OptionalDouble maxYaw = drive.getMaxAbsYawRateRadPerSec(ts - yawGateLookbackSec, ts);
       if (maxYaw.isPresent() && maxYaw.getAsDouble() > yawGateLimitRadPerSec) {
-        return new GateResult(false);
+        return new GateResult(false, "YAW gate failed");
       }
     }
 
-    return new GateResult(true);
+    return new GateResult(true, "");
   }
 
   private static final class BuiltEstimate {
