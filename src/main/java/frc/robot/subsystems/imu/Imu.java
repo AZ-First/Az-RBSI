@@ -36,7 +36,14 @@ public class Imu extends VirtualSubsystem {
     this.io = io;
   }
 
+  // Priority value for this virtual subsystem
+  @Override
+  protected int getPeriodPriority() {
+    return -30;
+  }
+
   // Periodic function to read inputs
+  @Override
   public void rbsiPeriodic() {
     io.updateInputs(inputs);
   }

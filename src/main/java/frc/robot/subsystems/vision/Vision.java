@@ -28,7 +28,7 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import frc.robot.Constants;
+import frc.robot.Constants.Cameras;
 import frc.robot.FieldConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.vision.VisionIO.PoseObservationType;
@@ -45,20 +45,23 @@ import org.littletonrobotics.junction.Logger;
 
 public class Vision extends VirtualSubsystem {
 
+  // Declare the Vision IO
+  private final VisionIO[] io;
+  private final VisionIOInputsAutoLogged[] inputs;
+
   /** Vision Consumer definition */
   @FunctionalInterface
   public interface PoseMeasurementConsumer {
     void accept(TimedPose measurement);
   }
 
+  // Declare pose consumer, drivebase, and epoch reset
   private final PoseMeasurementConsumer consumer;
   private final Drive drive;
   private long lastSeenPoseResetEpoch = -1;
 
-  private final VisionIO[] io;
-  private final VisionIOInputsAutoLogged[] inputs;
-
-  private final Constants.Cameras.CameraConfig[] camConfigs = Constants.Cameras.ALL;
+  // Declare the camera configurations
+  private final Cameras.CameraConfig[] camConfigs = Cameras.ALL;
 
   // Per-camera monotonic and pose reset gates
   private final double[] lastAcceptedTsPerCam;
@@ -104,6 +107,12 @@ public class Vision extends VirtualSubsystem {
     for (int i = 0; i < n; i++) {
       Logger.recordOutput("Vision/RobotToCamera" + i, camConfigs[i].robotToCamera());
     }
+  }
+
+  // Priority value for this virtual subsystem
+  @Override
+  protected int getPeriodPriority() {
+    return -10;
   }
 
   /** Periodic Function */
@@ -205,7 +214,7 @@ public class Vision extends VirtualSubsystem {
     TimedPose smoothed = smoothAtTime(tF);
     if (smoothed == null) return;
 
-    // Inject the pose -- commented out for now...
+    // Inject the pose
     consumer.accept(smoothed);
 
     Logger.recordOutput("Vision/FusedPose", fused.pose());

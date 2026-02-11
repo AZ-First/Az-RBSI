@@ -55,6 +55,12 @@ public class Accelerometer extends VirtualSubsystem {
     this.rio = new RioAccelIORoboRIO(200.0); // 200 Hz is a good start
   }
 
+  // Priority value for this virtual subsystem
+  @Override
+  protected int getPeriodPriority() {
+    return +10;
+  }
+
   @Override
   public void rbsiPeriodic() {
     final boolean doProfile = (++profileCount >= PROFILE_EVERY_N);

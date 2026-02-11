@@ -47,6 +47,7 @@ import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.drive.DriveOdometry;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
@@ -108,6 +109,9 @@ public class RobotContainer {
   private final Vision m_vision;
 
   @SuppressWarnings("unused")
+  private final DriveOdometry m_driveOdometry;
+
+  @SuppressWarnings("unused")
   private final Accelerometer m_accel;
 
   @SuppressWarnings("unused")
@@ -156,10 +160,12 @@ public class RobotContainer {
         m_imu = new Imu(SwerveConstants.kImu.factory.get());
 
         m_drivebase = new Drive(m_imu);
-        m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
+        m_driveOdometry =
+            new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules()); // see note
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
+        m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
@@ -169,6 +175,9 @@ public class RobotContainer {
 
         m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
+        m_driveOdometry =
+            new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules()); // see note
+
         m_flywheel = new Flywheel(new FlywheelIOSim());
 
         // ---------------- Vision IOs (robot code) ----------------
@@ -208,6 +217,9 @@ public class RobotContainer {
         RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
+        m_driveOdometry =
+            new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules()); // see note
+
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =
             new Vision(m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay());

@@ -253,156 +253,20 @@ public class Drive extends RBSISubsystem {
   /** Periodic function that is called each robot cycle by the command scheduler */
   @Override
   public void rbsiPeriodic() {
-    odometryLock.lock();
-    try {
-      // Ensure IMU inputs are fresh for this cycle
-      final var imuInputs = imu.getInputs();
+    // NO odometryLock needed unless you touch poseEstimator directly here.
+    // Keep this focused on control / setpoints / characterization.
 
-      // Stop modules & log empty setpoint states if disabled
-      if (DriverStation.isDisabled()) {
-        for (var module : modules) {
-          module.stop();
-        }
-        Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
-        Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
-      }
-
-      // Drain per-module odometry queues for this cycle
-      for (var module : modules) {
-        module.periodic();
-      }
-
-      // -------- REAL ODOMETRY REPLAY (canonical timestamps from module[0]) --------
-      if (Constants.getMode() != Mode.SIM) {
-        final double[] ts = modules[0].getOdometryTimestamps();
-        final int n = (ts == null) ? 0 : ts.length;
-
-        // Cache per-module histories ONCE (avoid repeated getters in the loop)
-        final SwerveModulePosition[][] modHist = new SwerveModulePosition[4][];
-        for (int m = 0; m < 4; m++) {
-          modHist[m] = modules[m].getOdometryPositions();
-        }
-
-        // Determine yaw queue availability
-        final boolean hasYawQueue =
-            imuInputs.connected
-                && imuInputs.odometryYawTimestamps != null
-                && imuInputs.odometryYawPositionsRad != null
-                && imuInputs.odometryYawTimestamps.length
-                    == imuInputs.odometryYawPositionsRad.length
-                && imuInputs.odometryYawTimestamps.length > 0;
-
-        final double[] yawTs = hasYawQueue ? imuInputs.odometryYawTimestamps : null;
-        final double[] yawPos = hasYawQueue ? imuInputs.odometryYawPositionsRad : null;
-
-        // If we have no module samples, still keep yaw buffers “alive” for gating callers
-        if (n == 0) {
-          final double now = Timer.getFPGATimestamp();
-          yawBuffer.addSample(now, imuInputs.yawPositionRad);
-          yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
-
-          gyroDisconnectedAlert.set(!imuInputs.connected);
-          return;
-        }
-
-        // Decide whether yaw queue is index-aligned with module[0] timestamps.
-        // We only trust index alignment if BOTH:
-        //  - yaw has at least n samples
-        //  - yawTs[i] ~= ts[i] for i in range (tight epsilon)
-        boolean yawIndexAligned = false;
-        if (hasYawQueue && yawTs.length >= n) {
-          yawIndexAligned = true;
-          final double eps = 1e-3; // 1 ms
-          for (int i = 0; i < n; i++) {
-            if (Math.abs(yawTs[i] - ts[i]) > eps) {
-              yawIndexAligned = false;
-              break;
-            }
-          }
-        }
-
-        // If yaw is NOT index-aligned but we have a yaw queue, build yaw/yawRate buffers ONCE.
-        if (hasYawQueue && !yawIndexAligned) {
-          for (int k = 0; k < yawTs.length; k++) {
-            yawBuffer.addSample(yawTs[k], yawPos[k]);
-            if (k > 0) {
-              final double dt = yawTs[k] - yawTs[k - 1];
-              if (dt > 1e-6) {
-                yawRateBuffer.addSample(yawTs[k], (yawPos[k] - yawPos[k - 1]) / dt);
-              }
-            }
-          }
-        }
-
-        // If NO yaw queue, add a single “now” sample once (don’t do this per replay sample)
-        if (!hasYawQueue) {
-          final double now = Timer.getFPGATimestamp();
-          yawBuffer.addSample(now, imuInputs.yawPositionRad);
-          yawRateBuffer.addSample(now, imuInputs.yawRateRadPerSec);
-        }
-
-        // Replay each odometry sample
-        for (int i = 0; i < n; i++) {
-          final double t = ts[i];
-
-          // Build module positions at this sample index (clamp defensively)
-          for (int m = 0; m < 4; m++) {
-            final SwerveModulePosition[] hist = modHist[m];
-            if (hist == null || hist.length == 0) {
-              odomPositions[m] = modules[m].getPosition();
-            } else if (i < hist.length) {
-              odomPositions[m] = hist[i];
-            } else {
-              odomPositions[m] = hist[hist.length - 1];
-            }
-          }
-
-          // Determine yaw at this timestamp
-          double yawRad = imuInputs.yawPositionRad; // fallback
-
-          if (hasYawQueue) {
-            if (yawIndexAligned) {
-              yawRad = yawPos[i];
-
-              // Keep yaw/yawRate buffers updated in odometry timebase (good for yaw-gate)
-              yawBuffer.addSample(t, yawRad);
-              if (i > 0) {
-                final double dt = yawTs[i] - yawTs[i - 1];
-                if (dt > 1e-6) {
-                  yawRateBuffer.addSample(t, (yawPos[i] - yawPos[i - 1]) / dt);
-                }
-              }
-            } else {
-              // yawBuffer was pre-filled above; interpolate here
-              yawRad = yawBuffer.getSample(t).orElse(imuInputs.yawPositionRad);
-            }
-          }
-
-          // Feed estimator at this historical timestamp
-          m_PoseEstimator.updateWithTime(t, Rotation2d.fromRadians(yawRad), odomPositions);
-
-          // Maintain pose history in SAME timebase as estimator
-          poseBuffer.addSample(t, m_PoseEstimator.getEstimatedPosition());
-        }
-
-        Logger.recordOutput("Drive/Pose", m_PoseEstimator.getEstimatedPosition());
-        gyroDisconnectedAlert.set(!imuInputs.connected);
-        return;
-
-      } else {
-
-        // SIMULATION: Keep sim pose buffer time-aligned, too
-        double now = Timer.getFPGATimestamp();
-        poseBuffer.addSample(now, simPhysics.getPose());
-        yawBuffer.addSample(now, simPhysics.getYaw().getRadians());
-        yawRateBuffer.addSample(now, simPhysics.getOmegaRadPerSec());
-
-        Logger.recordOutput("Drive/Pose", simPhysics.getPose());
-        gyroDisconnectedAlert.set(false);
-      }
-    } finally {
-      odometryLock.unlock();
+    if (DriverStation.isDisabled()) {
+      for (var module : modules) module.stop();
+      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
+      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
     }
+
+    // If you need module refresh for control, you can either:
+    //  A) leave it in DriveOdometry (recommended) and here just use cached inputs, OR
+    //  B) keep a lightweight "module.controlPeriodic()" that doesn't drain queues.
+    //
+    // For now: do nothing here re: odometry.
   }
 
   /**
@@ -559,6 +423,9 @@ public class Drive extends RBSISubsystem {
   }
 
   /** Getter Functions ***************************************************** */
+  public Module[] getModules() {
+    return modules;
+  }
 
   /** Returns the module states (turn angles and drive velocities) for all of the modules. */
   @AutoLogOutput(key = "SwerveStates/Measured")
@@ -861,5 +728,68 @@ public class Drive extends RBSISubsystem {
     stdDevs.set(1, 0, 0.02); // Y standard deviation (meters)
     stdDevs.set(2, 0, Math.toRadians(2)); // rotation standard deviation (radians)
     return stdDevs;
+  }
+
+  // --- Helpers used by DriveOdometry (package-private) ---
+
+  Pose2d poseEstimatorGetPose() {
+    return m_PoseEstimator.getEstimatedPosition();
+  }
+
+  void poseEstimatorUpdateWithTime(double t, Rotation2d yaw, SwerveModulePosition[] positions) {
+    m_PoseEstimator.updateWithTime(t, yaw, positions);
+  }
+
+  void poseBufferAddSample(double t, Pose2d pose) {
+    poseBuffer.addSample(t, pose);
+  }
+
+  // Yaw buffer helpers (assuming you already have yawBuffer + yawRateBuffer)
+  double yawBufferSampleOr(double t, double fallbackYawRad) {
+    return yawBuffer.getSample(t).orElse(fallbackYawRad);
+  }
+
+  void yawBuffersAddSample(double t, double yawRad, double yawRateRadPerSec) {
+    yawBuffer.addSample(t, yawRad);
+    yawRateBuffer.addSample(t, yawRateRadPerSec);
+  }
+
+  void yawBuffersFillFromQueue(double[] yawTs, double[] yawPosRad) {
+    for (int k = 0; k < yawTs.length; k++) {
+      yawBuffer.addSample(yawTs[k], yawPosRad[k]);
+      if (k > 0) {
+        double dt = yawTs[k] - yawTs[k - 1];
+        if (dt > 1e-6) {
+          yawRateBuffer.addSample(yawTs[k], (yawPosRad[k] - yawPosRad[k - 1]) / dt);
+        }
+      }
+    }
+  }
+
+  void yawBuffersAddSampleIndexAligned(double t, double[] yawTs, double[] yawPos, int i) {
+    yawBuffer.addSample(t, yawPos[i]);
+    if (i > 0) {
+      double dt = yawTs[i] - yawTs[i - 1];
+      if (dt > 1e-6) {
+        yawRateBuffer.addSample(t, (yawPos[i] - yawPos[i - 1]) / dt);
+      }
+    }
+  }
+
+  void setGyroDisconnectedAlert(boolean disconnected) {
+    gyroDisconnectedAlert.set(disconnected);
+  }
+
+  // Drive.java
+  public Pose2d getSimPose() {
+    return simPhysics.getPose();
+  }
+
+  public double getSimYawRad() {
+    return simPhysics.getYaw().getRadians();
+  }
+
+  public double getSimYawRateRadPerSec() {
+    return simPhysics.getOmegaRadPerSec();
   }
 }
