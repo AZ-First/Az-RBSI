@@ -36,25 +36,32 @@ import lombok.Getter;
  */
 public class FieldConstants {
 
+  /** Specify which type of field your robot is using */
+  private static final AprilTagLayoutType fieldType = AprilTagLayoutType.REBUILT_WELDED;
+
   /** AprilTag Field Layout ************************************************ */
   public static final double aprilTagWidth = Inches.of(6.50).in(Meters);
 
   public static final String aprilTagFamily = "36h11";
 
-  public static final double fieldLength = AprilTagLayoutType.OFFICIAL.getLayout().getFieldLength();
-  public static final double fieldWidth = AprilTagLayoutType.OFFICIAL.getLayout().getFieldWidth();
+  public static final double fieldLength = fieldType.getLayout().getFieldLength();
+  public static final double fieldWidth = fieldType.getLayout().getFieldWidth();
 
-  public static final int aprilTagCount = AprilTagLayoutType.OFFICIAL.getLayout().getTags().size();
-  public static final AprilTagLayoutType defaultAprilTagType = AprilTagLayoutType.OFFICIAL;
+  public static final int aprilTagCount = fieldType.getLayout().getTags().size();
+  public static final AprilTagLayoutType defaultAprilTagType = fieldType;
 
   public static final AprilTagFieldLayout aprilTagLayout =
       AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
   @Getter
   public enum AprilTagLayoutType {
-    OFFICIAL("2026-official"),
-    NONE("2026-none"),
-    REEFSCAPE("2025-official");
+    REBUILT_WELDED("2026-rebuilt-welded"),
+    REBUILT_ANDYMARK("2026-rebuilt-welded"),
+    REEFSCAPE_WELDED("2025-reefscape-welded"),
+    REEFSCAPE_ANDYMARK("2025-reefscape-andymark"),
+    CRESCENDO("2024-crescendo"),
+    NONE_WELDED("none-welded"),
+    NONE_ANDYMARK("none-andymark");
 
     AprilTagLayoutType(String name) {
       try {

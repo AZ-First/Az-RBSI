@@ -469,7 +469,8 @@ public class RobotContainer {
   /** Updates the alerts. */
   public void updateAlerts() {
     // AprilTag layout alert
-    boolean aprilTagAlertActive = Constants.getAprilTagLayoutType() != AprilTagLayoutType.OFFICIAL;
+    boolean aprilTagAlertActive =
+        Constants.getAprilTagLayoutType() != AprilTagLayoutType.REBUILT_WELDED;
     aprilTagLayoutAlert.set(aprilTagAlertActive);
     if (aprilTagAlertActive) {
       aprilTagLayoutAlert.setText(
