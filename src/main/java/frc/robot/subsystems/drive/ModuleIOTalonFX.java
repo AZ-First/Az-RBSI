@@ -305,7 +305,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     final int driveCount = drivePositionQueue.size();
     final int turnCount = turnPositionQueue.size();
 
-    // Only consume the common prefix — guarantees alignment
+    // Only consume the common prefix -- guarantees alignment
     final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
 
     if (sampleCount <= 0) {

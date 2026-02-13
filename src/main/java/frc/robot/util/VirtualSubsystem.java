@@ -38,6 +38,10 @@ public abstract class VirtualSubsystem {
     return 0;
   }
 
+  /**
+   * Run the periodic functions of each subsystem in the order determined by the getPeriodPriority()
+   * of each.
+   */
   public static void periodicAll() {
     // Sort once (and again only if new subsystems are constructed)
     if (needsSort) {
@@ -68,6 +72,7 @@ public abstract class VirtualSubsystem {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
+    // Log the timing for this subsystem
     Logger.recordOutput("Loop/Virtual/" + name + "_ms", (System.nanoTime() - start) / 1e6);
   }
 
