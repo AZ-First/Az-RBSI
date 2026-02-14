@@ -109,7 +109,12 @@ public class Vision extends VirtualSubsystem {
     }
   }
 
-  // Priority value for this virtual subsystem
+  /**
+   * Priority value for this virtual subsystem
+   *
+   * <p>See `frc.robot.util.VirtualSubsystem` for a description of the suggested values for various
+   * virtual subsystems.
+   */
   @Override
   protected int getPeriodPriority() {
     return -10;
@@ -171,6 +176,7 @@ public class Vision extends VirtualSubsystem {
           continue;
         }
 
+        // If this estimate is better than the existing "best", update this -> best
         TimedPose est = built.estimate;
         if (best == null || isBetter(est, best)) {
           best = est;
@@ -180,6 +186,7 @@ public class Vision extends VirtualSubsystem {
         }
       }
 
+      // Add an accepted measurement, and update
       if (best != null) {
         accepted++;
         lastAcceptedTsPerCam[cam] = best.timestampSeconds();
@@ -193,39 +200,46 @@ public class Vision extends VirtualSubsystem {
         Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTagCount", bestTagCount);
       }
 
+      // Log everything from this camera
       Logger.recordOutput("Vision/Camera" + cam + "/ObsSeen", seen);
       Logger.recordOutput("Vision/Camera" + cam + "/ObsAccepted", accepted);
       Logger.recordOutput("Vision/Camera" + cam + "/ObsRejected", rejected);
     }
 
+    // If no "accepted" pose measurements from this loop, return now
     if (perCamAccepted.isEmpty()) return;
 
-    // Fusion time is the newest timestamp among accepted per-camera samples
-    double tF =
+    // Fusion time is the newest timestamp among accepted per-camera samples; return if NaN
+    double tFusion =
         perCamAccepted.stream().mapToDouble(e -> e.timestampSeconds()).max().orElse(Double.NaN);
-    if (!Double.isFinite(tF)) return;
+    if (!Double.isFinite(tFusion)) return;
 
-    // Time-align camera estimates to tF using odometry buffer, then inverse-variance fuse
-    TimedPose fused = fuseAtTime(perCamAccepted, tF);
+    // Time-align camera estimates to tFusion using odometry buffer, then inverse-variance fuse;
+    // return if null
+    TimedPose fused = fuseAtTime(perCamAccepted, tFusion);
     if (fused == null) return;
 
-    // Smooth by fusing recent fused estimates (also aligned to tF)
+    // Smooth by fusing recent fused estimates (also aligned to tFusion); return if null
+    // NOTE: THIS IS WHERE THE PROBLEM LIES, I THINK.  THE FUSED POSE IS OKAY, BUT THE SMOOTHED POSE
+    // IS NOT!!!
     pushFused(fused);
-    TimedPose smoothed = smoothAtTime(tF);
+    TimedPose smoothed = smoothAtTime(tFusion);
     if (smoothed == null) return;
 
     // Inject the pose
     consumer.accept(smoothed);
 
+    // Log the fused and smoothed poses along with tFusion
     Logger.recordOutput("Vision/FusedPose", fused.pose());
     Logger.recordOutput("Vision/SmoothedPose", smoothed.pose());
-    Logger.recordOutput("Vision/FusedTimestamp", tF);
+    Logger.recordOutput("Vision/FusedTimestamp", tFusion);
   }
 
+  /************************************************************************* */
   /** Runtime configuration hooks ****************************************** */
 
   /**
-   * Call when you reset odometry (e.g. auto start, manual reset, etc).
+   * Call when odometry is reset (e.g. auto start, manual reset, etc).
    *
    * @param fpgaNowSeconds Timestamp for the pose gate reset
    */
@@ -245,7 +259,7 @@ public class Vision extends VirtualSubsystem {
   }
 
   /**
-   * Set whether to requite trusted tags
+   * Set whether to require trusted tags
    *
    * @param require Boolean
    */
@@ -277,7 +291,10 @@ public class Vision extends VirtualSubsystem {
     yawGateLimitRadPerSec = limitRadPerSec;
   }
 
+  /************************************************************************* */
   /** Gating + Scoring ***************************************************** */
+
+  /** GateResult Class */
   private static final class GateResult {
     final boolean accepted;
     final String reason;
@@ -288,6 +305,12 @@ public class Vision extends VirtualSubsystem {
     }
   }
 
+  /**
+   * Gating Function -- checks all sorts of things!
+   *
+   * @param cam Camera index
+   * @param obs PoseObservation
+   */
   private GateResult passesHardGatesAndYawGate(int cam, VisionIO.PoseObservation obs) {
     final double ts = obs.timestamp();
 
@@ -325,6 +348,7 @@ public class Vision extends VirtualSubsystem {
     return new GateResult(true, "");
   }
 
+  /** Built Estimate Class */
   private static final class BuiltEstimate {
     final TimedPose estimate;
     final double trustScale;
@@ -337,12 +361,19 @@ public class Vision extends VirtualSubsystem {
     }
   }
 
+  /**
+   * Build a pose esitmate
+   *
+   * @param cam Camera Index
+   * @param obs PoseObservation
+   */
   private BuiltEstimate buildEstimate(int cam, VisionIO.PoseObservation obs) {
-    // Base uncertainty grows with distance^2 / tagCount (your 2486-style)
+    // Base uncertainty grows with distance^2 / tagCount
     final double tagCount = Math.max(1, obs.tagCount());
     final double avgDist = Math.max(0.0, obs.averageTagDistance());
     final double distFactor = (avgDist * avgDist) / tagCount;
 
+    // Camera uncertainty factor
     final double camFactor = (cam < camConfigs.length) ? camConfigs[cam].stdDevFactor() : 1.0;
 
     double linearStdDev = linearStdDevBaseline * camFactor * distFactor;
@@ -361,13 +392,14 @@ public class Vision extends VirtualSubsystem {
       if (kTrusted.contains(id)) trustedCount++;
     }
 
+    // If no trusted tags, return null
     if (requireTrustedTag && trustedCount == 0) {
       return null;
     }
 
+    // Build the trust scale
     final int usedCount = obs.usedTagIds().size();
     final double fracTrusted = (usedCount == 0) ? 0.0 : ((double) trustedCount / usedCount);
-
     final double trustScale =
         untrustedTagStdDevScale + fracTrusted * (trustedTagStdDevScale - untrustedTagStdDevScale);
 
@@ -386,6 +418,12 @@ public class Vision extends VirtualSubsystem {
         trustedCount);
   }
 
+  /**
+   * Evaluate whether a is better than b
+   *
+   * @param a Base pose
+   * @param b Competitor pose
+   */
   private boolean isBetter(TimedPose a, TimedPose b) {
     // Lower trace of stddev vector (x+y+theta) is better
     double ta = a.stdDevs().get(0, 0) + a.stdDevs().get(1, 0) + a.stdDevs().get(2, 0);
@@ -393,40 +431,67 @@ public class Vision extends VirtualSubsystem {
     return ta < tb;
   }
 
+  /************************************************************************* */
   /** Time alignment & fusion ********************************************** */
-  private TimedPose fuseAtTime(ArrayList<TimedPose> estimates, double tF) {
+
+  /**
+   * Fuse poses at a specified timestamp
+   *
+   * @param estimates Array of TimedPose esitmates
+   * @param tFusion The timestamp at which to fuse the measurements
+   */
+  private TimedPose fuseAtTime(ArrayList<TimedPose> estimates, double tFusion) {
     final ArrayList<TimedPose> aligned = new ArrayList<>(estimates.size());
     for (var e : estimates) {
-      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tF);
+      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) return null;
-      aligned.add(new TimedPose(alignedPose, tF, e.stdDevs()));
+      aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
     }
-    return inverseVarianceFuse(aligned, tF);
+    return inverseVarianceFuse(aligned, tFusion);
   }
 
-  private Pose2d timeAlignPose(Pose2d visionPoseAtTs, double ts, double tF) {
+  /**
+   * Align a pose to where it would have been at the fusion time
+   *
+   * <p>Gets the odometric poses at ts and tFusion from the drivebase PoseEstimator, computes the
+   * transform between them, and applies that to the vision pose.
+   *
+   * @param visionPoseAtTs The pose at ts
+   * @param ts Timestamp of the pose
+   * @param tFusion Fusion timestamp
+   * @return Transformed Pose2d
+   */
+  private Pose2d timeAlignPose(Pose2d visionPoseAtTs, double ts, double tFusion) {
     Optional<Pose2d> odomAtTsOpt = drive.getPoseAtTime(ts);
-    Optional<Pose2d> odomAtTFOpt = drive.getPoseAtTime(tF);
+    Optional<Pose2d> odomAtTFOpt = drive.getPoseAtTime(tFusion);
+    // If empty, return null
     if (odomAtTsOpt.isEmpty() || odomAtTFOpt.isEmpty()) return null;
 
-    Pose2d odomAtTs = odomAtTsOpt.get();
-    Pose2d odomAtTF = odomAtTFOpt.get();
-
     // Transform that takes odomAtTs -> odomAtTF
-    Transform2d ts_T_tf = odomAtTF.minus(odomAtTs);
+    Transform2d ts_T_tf = odomAtTFOpt.get().minus(odomAtTsOpt.get());
 
     // Apply same motion to vision pose to bring it forward
     return visionPoseAtTs.transformBy(ts_T_tf);
   }
 
-  private TimedPose inverseVarianceFuse(ArrayList<TimedPose> alignedAtTF, double tF) {
+  /**
+   * Fuse a list of poses using inverse variable weighting
+   *
+   * @param alignedAtTF List of aligned poses
+   * @param tFusion Fusion timestamp
+   * @return Fuesed TimedPose object
+   */
+  private TimedPose inverseVarianceFuse(ArrayList<TimedPose> alignedAtTF, double tFusion) {
+    // If size of alignedAtTF is 0 or 1, return null or the only value
     if (alignedAtTF == null || alignedAtTF.isEmpty()) return null;
     if (alignedAtTF.size() == 1) return alignedAtTF.get(0);
 
+    // Define summing values
     double sumWx = 0.0, sumWy = 0.0, sumWth = 0.0;
     double sumX = 0.0, sumY = 0.0;
     double sumCos = 0.0, sumSin = 0.0;
 
+    // Loop over poses in the list
     for (int i = 0; i < alignedAtTF.size(); i++) {
       final TimedPose e = alignedAtTF.get(i);
       final Pose2d p = e.pose();
@@ -462,9 +527,10 @@ public class Vision extends VirtualSubsystem {
       sumSin += rot.getSin() * wth;
     }
 
-    // If everything got skipped, fail closed.
+    // If everything got skipped; return null
     if (sumWx <= 0.0 || sumWy <= 0.0 || sumWth <= 0.0) return null;
 
+    // Construct the fused translation
     final Translation2d fusedTranslation = new Translation2d(sumX / sumWx, sumY / sumWy);
 
     // Rotation2d(cos, sin) will normalize internally; if both are ~0, fall back to zero.
@@ -473,15 +539,23 @@ public class Vision extends VirtualSubsystem {
             ? Rotation2d.kZero
             : new Rotation2d(sumCos, sumSin);
 
+    // The fused pose is the combination of translation and rotation
     final Pose2d fusedPose = new Pose2d(fusedTranslation, fusedRotation);
 
+    // Fused standard deviations
     final Matrix<N3, N1> fusedStdDevs =
         VecBuilder.fill(Math.sqrt(1.0 / sumWx), Math.sqrt(1.0 / sumWy), Math.sqrt(1.0 / sumWth));
 
-    return new TimedPose(fusedPose, tF, fusedStdDevs);
+    // Construct and return the TimedPose objects
+    return new TimedPose(fusedPose, tFusion, fusedStdDevs);
   }
 
+  /************************************************************************* */
   /** Smoothing buffer ***************************************************** */
+
+  /** THIS LIKELY HAS PROBLEMS */
+
+  /** Push the fused pose */
   private void pushFused(TimedPose fused) {
     fusedBuffer.addLast(fused);
 
@@ -497,18 +571,18 @@ public class Vision extends VirtualSubsystem {
     }
   }
 
-  private TimedPose smoothAtTime(double tF) {
+  private TimedPose smoothAtTime(double tFusion) {
     if (fusedBuffer.isEmpty()) return null;
     if (fusedBuffer.size() == 1) return fusedBuffer.peekLast();
 
     final ArrayList<TimedPose> aligned = new ArrayList<>(fusedBuffer.size());
     for (var e : fusedBuffer) {
-      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tF);
+      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) continue;
-      aligned.add(new TimedPose(alignedPose, tF, e.stdDevs()));
+      aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
     }
 
     if (aligned.isEmpty()) return fusedBuffer.peekLast();
-    return inverseVarianceFuse(aligned, tF);
+    return inverseVarianceFuse(aligned, tFusion);
   }
 }
