@@ -106,6 +106,8 @@ public final class Constants {
 
   public static final boolean tuningMode = false;
 
+  public static final double G_TO_MPS2 = 9.80665; // Gravitational acceleration in m/s/s
+
   /************************************************************************* */
   /** Physical Constants for Robot Operation ******************************* */
   public static final class RobotConstants {
