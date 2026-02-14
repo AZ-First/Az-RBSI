@@ -10,6 +10,7 @@
 package frc.robot.util;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.littletonrobotics.junction.Logger;
 
@@ -18,14 +19,39 @@ import org.littletonrobotics.junction.Logger;
  */
 public abstract class VirtualSubsystem {
   private static final List<VirtualSubsystem> subsystems = new ArrayList<>();
+  private static boolean needsSort = false;
+
   private final String name = getClass().getSimpleName();
 
   // Load all defined virtual subsystems into a list
   public VirtualSubsystem() {
     subsystems.add(this);
+    needsSort = true; // a new subsystem changed ordering
   }
 
+  /**
+   * Override to control ordering. Lower runs earlier.
+   *
+   * <p>Example: IMU inputs -30, Drive odometry -20, Vision -10, Coordinator 0.
+   */
+  protected int getPeriodPriority() {
+    return 0;
+  }
+
+  /**
+   * Run the periodic functions of each subsystem in the order determined by the getPeriodPriority()
+   * of each.
+   */
   public static void periodicAll() {
+    // Sort once (and again only if new subsystems are constructed)
+    if (needsSort) {
+      subsystems.sort(
+          Comparator.comparingInt(VirtualSubsystem::getPeriodPriority)
+              // deterministic tie-break to avoid “random” order when priorities match
+              .thenComparingInt(System::identityHashCode));
+      needsSort = false;
+    }
+
     // Call each virtual subsystem during robotPeriodic()
     for (VirtualSubsystem subsystem : subsystems) {
       subsystem.periodic();
@@ -46,6 +72,7 @@ public abstract class VirtualSubsystem {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
+    // Log the timing for this subsystem
     Logger.recordOutput("Loop/Virtual/" + name + "_ms", (System.nanoTime() - start) / 1e6);
   }
 

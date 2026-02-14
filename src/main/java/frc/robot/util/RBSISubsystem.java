@@ -38,8 +38,8 @@ public abstract class RBSISubsystem extends SubsystemBase {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
-    long end = System.nanoTime();
-    Logger.recordOutput("Loop/Mech/" + name + "_ms", (end - start) / 1e6);
+    // Log the timing for this subsystem
+    Logger.recordOutput("Loop/Mech/" + name + "_ms", (System.nanoTime() - start) / 1e6);
   }
 
   /** Subclasses must implement this instead of periodic(). */

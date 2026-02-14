@@ -18,16 +18,26 @@ import edu.wpi.first.wpilibj.Alert.AlertType;
 import frc.robot.Constants.DrivebaseConstants;
 import org.littletonrobotics.junction.Logger;
 
+/**
+ * Module API Class
+ *
+ * <p>The Module class is the API-level class for a single swerve module, of which there are four on
+ * the robot. This is not a true subsystem, but an abstraction layer.
+ */
 public class Module {
+
+  // Define IO
   private final ModuleIO io;
   private final ModuleIOInputsAutoLogged inputs = new ModuleIOInputsAutoLogged();
   private final int index;
 
+  // Declare alerts here, and only set/unset during the periodic() loop.
   private final Alert driveDisconnectedAlert;
   private final Alert turnDisconnectedAlert;
   private final Alert turnEncoderDisconnectedAlert;
   private SwerveModulePosition[] odometryPositions = new SwerveModulePosition[] {};
 
+  /** Constructor */
   public Module(ModuleIO io, int index) {
     this.io = io;
     this.index = index;
@@ -44,6 +54,8 @@ public class Module {
             AlertType.kError);
   }
 
+  /************************************************************************* */
+  /** Periodic function that is called each robot cycle by the Drive class */
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Drive/Module" + Integer.toString(index), inputs);
@@ -64,7 +76,19 @@ public class Module {
     turnEncoderDisconnectedAlert.set(!inputs.turnEncoderConnected);
   }
 
-  /** Runs the module with the specified setpoint state. Mutates the state to optimize it. */
+  /** Forwards the simulation periodic call to the IO layer */
+  public void simulationPeriodic() {
+    io.simulationPeriodic();
+  }
+
+  /** Module Action Functions ********************************************** */
+  /**
+   * Runs the module with the specified setpoint state
+   *
+   * <p>Mutates the state to optimize it
+   *
+   * @param state The requested Swerve Modeule State
+   */
   public void runSetpoint(SwerveModuleState state) {
     // Optimize velocity setpoint
     state.optimize(getAngle());
@@ -87,12 +111,17 @@ public class Module {
     io.setTurnOpenLoop(0.0);
   }
 
-  /** Sets whether brake mode is enabled. */
+  /**
+   * Sets whether brake mode is enabled
+   *
+   * @param enabled Is the brake enabled?
+   */
   public void setBrakeMode(boolean enabled) {
     io.setDriveBrakeMode(enabled);
     io.setTurnBrakeMode(enabled);
   }
 
+  /** Getter functions ***************************************************** */
   /** Returns the current turn angle of the module. */
   public Rotation2d getAngle() {
     return inputs.turnPosition;
@@ -126,11 +155,6 @@ public class Module {
   /** Returns the timestamps of the samples received this cycle. */
   public double[] getOdometryTimestamps() {
     return inputs.odometryTimestamps;
-  }
-
-  /** Forwards the simulation periodic call to the IO layer */
-  public void simulationPeriodic() {
-    io.simulationPeriodic();
   }
 
   /** Returns the module position in radians. */

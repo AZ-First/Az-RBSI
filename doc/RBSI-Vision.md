@@ -72,7 +72,7 @@ using a measuring tape to compare the reported vision-derived distance from
 each camera to one or more AprilTags with reality.
 
 
-#### Using PhotonVision for vision simulation
+#### Using PhotonVision for Vision Simulation
 
 This is an advanced topic, and is therefore in the Restricted Section.  (More
 information about vision simulation to come in a future release.)

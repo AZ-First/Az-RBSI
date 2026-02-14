@@ -13,6 +13,7 @@
 
 package frc.robot.subsystems.accelerometer;
 
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants;
 import frc.robot.Constants.RobotConstants;
@@ -26,30 +27,20 @@ import org.littletonrobotics.junction.Logger;
  * <p>This virtual subsystem pulls the acceleration values from both the RoboRIO and the swerve's
  * IMU (either Pigeon2 or NavX) and logs them to both AdvantageKitd. In addition to the
  * accelerations, the jerk (a-dot or x-tripple-dot) is computed from the delta accelerations.
- *
- * <p>Primitive-only hot path: no WPILib geometry objects or Units objects.
  */
 public class Accelerometer extends VirtualSubsystem {
+
+  // Gravitational acceleration
   private static final double G_TO_MPS2 = 9.80665;
 
+  // Define hardware interfaces
   private final RioAccelIO rio;
   private final RioAccelIO.Inputs rioInputs = new RioAccelIO.Inputs();
   private final Imu imu;
 
-  // Precompute yaw-only rotation terms
-  private static final double rioCos = Math.cos(RobotConstants.kRioOrientation.getRadians());
-  private static final double rioSin = Math.sin(RobotConstants.kRioOrientation.getRadians());
-  private static final double imuCos = Math.cos(RobotConstants.kIMUOrientation.getRadians());
-  private static final double imuSin = Math.sin(RobotConstants.kIMUOrientation.getRadians());
-
-  // Previous Rio accel (m/s^2)
-  private double prevRioAx = 0.0, prevRioAy = 0.0, prevRioAz = 0.0;
-
-  // Reusable arrays for logging
-  private final double[] rioAccelArr = new double[3];
-  private final double[] rioJerkArr = new double[3];
-  private final double[] imuAccelArr = new double[3];
-  private final double[] imuJerkArr = new double[3];
+  // Variables needed during the periodic
+  private Translation3d rawRio, rioAcc, rioJerk, imuAcc, imuJerk;
+  private Translation3d prevRioAcc = Translation3d.kZero;
 
   // Log decimation
   private int loopCount = 0;
@@ -64,6 +55,12 @@ public class Accelerometer extends VirtualSubsystem {
     this.rio = new RioAccelIORoboRIO(200.0); // 200 Hz is a good start
   }
 
+  // Priority value for this virtual subsystem
+  @Override
+  protected int getPeriodPriority() {
+    return +10;
+  }
+
   @Override
   public void rbsiPeriodic() {
     final boolean doProfile = (++profileCount >= PROFILE_EVERY_N);
@@ -74,58 +71,27 @@ public class Accelerometer extends VirtualSubsystem {
     rio.updateInputs(rioInputs);
 
     // Compute RIO accelerations and jerks
-    final double rawX = rioInputs.xG;
-    final double rawY = rioInputs.yG;
-    final double rawZ = rioInputs.zG;
-
-    final double rioAx = (rioCos * rawX - rioSin * rawY) * G_TO_MPS2;
-    final double rioAy = (rioSin * rawX + rioCos * rawY) * G_TO_MPS2;
-    final double rioAz = rawZ * G_TO_MPS2;
-
-    final double rioJx = (rioAx - prevRioAx) / Constants.loopPeriodSecs;
-    final double rioJy = (rioAy - prevRioAy) / Constants.loopPeriodSecs;
-    final double rioJz = (rioAz - prevRioAz) / Constants.loopPeriodSecs;
+    rawRio = new Translation3d(rioInputs.xG, rioInputs.yG, rioInputs.zG);
+    rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation).times(G_TO_MPS2);
 
     // Acceleration from previous loop
-    prevRioAx = rioAx;
-    prevRioAy = rioAy;
-    prevRioAz = rioAz;
+    prevRioAcc = rioAcc;
 
-    // IMU rotate is also compute-only (already primitives)
-    final double imuAx = (imuCos * imuInputs.linearAccelX - imuSin * imuInputs.linearAccelY);
-    final double imuAy = (imuSin * imuInputs.linearAccelX + imuCos * imuInputs.linearAccelY);
-    final double imuAz = imuInputs.linearAccelZ;
+    // IMU accelerations and jerks
+    imuAcc = imuInputs.linearAccel.rotateBy(RobotConstants.kIMUOrientation);
 
-    final double imuJx = (imuCos * imuInputs.jerkX - imuSin * imuInputs.jerkY);
-    final double imuJy = (imuSin * imuInputs.jerkX + imuCos * imuInputs.jerkY);
-    final double imuJz = imuInputs.jerkZ;
+    // Logging
+    Logger.recordOutput("Accel/Rio/Accel_mps2", rioAcc);
+    Logger.recordOutput("Accel/IMU/Accel_mps2", imuAcc);
 
-    // Fill accel arrays (still math)
-    rioAccelArr[0] = rioAx;
-    rioAccelArr[1] = rioAy;
-    rioAccelArr[2] = rioAz;
-    imuAccelArr[0] = imuAx;
-    imuAccelArr[1] = imuAy;
-    imuAccelArr[2] = imuAz;
-
+    // Every N loops, compute and log the Jerk
     final boolean doHeavyLogs = (++loopCount >= LOG_EVERY_N);
     if (doHeavyLogs) {
       loopCount = 0;
-      rioJerkArr[0] = rioJx;
-      rioJerkArr[1] = rioJy;
-      rioJerkArr[2] = rioJz;
-      imuJerkArr[0] = imuJx;
-      imuJerkArr[1] = imuJy;
-      imuJerkArr[2] = imuJz;
-    }
-
-    // Logging
-    Logger.recordOutput("Accel/Rio/Accel_mps2", rioAccelArr);
-    Logger.recordOutput("Accel/IMU/Accel_mps2", imuAccelArr);
-
-    if (doHeavyLogs) {
-      Logger.recordOutput("Accel/Rio/Jerk_mps3", rioJerkArr);
-      Logger.recordOutput("Accel/IMU/Jerk_mps3", imuJerkArr);
+      rioJerk = rioAcc.minus(prevRioAcc).div(Constants.loopPeriodSecs);
+      imuJerk = imuInputs.linearJerk.rotateBy(RobotConstants.kIMUOrientation);
+      Logger.recordOutput("Accel/Rio/Jerk_mps3", rioJerk);
+      Logger.recordOutput("Accel/IMU/Jerk_mps3", imuJerk);
 
       final double[] ts = imuInputs.odometryYawTimestamps;
       if (ts.length > 0) {

@@ -22,6 +22,7 @@ import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIONavX;
 import frc.robot.subsystems.imu.ImuIOPigeon2;
 import frc.robot.util.YagslConstants;
+import java.util.function.Supplier;
 
 /**
  * Holds the proper set of drive constants given the type of drive
@@ -310,9 +311,9 @@ public class SwerveConstants {
     NAVX(new String[] {"navx", "navx_spi"}, ImuIONavX::new);
 
     private final String[] keys;
-    public final java.util.function.Supplier<ImuIO> factory;
+    public final Supplier<ImuIO> factory;
 
-    ImuType(String[] keys, java.util.function.Supplier<ImuIO> factory) {
+    ImuType(String[] keys, Supplier<ImuIO> factory) {
       this.keys = keys;
       this.factory = factory;
     }
