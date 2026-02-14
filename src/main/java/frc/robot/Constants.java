@@ -74,7 +74,7 @@ public final class Constants {
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
   private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
-  private static VisionType visionType = VisionType.PHOTON; //  PHOTON, LIMELIGHT, NONE
+  private static VisionType visionType = VisionType.NONE; //  PHOTON, LIMELIGHT, NONE
 
   /** Enumerate the robot types (name your robots here) */
   public static enum RobotType {
@@ -313,19 +313,15 @@ public final class Constants {
     public static final double kNominalFFVolts = 2.0; // Volts
 
     // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
-    // NOTE: Default values from 6328's 2025 Public Code
-    //
-    // IMPORTANT:: These values are valid only for CTRE LICENSED operation!!
-    //             Adjust these downward until your modules behave correctly
-    public static final double kDriveP = 40.0;
+    public static final double kDriveP = 4.0;
     public static final double kDriveD = 0.03;
     public static final double kDriveV = 0.83;
     public static final double kDriveA = 0.0;
     public static final double kDriveS = 2.00;
     public static final double kDriveT =
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
-    public static final double kSteerP = 400.0;
-    public static final double kSteerD = 20.0;
+    public static final double kSteerP = 4.0;
+    public static final double kSteerD = 0.02;
     public static final double kSteerS = 2.0;
 
     // Odometry-related constants
