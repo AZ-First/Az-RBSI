@@ -278,7 +278,13 @@ public class Vision extends VirtualSubsystem {
       lastFusedValid = true;
       lastSmoothedValid = true;
 
+      Logger.recordOutput("OdometryReplay/PreInjectRobotX", drive.poseEstimatorGetPose().getX());
+      Logger.recordOutput("OdometryReplay/PreInjectRobotY", drive.poseEstimatorGetPose().getY());
+
       consumer.accept(smoothed);
+
+      Logger.recordOutput("OdometryReplay/PostInjectRobotX", drive.poseEstimatorGetPose().getX());
+      Logger.recordOutput("OdometryReplay/PostInjectRobotY", drive.poseEstimatorGetPose().getY());
 
       // If you want, you can feed debug values from inside timeAlignPose(...) via fields,
       // but leaving the plumbing as-is since you’re already logging inside helpers.

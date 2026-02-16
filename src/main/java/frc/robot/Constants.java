@@ -333,6 +333,16 @@ public final class Constants {
     // Optional: ignore obviously insane measurements while disabled.
     public static final double kDisabledVisionMaxJumpM = 2.0; // meters
     public static final double kDisabledVisionMaxJumpRad = Units.degreesToRadians(20.0);
+    public static final double kDisabledVisionStale = 0.75; // seconds
+
+    // Coast window config
+    public static final double kDisabledCoastSeconds = 5.0;
+
+    // "Stationary" detection config (tune)
+    public static final double kStationaryMaxWheelDeltaM = 0.002; // 2mm per loop
+    public static final double kStationaryMaxYawRateRadPerSec = 0.05; // ~3 deg/s
+    public static final int kStationaryLoopsToEndCoast = 10; // ~0.20s @ 20ms
+    public static final double kDisabledVisionIgnoreAfterDisableSec = 0.25; // 250ms
   }
 
   /************************************************************************* */
