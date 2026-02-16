@@ -15,6 +15,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.photonvision.PhotonCamera;
@@ -77,10 +78,12 @@ public class VisionIOPhotonVision implements VisionIO {
         double avgTagDistance =
             result.targets.isEmpty() ? 0.0 : (totalTagDistance / result.targets.size());
 
-        Set<Integer> used = new HashSet<>();
+        // Build used tag list (loggable + replayable)
+        int[] used = new int[multitag.fiducialIDsUsed.size()];
+        int u = 0;
         for (int id : multitag.fiducialIDsUsed) {
-          used.add(id);
-          unionTagIds.add(id);
+          used[u++] = id;
+          unionTagIds.add(id); // keep your union set for tagIds UI/log
         }
 
         poseObservations.add(
@@ -91,7 +94,7 @@ public class VisionIOPhotonVision implements VisionIO {
                 multitag.fiducialIDsUsed.size(),
                 avgTagDistance,
                 PoseObservationType.PHOTONVISION,
-                Set.copyOf(used)));
+                used));
 
       } else if (!result.targets.isEmpty()) {
         var target = result.targets.get(0);
@@ -117,7 +120,7 @@ public class VisionIOPhotonVision implements VisionIO {
                 1,
                 cameraToTarget.getTranslation().getNorm(),
                 PoseObservationType.PHOTONVISION,
-                Set.of(target.fiducialId)));
+                new int[] {target.fiducialId}));
       }
     }
 
@@ -131,5 +134,8 @@ public class VisionIOPhotonVision implements VisionIO {
     inputs.tagIds = new int[unionTagIds.size()];
     int i = 0;
     for (int id : unionTagIds) inputs.tagIds[i++] = id;
+
+    // Sort the AprilTag IDs for ease of use by dashboards, etc.
+    Arrays.sort(inputs.tagIds);
   }
 }

@@ -222,7 +222,9 @@ public class RobotContainer {
 
         m_flywheel = new Flywheel(new FlywheelIO() {});
         m_vision =
-            new Vision(m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay());
+            new Vision(
+                m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay(m_drivebase));
+
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
@@ -563,8 +565,21 @@ public class RobotContainer {
   }
 
   // Vision Factories (REPLAY)
-  private VisionIO[] buildVisionIOsReplay() {
-    return new VisionIO[] {}; // simplest: Vision does nothing during replay
+  private VisionIO[] buildVisionIOsReplay(Drive drive) {
+    var cams = Constants.Cameras.ALL;
+
+    VisionIO[] ios = new VisionIO[cams.length];
+    for (int i = 0; i < cams.length; i++) {
+      ios[i] =
+          new VisionIO() {
+            @Override
+            public void updateInputs(VisionIOInputs inputs) {
+              // Intentionally empty.
+              // Logger.processInputs("Vision/Camera" + i, inputs) will populate these from the log.
+            }
+          };
+    }
+    return ios;
   }
 
   /**

@@ -24,8 +24,10 @@ import edu.wpi.first.math.interpolation.Interpolatable;
 import edu.wpi.first.math.interpolation.Interpolator;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * A concurrent version of WPIlib's TimeInterpolatableBuffer class to avoid the need for explicit
@@ -88,6 +90,9 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    * @param sample The sample object.
    */
   public void addSample(double timeSeconds, T sample) {
+    Logger.recordOutput("Odometry/Debug/lastPoseBufferAddTs", timeSeconds);
+    Logger.recordOutput("Odometry/Debug/nowTs", TimeUtil.now());
+
     m_pastSnapshots.put(timeSeconds, sample);
     cleanUp(timeSeconds);
   }
@@ -126,26 +131,32 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
     var bottomBound = m_pastSnapshots.floorEntry(timeSeconds);
     var topBound = m_pastSnapshots.ceilingEntry(timeSeconds);
 
-    // Return null if neither sample exists, and the opposite bound if the other is
-    // null
-    if (topBound == null && bottomBound == null) {
-      return Optional.empty();
-    } else if (topBound == null) {
+    if (topBound == null && bottomBound == null) return Optional.empty();
+    if (topBound == null) return Optional.of(bottomBound.getValue());
+    if (bottomBound == null) return Optional.of(topBound.getValue());
+
+    // NEW: if they are the same sample, no interpolation possible/needed
+    if (topBound.getKey().doubleValue() == bottomBound.getKey().doubleValue()) {
       return Optional.of(bottomBound.getValue());
-    } else if (bottomBound == null) {
-      return Optional.of(topBound.getValue());
-    } else {
-      // Otherwise, interpolate. Because T is between [0, 1], we want the ratio of
-      // (the difference
-      // between the current time and bottom bound) and (the difference between top
-      // and bottom
-      // bounds).
-      return Optional.of(
-          m_interpolatingFunc.interpolate(
-              bottomBound.getValue(),
-              topBound.getValue(),
-              (timeSeconds - bottomBound.getKey()) / (topBound.getKey() - bottomBound.getKey())));
     }
+
+    double t0 = bottomBound.getKey();
+    double t1 = topBound.getKey();
+    double denom = t1 - t0;
+
+    // (optional but good)
+    if (Math.abs(denom) < 1e-9) return Optional.of(bottomBound.getValue());
+
+    double ratio = (timeSeconds - t0) / denom;
+    ratio = MathUtil.clamp(ratio, 0.0, 1.0);
+
+    Logger.recordOutput("Odometry/Debug/bottomKey", t0);
+    Logger.recordOutput("Odometry/Debug/topKey", t1);
+    Logger.recordOutput("Odometry/Debug/denom", denom);
+    Logger.recordOutput("Odometry/Debug/snaphotSize", m_pastSnapshots.size());
+
+    return Optional.of(
+        m_interpolatingFunc.interpolate(bottomBound.getValue(), topBound.getValue(), ratio));
   }
 
   public Entry<Double, T> getLatest() {
@@ -160,5 +171,17 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    */
   public ConcurrentNavigableMap<Double, T> getInternalBuffer() {
     return m_pastSnapshots;
+  }
+
+  /** Return the oldest timestamp in the buffer */
+  public OptionalDouble getOldestTimestamp() {
+    if (m_pastSnapshots.isEmpty()) return OptionalDouble.empty();
+    return OptionalDouble.of(m_pastSnapshots.firstKey());
+  }
+
+  /** Return the newest timestamp in the buffer */
+  public OptionalDouble getNewestTimestamp() {
+    if (m_pastSnapshots.isEmpty()) return OptionalDouble.empty();
+    return OptionalDouble.of(m_pastSnapshots.lastKey());
   }
 }

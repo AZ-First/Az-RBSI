@@ -88,6 +88,13 @@ public class Vision extends VirtualSubsystem {
   // Variance minimum for fusing poses to prevent divide-by-zero explosions
   private static final double kMinVariance = 1e-12;
 
+  // Fields
+  private Pose2d lastFusedPose = new Pose2d();
+  private Pose2d lastSmoothedPose = new Pose2d();
+  private double lastFusedTs = Double.NaN;
+  private boolean lastFusedValid = false;
+  private boolean lastSmoothedValid = false;
+
   /** Constructor */
   public Vision(Drive drive, PoseMeasurementConsumer consumer, VisionIO... io) {
     this.drive = drive;
@@ -124,115 +131,182 @@ public class Vision extends VirtualSubsystem {
   @Override
   public void rbsiPeriodic() {
 
-    // Pose reset logic and logging
-    long epoch = drive.getPoseResetEpoch();
-    if (epoch != lastSeenPoseResetEpoch) {
-      lastSeenPoseResetEpoch = epoch;
-      resetPoseGate(drive.getLastPoseResetTimestamp());
-      Logger.recordOutput("Vision/PoseGateResetFromDrive", true);
-    } else {
-      Logger.recordOutput("Vision/PoseGateResetFromDrive", false);
-    }
+    boolean hasAcceptedThisLoop = false;
+    boolean hasFusedThisLoop = false;
+    boolean hasSmoothedThisLoop = false;
 
-    // Update & log camera inputs
-    for (int i = 0; i < io.length; i++) {
-      io[i].updateInputs(inputs[i]);
-      Logger.processInputs("Vision/Camera" + i, inputs[i]);
-    }
+    // Default debug outputs (so keys exist even if we return early)
+    double dbgAlignDt = Double.NaN;
+    double dbgDeltaTranslation = Double.NaN;
+    double dbgDeltaRotation = Double.NaN;
+    boolean dbgAlignFinite = false;
 
-    // Pick the one best accepted estimate per camera for this loop
-    final ArrayList<TimedPose> perCamAccepted = new ArrayList<>(io.length);
+    try {
 
-    // Loop over cameras
-    for (int cam = 0; cam < io.length; cam++) {
+      lastAlignDbg.reset();
+      // ----------------------------------------------------------------------
+      // 1) Pose reset gate (clears smoothing state, resets per-cam monotonic gates)
+      // ----------------------------------------------------------------------
+      long epoch = drive.getPoseResetEpoch();
+      if (epoch != lastSeenPoseResetEpoch) {
+        lastSeenPoseResetEpoch = epoch;
+        resetPoseGate(drive.getLastPoseResetTimestamp());
+        Logger.recordOutput("Vision/PoseGateResetFromDrive", true);
+      } else {
+        Logger.recordOutput("Vision/PoseGateResetFromDrive", false);
+      }
 
-      // Instantiate variables for this camera
-      int seen = 0;
-      int accepted = 0;
-      int rejected = 0;
-      TimedPose best = null;
-      double bestTrustScale = Double.NaN;
-      int bestTrustedCount = 0;
-      int bestTagCount = 0;
+      // ----------------------------------------------------------------------
+      // 2) Read camera inputs (REAL/SIM/REPLAY all go through IO inputs)
+      // ----------------------------------------------------------------------
+      for (int i = 0; i < io.length; i++) {
+        io[i].updateInputs(inputs[i]);
+        Logger.processInputs("Vision/Camera" + i, inputs[i]);
+      }
 
-      // Loop over observations for this camera this loop
-      for (var obs : inputs[cam].poseObservations) {
+      // Optional always-on “health” debug
+      Logger.recordOutput("Vision/Debug/ioLength", io.length);
+      int totalObs = 0;
+      for (int i = 0; i < io.length; i++) {
+        totalObs += (inputs[i].poseObservations != null) ? inputs[i].poseObservations.length : 0;
+      }
+      Logger.recordOutput("Vision/Debug/totalObsThisLoop", totalObs);
 
-        // Increment
-        seen++;
+      // ----------------------------------------------------------------------
+      // 3) Choose best observation per camera for THIS loop
+      // ----------------------------------------------------------------------
+      final ArrayList<TimedPose> perCamAccepted = new ArrayList<>(io.length);
 
-        // Check the gating criteria; move on if bad
-        GateResult gate = passesHardGatesAndYawGate(cam, obs);
-        Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
-        if (!gate.accepted) {
-          rejected++;
+      for (int cam = 0; cam < io.length; cam++) {
+
+        int seen = 0;
+        int accepted = 0;
+        int rejected = 0;
+
+        TimedPose best = null;
+        double bestTrustScale = Double.NaN;
+        int bestTrustedCount = 0;
+        int bestTagCount = 0;
+
+        final var obsArr = inputs[cam].poseObservations;
+        if (obsArr == null) {
+          Logger.recordOutput("Vision/Camera" + cam + "/ObsSeen", 0);
+          Logger.recordOutput("Vision/Camera" + cam + "/ObsAccepted", 0);
+          Logger.recordOutput("Vision/Camera" + cam + "/ObsRejected", 0);
           continue;
         }
 
-        // Build a pose estimate; move on if bad
-        BuiltEstimate built = buildEstimate(cam, obs);
-        if (built == null) {
-          rejected++;
-          continue;
+        for (var obs : obsArr) {
+          seen++;
+
+          GateResult gate = passesHardGatesAndYawGate(cam, obs);
+          Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
+          if (!gate.accepted) {
+            rejected++;
+            continue;
+          }
+
+          BuiltEstimate built = buildEstimate(cam, obs);
+          if (built == null) {
+            rejected++;
+            continue;
+          }
+
+          // Prefer “best” by your scoring function
+          if (best == null || isBetter(built.estimate, best)) {
+            best = built.estimate;
+            bestTrustScale = built.trustScale;
+            bestTrustedCount = built.trustedCount;
+            bestTagCount = obs.tagCount();
+          }
         }
 
-        // If this estimate is better than the existing "best", update this -> best
-        TimedPose est = built.estimate;
-        if (best == null || isBetter(est, best)) {
-          best = est;
-          bestTrustScale = built.trustScale;
-          bestTrustedCount = built.trustedCount;
-          bestTagCount = obs.tagCount();
+        if (best != null) {
+          accepted++;
+          lastAcceptedTsPerCam[cam] = best.timestampSeconds();
+          perCamAccepted.add(best);
+
+          Logger.recordOutput("Vision/Camera" + cam + "/InjectedPose2d", best.pose());
+          Logger.recordOutput(
+              "Vision/Camera" + cam + "/InjectedTimestamp", best.timestampSeconds());
+          Logger.recordOutput(
+              "Vision/Camera" + cam + "/InjectedStdDevs", stdDevsToArray(best.stdDevs()));
+          Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTrustScale", bestTrustScale);
+          Logger.recordOutput(
+              "Vision/Camera" + cam + "/LastAcceptedTrustedCount", bestTrustedCount);
+          Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTagCount", bestTagCount);
         }
+
+        Logger.recordOutput("Vision/Camera" + cam + "/ObsSeen", seen);
+        Logger.recordOutput("Vision/Camera" + cam + "/ObsAccepted", accepted);
+        Logger.recordOutput("Vision/Camera" + cam + "/ObsRejected", rejected);
       }
 
-      // Add an accepted measurement, and update
-      if (best != null) {
-        accepted++;
-        lastAcceptedTsPerCam[cam] = best.timestampSeconds();
-        perCamAccepted.add(best);
+      Logger.recordOutput("Vision/Debug/perCamAcceptedSize", perCamAccepted.size());
 
-        Logger.recordOutput("Vision/Camera" + cam + "/InjectedPose2d", best.pose());
-        Logger.recordOutput("Vision/Camera" + cam + "/InjectedTimestamp", best.timestampSeconds());
-        Logger.recordOutput("Vision/Camera" + cam + "/InjectedStdDevs", best.stdDevs());
-        Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTrustScale", bestTrustScale);
-        Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTrustedCount", bestTrustedCount);
-        Logger.recordOutput("Vision/Camera" + cam + "/LastAcceptedTagCount", bestTagCount);
+      if (perCamAccepted.isEmpty()) {
+        // No new vision accepted this loop; we still log cached outputs below (in finally).
+        return;
       }
+      hasAcceptedThisLoop = true;
 
-      // Log everything from this camera
-      Logger.recordOutput("Vision/Camera" + cam + "/ObsSeen", seen);
-      Logger.recordOutput("Vision/Camera" + cam + "/ObsAccepted", accepted);
-      Logger.recordOutput("Vision/Camera" + cam + "/ObsRejected", rejected);
+      // ----------------------------------------------------------------------
+      // 4) Fuse all accepted cams at the newest timestamp among them
+      // ----------------------------------------------------------------------
+      final double tFusion =
+          perCamAccepted.stream().mapToDouble(e -> e.timestampSeconds()).max().orElse(Double.NaN);
+      if (!Double.isFinite(tFusion)) return;
+
+      final TimedPose fused = fuseAtTime(perCamAccepted, tFusion);
+      if (fused == null) return;
+      hasFusedThisLoop = true;
+
+      // ----------------------------------------------------------------------
+      // 5) Smooth by fusing recent fused estimates aligned to tFusion
+      // ----------------------------------------------------------------------
+      pushFused(fused);
+      final TimedPose smoothed = smoothAtTime(tFusion);
+      if (smoothed == null) return;
+      hasSmoothedThisLoop = true;
+
+      // ----------------------------------------------------------------------
+      // 6) Update caches (ONLY HERE) + inject to drive
+      // ----------------------------------------------------------------------
+      lastFusedPose = fused.pose();
+      lastSmoothedPose = smoothed.pose();
+      lastFusedTs = tFusion;
+      lastFusedValid = true;
+      lastSmoothedValid = true;
+
+      consumer.accept(smoothed);
+
+      // If you want, you can feed debug values from inside timeAlignPose(...) via fields,
+      // but leaving the plumbing as-is since you’re already logging inside helpers.
+
+    } finally {
+
+      // ----------------------------------------------------------------------
+      // 7) “Ultra-clean” logging: one place, every loop, replay-safe
+      // ----------------------------------------------------------------------
+
+      // Always-present “outputs”
+      Logger.recordOutput("Vision/FusedPose", lastFusedPose);
+      Logger.recordOutput("Vision/SmoothedPose", lastSmoothedPose);
+      Logger.recordOutput("Vision/FusedTimestamp", lastFusedTs);
+      Logger.recordOutput("Vision/HasFused", lastFusedValid);
+      Logger.recordOutput("Vision/HasSmoothed", lastSmoothedValid);
+
+      // Per-loop flags (never stale)
+      Logger.recordOutput("Vision/HasAcceptedThisLoop", hasAcceptedThisLoop);
+      Logger.recordOutput("Vision/HasFusedThisLoop", hasFusedThisLoop);
+      Logger.recordOutput("Vision/HasSmoothedThisLoop", hasSmoothedThisLoop);
+
+      // Debug keys (exist even if not touched)
+      Logger.recordOutput("Vision/Debug/alignDt", lastAlignDbg.alignDt);
+      Logger.recordOutput("Vision/Debug/deltaTranslation", lastAlignDbg.deltaTranslation);
+      Logger.recordOutput("Vision/Debug/deltaRotation", lastAlignDbg.deltaRotation);
+      Logger.recordOutput("Vision/Debug/alignFinite", lastAlignDbg.alignFinite);
     }
-
-    // If no "accepted" pose measurements from this loop, return now
-    if (perCamAccepted.isEmpty()) return;
-
-    // Fusion time is the newest timestamp among accepted per-camera samples; return if NaN
-    double tFusion =
-        perCamAccepted.stream().mapToDouble(e -> e.timestampSeconds()).max().orElse(Double.NaN);
-    if (!Double.isFinite(tFusion)) return;
-
-    // Time-align camera estimates to tFusion using odometry buffer, then inverse-variance fuse;
-    // return if null
-    TimedPose fused = fuseAtTime(perCamAccepted, tFusion);
-    if (fused == null) return;
-
-    // Smooth by fusing recent fused estimates (also aligned to tFusion); return if null
-    // NOTE: THIS IS WHERE THE PROBLEM LIES, I THINK.  THE FUSED POSE IS OKAY, BUT THE SMOOTHED POSE
-    // IS NOT!!!
-    pushFused(fused);
-    TimedPose smoothed = smoothAtTime(tFusion);
-    if (smoothed == null) return;
-
-    // Inject the pose
-    consumer.accept(smoothed);
-
-    // Log the fused and smoothed poses along with tFusion
-    Logger.recordOutput("Vision/FusedPose", fused.pose());
-    Logger.recordOutput("Vision/SmoothedPose", smoothed.pose());
-    Logger.recordOutput("Vision/FusedTimestamp", tFusion);
   }
 
   /************************************************************************* */
@@ -387,9 +461,11 @@ public class Vision extends VirtualSubsystem {
 
     // Trusted tag blending
     final Set<Integer> kTrusted = trustedTags.get();
+    final int[] usedIds = (obs.usedTagIds() != null) ? obs.usedTagIds() : new int[0];
+
     int trustedCount = 0;
-    for (int id : obs.usedTagIds()) {
-      if (kTrusted.contains(id)) trustedCount++;
+    for (int i = 0; i < usedIds.length; i++) {
+      if (kTrusted.contains(usedIds[i])) trustedCount++;
     }
 
     // If no trusted tags, return null
@@ -398,7 +474,7 @@ public class Vision extends VirtualSubsystem {
     }
 
     // Build the trust scale
-    final int usedCount = obs.usedTagIds().size();
+    final int usedCount = usedIds.length;
     final double fracTrusted = (usedCount == 0) ? 0.0 : ((double) trustedCount / usedCount);
     final double trustScale =
         untrustedTagStdDevScale + fracTrusted * (trustedTagStdDevScale - untrustedTagStdDevScale);
@@ -406,8 +482,16 @@ public class Vision extends VirtualSubsystem {
     linearStdDev *= trustScale;
     angularStdDev *= trustScale;
 
+    linearStdDev = Math.max(linearStdDev, linearStdDevBaseline);
+    angularStdDev = Math.max(angularStdDev, angularStdDevBaseline);
+
     // Output logs for tuning
     Logger.recordOutput("Vision/Camera" + cam + "/InjectedFracTrusted", fracTrusted);
+
+    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_linearStdDev", linearStdDev);
+    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_angularStdDev", angularStdDev);
+    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_avgDist", avgDist);
+    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_tagCount", obs.tagCount());
 
     return new BuiltEstimate(
         new TimedPose(
@@ -432,6 +516,34 @@ public class Vision extends VirtualSubsystem {
   }
 
   /************************************************************************* */
+  /** Debug snapshot for the most-recent successful alignment this loop. */
+  private static final class AlignDebug {
+    double alignDt = Double.NaN;
+    double deltaTranslation = Double.NaN;
+    double deltaRotation = Double.NaN;
+    boolean alignFinite = false;
+
+    void reset() {
+      alignDt = Double.NaN;
+      deltaTranslation = Double.NaN;
+      deltaRotation = Double.NaN;
+      alignFinite = false;
+    }
+
+    void set(double dt, Transform2d tf) {
+      alignDt = dt;
+      deltaTranslation = tf.getTranslation().getNorm();
+      deltaRotation = tf.getRotation().getRadians();
+      alignFinite =
+          Double.isFinite(alignDt)
+              && Double.isFinite(deltaTranslation)
+              && Double.isFinite(deltaRotation);
+    }
+  }
+
+  private final AlignDebug lastAlignDbg = new AlignDebug();
+
+  /************************************************************************* */
   /** Time alignment & fusion ********************************************** */
 
   /**
@@ -443,7 +555,7 @@ public class Vision extends VirtualSubsystem {
   private TimedPose fuseAtTime(ArrayList<TimedPose> estimates, double tFusion) {
     final ArrayList<TimedPose> aligned = new ArrayList<>(estimates.size());
     for (var e : estimates) {
-      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
+      Pose2d alignedPose = timeAlignPoseFieldDelta(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) return null;
       aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
     }
@@ -454,7 +566,9 @@ public class Vision extends VirtualSubsystem {
    * Align a pose to where it would have been at the fusion time
    *
    * <p>Gets the odometric poses at ts and tFusion from the drivebase PoseEstimator, computes the
-   * transform between them, and applies that to the vision pose.
+   * transform between them, and applies that to the vision pose. The correction is applied by
+   * finding the field-frame deltas for both translation and rotation, then returning a new Pose2d
+   * object that consists of the vision pose adjusted by the field-frame deltas.
    *
    * @param visionPoseAtTs The pose at ts
    * @param ts Timestamp of the pose
@@ -462,16 +576,96 @@ public class Vision extends VirtualSubsystem {
    * @return Transformed Pose2d
    */
   private Pose2d timeAlignPose(Pose2d visionPoseAtTs, double ts, double tFusion) {
+
+    Logger.recordOutput("Vision/Debug/ts", ts);
+    Logger.recordOutput("Vision/Debug/tFusion", tFusion);
+    Logger.recordOutput("Vision/Debug/alignDtMs", (tFusion - ts) * 1000.0);
+
+    double dt = tFusion - ts;
+
     Optional<Pose2d> odomAtTsOpt = drive.getPoseAtTime(ts);
     Optional<Pose2d> odomAtTFOpt = drive.getPoseAtTime(tFusion);
     // If empty, return null
     if (odomAtTsOpt.isEmpty() || odomAtTFOpt.isEmpty()) return null;
 
-    // Transform that takes odomAtTs -> odomAtTF
+    // Transform that takes odomAtTs -> odomAtTF (in odomAtTs frame)
     Transform2d ts_T_tf = odomAtTFOpt.get().minus(odomAtTsOpt.get());
 
-    // Apply same motion to vision pose to bring it forward
+    double dtrans = ts_T_tf.getTranslation().getNorm();
+    double drot = ts_T_tf.getRotation().getRadians();
+
+    boolean finite =
+        Double.isFinite(dt)
+            && Double.isFinite(dtrans)
+            && Double.isFinite(drot)
+            && Double.isFinite(odomAtTsOpt.get().getX())
+            && Double.isFinite(odomAtTFOpt.get().getX());
+
+    // Even more debugging logging
+    Logger.recordOutput("Vision/Debug/alignDt", dt);
+    Logger.recordOutput("Vision/Debug/deltaTranslation", dtrans);
+    Logger.recordOutput("Vision/Debug/deltaRotation", drot);
+    Logger.recordOutput("Vision/Debug/alignFinite", finite);
+    Logger.recordOutput("Vision/Debug/odomAtTs", odomAtTsOpt.get());
+    Logger.recordOutput("Vision/Debug/odomAtTF", odomAtTFOpt.get());
+
+    if (!finite) {
+      Logger.recordOutput("Vision/Debug/odomAtTs", odomAtTsOpt.get());
+      Logger.recordOutput("Vision/Debug/odomAtTF", odomAtTFOpt.get());
+      return null;
+    }
+
+    // Debugging Logging
+    Logger.recordOutput("Vision/Debug/deltaTranslation", ts_T_tf.getTranslation().getNorm());
+    Logger.recordOutput("Vision/Debug/deltaRotation", ts_T_tf.getRotation().getRadians());
+
+    // Apply the same SE(2) transform to the vision pose
     return visionPoseAtTs.transformBy(ts_T_tf);
+  }
+
+  /**
+   * Align a pose to where it would have been at the fusion time
+   *
+   * <p>*
+   *
+   * <p>We compute: - dTrans = odomTF.translation - odomTs.translation (field frame) - dTheta =
+   * odomTF.rotation - odomTs.rotation (field frame / global heading delta)
+   *
+   * <p>Then apply those deltas directly to the vision pose at ts to estimate vision at tFusion.
+   *
+   * <p>Gets the odometric poses at ts and tFusion from the drivebase PoseEstimator, computes the
+   * transform between them, and applies that to the vision pose. The correction is applied by
+   * finding the field-frame deltas for both translation and rotation, then returning a new Pose2d
+   * object that consists of the vision pose adjusted by the field-frame deltas.
+   *
+   * @param visionPoseAtTs The pose at ts
+   * @param ts Timestamp of the pose
+   * @param tFusion Fusion timestamp
+   * @return Transformed Pose2d
+   */
+  private Pose2d timeAlignPoseFieldDelta(Pose2d visionPoseAtTs, double ts, double tFusion) {
+    Optional<Pose2d> odomAtTsOpt = drive.getPoseAtTime(ts);
+    Optional<Pose2d> odomAtTFOpt = drive.getPoseAtTime(tFusion);
+    if (odomAtTsOpt.isEmpty() || odomAtTFOpt.isEmpty()) return null;
+
+    final Pose2d odomAtTs = odomAtTsOpt.get();
+    final Pose2d odomAtTF = odomAtTFOpt.get();
+
+    // FIELD-FRAME translation delta
+    final Translation2d dTrans = odomAtTF.getTranslation().minus(odomAtTs.getTranslation());
+
+    // Heading delta (Rotation2d handles wrapping)
+    final Rotation2d dTheta = odomAtTF.getRotation().minus(odomAtTs.getRotation());
+
+    // Update debug ONCE per loop (first successful alignment wins)
+    if (!lastAlignDbg.alignFinite) {
+      // For debug parity with the other version, package deltas as a Transform2d
+      lastAlignDbg.set(tFusion - ts, new Transform2d(dTrans, dTheta));
+    }
+
+    // Apply field-frame deltas to the vision pose
+    return new Pose2d(
+        visionPoseAtTs.getTranslation().plus(dTrans), visionPoseAtTs.getRotation().plus(dTheta));
   }
 
   /**
@@ -577,12 +771,19 @@ public class Vision extends VirtualSubsystem {
 
     final ArrayList<TimedPose> aligned = new ArrayList<>(fusedBuffer.size());
     for (var e : fusedBuffer) {
-      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
+      Pose2d alignedPose = timeAlignPoseFieldDelta(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) continue;
       aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
+      // Debugging Logging
+      Logger.recordOutput("Vision/Debug/deltaTime", tFusion - e.timestampSeconds());
     }
 
     if (aligned.isEmpty()) return fusedBuffer.peekLast();
     return inverseVarianceFuse(aligned, tFusion);
+  }
+
+  /** UTILITY FUNCTIONS **************************************************** */
+  private static double[] stdDevsToArray(Matrix<N3, N1> s) {
+    return new double[] {s.get(0, 0), s.get(1, 0), s.get(2, 0)};
   }
 }

@@ -129,3 +129,22 @@ aiming, and reduced oscillation under aggressive maneuvers -- because control
 decisions are based on a pose model that more faithfully represents the real
 robot’s motion and sensor timing rather than a simplified "latest value only"
 approximation.
+
+
+### Behavior when the Robot is Disabled
+
+In normal operation (robot enabled), vision measurements are incorporated using standard Kalman fusion via addVisionMeasurement(). This is a probabilistic update: the estimator weighs the vision measurement against the predicted state based on covariance, producing a smooth, statistically optimal correction. Small errors are gently nudged toward vision; large discrepancies are handled proportionally according to the reported measurement uncertainty. This is the correct and intended behavior for a moving robot.
+
+When the robot is disabled, however, the estimator is no longer operating in a dynamic system. Wheel odometry is effectively static, process noise collapses, and repeated vision corrections can cause pathological estimator behavior (particularly in translation). Instead of performing another Kalman update in this regime, the system switches to a controlled pose blending strategy. Each accepted vision pose is blended toward the current estimate using a fixed interpolation factor (e.g., 10–20%), and the estimator is explicitly reset to that blended pose. This produces a gradual convergence toward the vision solution without allowing covariance collapse or runaway corrections.
+
+The result is a stable and intuitive pre-match behavior: while disabled, the robot will slowly “walk” its pose estimate toward the vision solution if needed, but it will not snap violently or diverge numerically. Once enabled, the system seamlessly returns to proper Kalman fusion, where vision and odometry interact in a fully dynamic and statistically grounded manner.
+
+### Design Rationale – Split Enabled/Disabled Vision Handling
+
+The core reason for separating enabled and disabled behavior is that the Kalman filter assumes a **dynamic system model**. When the robot is enabled, the drivetrain is actively moving and the estimator continuously predicts forward using wheel odometry and gyro inputs. Vision measurements then act as bounded corrections against that prediction. In this regime, Kalman fusion is mathematically appropriate: process noise and measurement noise are balanced, covariance evolves realistically, and corrections remain stable.
+
+When the robot is disabled, however, the system is no longer dynamic. Wheel distances stop changing, gyro rate is near zero, and process noise effectively collapses. If vision continues injecting measurements into the estimator with timestamps that are slightly offset from the estimator’s internal state, the filter can enter a degenerate regime. Because translational covariance may shrink aggressively while no true motion exists, even small inconsistencies between time-aligned vision and odometry can produce disproportionately large corrections. This is why translation can numerically “explode” while rotation often remains stable—rotation is typically better constrained by the gyro and wraps naturally, while translation depends more directly on integrated wheel deltas and covariance scaling.
+
+The disabled blending pattern avoids this pathological case by temporarily stepping outside strict Kalman fusion. Instead of applying repeated measurement updates against a near-zero process model, we treat vision as a slowly converging reference and explicitly blend the current estimate toward it. This maintains numerical stability, prevents covariance collapse artifacts, and still allows the pose to settle accurately before a match begins.
+
+Once the robot transitions back to enabled, the estimator resumes normal probabilistic fusion with a healthy process model. The split-mode approach therefore preserves mathematical correctness while the robot is moving, and guarantees numerical stability while it is stationary.

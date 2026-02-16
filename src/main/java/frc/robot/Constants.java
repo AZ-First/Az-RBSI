@@ -30,6 +30,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -324,8 +325,14 @@ public final class Constants {
     public static final double kSteerD = 0.02;
     public static final double kSteerS = 2.0;
 
-    // Odometry-related constants
+    // Odometry-related constants ==================================
     public static final double kHistorySize = 1.5; // seconds
+    // How aggressively to pull pose toward vision while DISABLED.
+    // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
+    public static final double kDisabledVisionBlendAlpha = 0.15;
+    // Optional: ignore obviously insane measurements while disabled.
+    public static final double kDisabledVisionMaxJumpM = 2.0; // meters
+    public static final double kDisabledVisionMaxJumpRad = Units.degreesToRadians(20.0);
   }
 
   /************************************************************************* */

@@ -19,10 +19,11 @@ package frc.robot.subsystems.drive;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.Constants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.RBSIEnum.Mode;
+import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
 
@@ -59,20 +60,42 @@ public final class DriveOdometry extends VirtualSubsystem {
   public void rbsiPeriodic() {
     Drive.odometryLock.lock();
     try {
-      // Ensure IMU inputs are fresh for this cycle
       final var imuInputs = imu.getInputs();
 
-      // Drain per-module odometry queues ONCE per loop (this also refreshes motor signals)
+      // Drain per-module odometry queues ONCE per loop (refresh signals).
       for (var module : modules) {
         module.periodic();
       }
 
-      if (Constants.getMode() == Mode.SIM) {
-        // SIMULATION: Keep sim pose buffer time-aligned, too
-        final double now = Timer.getFPGATimestamp();
+      final boolean isReplayActive = Logger.hasReplaySource();
+
+      // Pure SIM (not replaying a log): use sim pose/yaw
+      if (Constants.getMode() == Mode.SIM && !isReplayActive) {
+        final double now = TimeUtil.now();
         drive.poseBufferAddSample(now, drive.getSimPose());
         drive.yawBuffersAddSample(now, drive.getSimYawRad(), drive.getSimYawRateRadPerSec());
         Logger.recordOutput("Drive/Pose", drive.getSimPose());
+        return;
+      }
+
+      // DISABLED (REAL or REPLAY): minimal ticking — keep buffers alive, do NOT integrate module
+      // deltas.
+      // Exception: if you *want* replay odometry integration while disabled, remove the
+      // DriverStation
+      // guard and keep the original replay loop.
+      if (DriverStation.isDisabled() && !isReplayActive) {
+        final double now = TimeUtil.now();
+
+        // keep yaw buffers alive
+        if (imuInputs.connected) {
+          drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
+        }
+
+        // keep pose buffer alive with the *current estimator pose* (which can be blended by
+        // disabled vision)
+        drive.poseBufferAddSample(now, drive.poseEstimatorGetPose());
+        Logger.recordOutput("Drive/Pose", drive.poseEstimatorGetPose());
+        drive.setGyroDisconnectedAlert(!imuInputs.connected);
         return;
       }
 
@@ -82,8 +105,10 @@ public final class DriveOdometry extends VirtualSubsystem {
 
       // Always keep yaw buffers “alive” even if no samples
       if (n == 0) {
-        final double now = Timer.getFPGATimestamp();
-        drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
+        if (Constants.getMode() != Mode.REPLAY) {
+          final double now = TimeUtil.now();
+          drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
+        }
         drive.setGyroDisconnectedAlert(!imuInputs.connected);
         return;
       }
@@ -126,7 +151,7 @@ public final class DriveOdometry extends VirtualSubsystem {
         drive.yawBuffersFillFromQueue(yawTs, yawPos);
       } else if (!hasYawQueue) {
         // Single “now” sample once (not per replay)
-        final double now = Timer.getFPGATimestamp();
+        final double now = TimeUtil.now();
         drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
       }
 
@@ -158,6 +183,32 @@ public final class DriveOdometry extends VirtualSubsystem {
           }
         }
 
+        // Debugging
+        Logger.recordOutput("Odometry/Debug/timestamp", t);
+        Logger.recordOutput("Odometry/Debug/now", TimeUtil.now());
+        if (i > 0) {
+          Logger.recordOutput("Odometry/Debug/timeNowDiff", t - ts[i - 1]);
+        }
+
+        Logger.recordOutput("Odometry/Debug/replay_t", t);
+        Logger.recordOutput("Odometry/Debug/replay_yawRad", yawRad);
+
+        double[] lastDist = new double[4];
+        boolean firstSample = true;
+        for (int m = 0; m < 4; m++) {
+          SwerveModulePosition pos = odomPositions[m];
+          double dist = pos.distanceMeters;
+
+          Logger.recordOutput("Odometry/Debug/mod" + m + "_distanceMeters", dist);
+          Logger.recordOutput("Odometry/Debug/mod" + m + "_angleRad", pos.angle.getRadians());
+          if (!firstSample) {
+            double delta = dist - lastDist[m];
+            Logger.recordOutput("Odometry/Debug/mod" + m + "_deltaMeters", delta);
+          }
+
+          lastDist[m] = dist;
+        }
+        firstSample = false;
         // Feed estimator at this historical timestamp
         drive.poseEstimatorUpdateWithTime(t, Rotation2d.fromRadians(yawRad), odomPositions);
         // Maintain pose history in SAME timebase as estimator

@@ -11,7 +11,6 @@ package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import java.util.Set;
 import org.littletonrobotics.junction.AutoLog;
 
 public interface VisionIO {
@@ -41,8 +40,12 @@ public interface VisionIO {
       int tagCount,
       double averageTagDistance,
       PoseObservationType type,
-      Set<Integer> usedTagIds // immutable per observation
-      ) {}
+      int[] usedTagIds) {
+    // Compact constructor to coalesce null to empty
+    public PoseObservation {
+      usedTagIds = (usedTagIds == null) ? new int[0] : usedTagIds;
+    }
+  }
 
   enum PoseObservationType {
     MEGATAG_1,

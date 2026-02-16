@@ -37,7 +37,6 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
@@ -50,6 +49,7 @@ import frc.robot.util.LocalADStarAK;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
 import frc.robot.util.RBSISubsystem;
+import frc.robot.util.TimeUtil;
 import frc.robot.util.TimedPose;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -264,6 +264,10 @@ public class Drive extends RBSISubsystem {
    */
   @Override
   public void simulationPeriodic() {
+
+    // IMPORTANT: do not run sim physics during REPLAY
+    if (Constants.getMode() != Mode.SIM) return;
+
     final double dt = Constants.loopPeriodSecs;
 
     // Advance module wheel physics
@@ -477,6 +481,14 @@ public class Drive extends RBSISubsystem {
     return poseBuffer.getSample(timestampSeconds);
   }
 
+  public double getPoseBufferOldestTime() {
+    return poseBuffer.getOldestTimestamp().getAsDouble();
+  }
+
+  public double getPoseBufferNewestTime() {
+    return poseBuffer.getNewestTimestamp().getAsDouble();
+  }
+
   /**
    * Max abs yaw rate over [t0, t1] using buffered yaw-rate history
    *
@@ -571,7 +583,7 @@ public class Drive extends RBSISubsystem {
    */
   public void resetPose(Pose2d pose) {
     m_PoseEstimator.resetPosition(getHeading(), getModulePositions(), pose);
-    markPoseReset(Timer.getFPGATimestamp());
+    markPoseReset(TimeUtil.now());
   }
 
   /** Zeros the gyro based on alliance color */
@@ -581,28 +593,69 @@ public class Drive extends RBSISubsystem {
             ? Rotation2d.kZero
             : Rotation2d.k180deg);
     resetHeadingController();
-    markPoseReset(Timer.getFPGATimestamp());
+    markPoseReset(TimeUtil.now());
   }
 
   /** Zeros the gyro regardless of the alliance */
   public void zeroHeading() {
     imu.zeroYaw(Rotation2d.kZero);
     resetHeadingController();
-    markPoseReset(Timer.getFPGATimestamp());
+    markPoseReset(TimeUtil.now());
   }
 
   /**
    * Adds a vision measurement safely into the PoseEstimator
    *
-   * @param timedPose The pose @ timestamp to add to the pose estimator
+   * @param measurement The pose @ timestamp to add to the pose estimator
    */
-  public void addVisionMeasurement(TimedPose timedPose) {
-    odometryLock.lock();
+  // Called by Vision via consumer.accept(TimedPose)
+  public void addVisionMeasurement(TimedPose meas) {
+    Drive.odometryLock.lock();
     try {
-      m_PoseEstimator.addVisionMeasurement(
-          timedPose.pose(), timedPose.timestampSeconds(), timedPose.stdDevs());
+      // Always use measurement timestamp when fusing (enabled path)
+      final double t = meas.timestampSeconds();
+
+      if (!DriverStation.isDisabled()) {
+        // ENABLED: normal soft fusion
+        m_PoseEstimator.addVisionMeasurement(meas.pose(), t, meas.stdDevs());
+        return;
+      }
+
+      // DISABLED: blend toward vision, then reset estimator to blended pose
+      final Pose2d current = m_PoseEstimator.getEstimatedPosition();
+      final Pose2d vision = meas.pose();
+
+      // Optional sanity gate while disabled (prevents one bad frame from wrecking you)
+      final double dTrans = current.getTranslation().getDistance(vision.getTranslation());
+      final double dRot = Math.abs(current.getRotation().minus(vision.getRotation()).getRadians());
+      if (dTrans > DrivebaseConstants.kDisabledVisionMaxJumpM
+          || dRot > DrivebaseConstants.kDisabledVisionMaxJumpRad) {
+        Logger.recordOutput("Vision/DisabledReject", true);
+        Logger.recordOutput("Vision/DisabledReject_dTransM", dTrans);
+        Logger.recordOutput("Vision/DisabledReject_dRotRad", dRot);
+        return;
+      }
+      Logger.recordOutput("Vision/DisabledReject", false);
+
+      // Controlled “soft snap”
+      final Pose2d blended =
+          current.interpolate(vision, DrivebaseConstants.kDisabledVisionBlendAlpha);
+
+      // Reset estimator to blended pose (heading/modules are "now", but robot can't move while
+      // disabled)
+      m_PoseEstimator.resetPosition(getHeading(), getModulePositions(), blended);
+
+      // Mark reset so Vision gates old samples, etc.
+      markPoseReset(TimeUtil.now());
+
+      // Keep pose buffer in sync immediately (helps timeAlignPose calls)
+      poseBufferAddSample(TimeUtil.now(), blended);
+
+      Logger.recordOutput(
+          "Vision/DisabledBlendAlpha", DrivebaseConstants.kDisabledVisionBlendAlpha);
+      Logger.recordOutput("Vision/DisabledBlendedPose", blended);
     } finally {
-      odometryLock.unlock();
+      Drive.odometryLock.unlock();
     }
   }
 

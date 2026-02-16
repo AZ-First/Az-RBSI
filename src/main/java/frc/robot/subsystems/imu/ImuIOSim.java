@@ -19,7 +19,7 @@ package frc.robot.subsystems.imu;
 
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.Timer;
+import frc.robot.util.TimeUtil;
 import org.littletonrobotics.junction.Logger;
 
 /** Simulated IMU for full robot simulation & replay logging */
@@ -73,7 +73,7 @@ public class ImuIOSim implements ImuIO {
     inputs.linearJerk = Translation3d.kZero;
 
     // Maintain odometry history
-    pushOdomSample(Timer.getFPGATimestamp(), yawRad);
+    pushOdomSample(TimeUtil.now(), yawRad);
 
     // Export odometry arrays (copy out in chronological order)
     final int n = odomSize;
