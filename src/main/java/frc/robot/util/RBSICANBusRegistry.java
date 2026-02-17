@@ -15,6 +15,7 @@ package frc.robot.util;
 
 import com.ctre.phoenix6.CANBus;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Centralized CAN bus singleton registry + SIM/REAL indirection. */
@@ -64,7 +65,7 @@ public final class RBSICANBusRegistry {
     if (!initialized) throw new IllegalStateException("RBSICANBusRegistry not initialized.");
   }
 
-  private static void throwUnknown(String name, java.util.Set<String> known) {
+  private static void throwUnknown(String name, Set<String> known) {
     throw new IllegalArgumentException("Unknown CAN bus '" + name + "'. Known: " + known);
   }
 

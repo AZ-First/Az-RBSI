@@ -19,7 +19,6 @@ package frc.robot;
 
 import com.revrobotics.util.StatusLogger;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -49,7 +48,6 @@ public class Robot extends LoggedRobot {
   private Command m_autoCommandPathPlanner;
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
-  private static boolean isBlueAlliance = false;
 
   // Define simulation fields here
   private VisionSystemSim visionSim;
@@ -138,8 +136,6 @@ public class Robot extends LoggedRobot {
   /** TESTING VERSION OF ROBOTPERIODIC FOR OVERRUN SOURCES */
   @Override
   public void robotPeriodic() {
-
-    isBlueAlliance = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue;
 
     final long t0 = System.nanoTime();
 
@@ -322,14 +318,5 @@ public class Robot extends LoggedRobot {
   public void simulationPeriodic() {
     // Update sim each sim tick
     visionSim.update(m_robotContainer.getDrivebase().getPose());
-  }
-
-  // Helper method to simplify checking if the robot is blue or red alliance
-  public static boolean isBlue() {
-    return isBlueAlliance;
-  }
-
-  public static boolean isRed() {
-    return !isBlue();
   }
 }

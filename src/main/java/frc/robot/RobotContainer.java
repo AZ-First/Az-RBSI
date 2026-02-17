@@ -82,9 +82,6 @@ import org.photonvision.simulation.VisionSystemSim;
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
 public class RobotContainer {
 
-  private static final boolean USE_MAPLESIM = true;
-  public static final boolean MAPLESIM = USE_MAPLESIM && Robot.isSimulation();
-
   /** Define the Driver and, optionally, the Operator/Co-Driver Controllers */
   // Replace with ``CommandPS4Controller`` or ``CommandJoystick`` if needed
   final CommandXboxController driverController = new CommandXboxController(0); // Main Driver
@@ -138,8 +135,6 @@ public class RobotContainer {
 
   // Alerts
   private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
-
-  public static RobotContainer instance;
 
   /**
    * Constructor for the Robot Container. This container holds subsystems, opertator interface

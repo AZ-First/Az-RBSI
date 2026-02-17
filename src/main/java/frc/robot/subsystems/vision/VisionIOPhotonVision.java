@@ -20,7 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 import org.photonvision.PhotonCamera;
 
-/** IO implementation for real PhotonVision hardware (pose already solved by PV). */
+/** IO implementation for real PhotonVision hardware. */
 public class VisionIOPhotonVision implements VisionIO {
   protected final PhotonCamera camera;
   protected final Transform3d robotToCamera;
@@ -63,9 +63,11 @@ public class VisionIOPhotonVision implements VisionIO {
         bestPitch = Rotation2d.fromDegrees(result.getBestTarget().getPitch());
       }
 
-      if (result.multitagResult.isPresent()) {
+      // Add pose observation
+      if (result.multitagResult.isPresent()) { // Multitag result
         var multitag = result.multitagResult.get();
 
+        // Calculate robot pose
         Transform3d fieldToCamera = multitag.estimatedPose.best;
         Transform3d fieldToRobot = fieldToCamera.plus(robotToCamera.inverse());
         Pose3d robotPose = new Pose3d(fieldToRobot.getTranslation(), fieldToRobot.getRotation());
@@ -86,6 +88,7 @@ public class VisionIOPhotonVision implements VisionIO {
           unionTagIds.add(id); // keep your union set for tagIds UI/log
         }
 
+        // Add observation
         poseObservations.add(
             new PoseObservation(
                 ts,
@@ -96,9 +99,10 @@ public class VisionIOPhotonVision implements VisionIO {
                 PoseObservationType.PHOTONVISION,
                 used));
 
-      } else if (!result.targets.isEmpty()) {
+      } else if (!result.targets.isEmpty()) { // Single tag result
         var target = result.targets.get(0);
 
+        // Calculate robot pose
         var tagPose = aprilTagLayout.getTagPose(target.fiducialId);
         if (tagPose.isEmpty()) continue;
 
@@ -124,6 +128,7 @@ public class VisionIOPhotonVision implements VisionIO {
       }
     }
 
+    // Save pose observations to inputs object
     inputs.latestTargetObservation =
         (newestTargetTs > Double.NEGATIVE_INFINITY)
             ? new TargetObservation(bestYaw, bestPitch)
@@ -131,6 +136,7 @@ public class VisionIOPhotonVision implements VisionIO {
 
     inputs.poseObservations = poseObservations.toArray(new PoseObservation[0]);
 
+    // Save tag IDs to inputs objects
     inputs.tagIds = new int[unionTagIds.size()];
     int i = 0;
     for (int id : unionTagIds) inputs.tagIds[i++] = id;

@@ -30,9 +30,6 @@ import org.littletonrobotics.junction.Logger;
  */
 public class Accelerometer extends VirtualSubsystem {
 
-  // Gravitational acceleration
-  private static final double G_TO_MPS2 = 9.80665;
-
   // Define hardware interfaces
   private final RioAccelIO rio;
   private final RioAccelIO.Inputs rioInputs = new RioAccelIO.Inputs();
@@ -71,8 +68,12 @@ public class Accelerometer extends VirtualSubsystem {
     rio.updateInputs(rioInputs);
 
     // Compute RIO accelerations and jerks
-    rawRio = new Translation3d(rioInputs.xG, rioInputs.yG, rioInputs.zG);
-    rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation).times(G_TO_MPS2);
+    rawRio =
+        new Translation3d(
+            rioInputs.xG * Constants.G_TO_MPS2,
+            rioInputs.yG * Constants.G_TO_MPS2,
+            rioInputs.zG * Constants.G_TO_MPS2);
+    rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation);
 
     // Acceleration from previous loop
     prevRioAcc = rioAcc;
