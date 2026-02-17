@@ -135,12 +135,6 @@ public class Vision extends VirtualSubsystem {
     boolean hasFusedThisLoop = false;
     boolean hasSmoothedThisLoop = false;
 
-    // Default debug outputs (so keys exist even if we return early)
-    double dbgAlignDt = Double.NaN;
-    double dbgDeltaTranslation = Double.NaN;
-    double dbgDeltaRotation = Double.NaN;
-    boolean dbgAlignFinite = false;
-
     try {
 
       lastAlignDbg.reset();
@@ -278,13 +272,13 @@ public class Vision extends VirtualSubsystem {
       lastFusedValid = true;
       lastSmoothedValid = true;
 
-      Logger.recordOutput("OdometryReplay/PreInjectRobotX", drive.poseEstimatorGetPose().getX());
-      Logger.recordOutput("OdometryReplay/PreInjectRobotY", drive.poseEstimatorGetPose().getY());
+      Logger.recordOutput("OdometryReplay/PreInjectRobotX", drive.getPose().getX());
+      Logger.recordOutput("OdometryReplay/PreInjectRobotY", drive.getPose().getY());
 
       consumer.accept(smoothed);
 
-      Logger.recordOutput("OdometryReplay/PostInjectRobotX", drive.poseEstimatorGetPose().getX());
-      Logger.recordOutput("OdometryReplay/PostInjectRobotY", drive.poseEstimatorGetPose().getY());
+      Logger.recordOutput("OdometryReplay/PostInjectRobotX", drive.getPose().getX());
+      Logger.recordOutput("OdometryReplay/PostInjectRobotY", drive.getPose().getY());
 
       // If you want, you can feed debug values from inside timeAlignPose(...) via fields,
       // but leaving the plumbing as-is since you’re already logging inside helpers.
@@ -561,72 +555,11 @@ public class Vision extends VirtualSubsystem {
   private TimedPose fuseAtTime(ArrayList<TimedPose> estimates, double tFusion) {
     final ArrayList<TimedPose> aligned = new ArrayList<>(estimates.size());
     for (var e : estimates) {
-      Pose2d alignedPose = timeAlignPoseFieldDelta(e.pose(), e.timestampSeconds(), tFusion);
+      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) return null;
       aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
     }
     return inverseVarianceFuse(aligned, tFusion);
-  }
-
-  /**
-   * Align a pose to where it would have been at the fusion time
-   *
-   * <p>Gets the odometric poses at ts and tFusion from the drivebase PoseEstimator, computes the
-   * transform between them, and applies that to the vision pose. The correction is applied by
-   * finding the field-frame deltas for both translation and rotation, then returning a new Pose2d
-   * object that consists of the vision pose adjusted by the field-frame deltas.
-   *
-   * @param visionPoseAtTs The pose at ts
-   * @param ts Timestamp of the pose
-   * @param tFusion Fusion timestamp
-   * @return Transformed Pose2d
-   */
-  private Pose2d timeAlignPose(Pose2d visionPoseAtTs, double ts, double tFusion) {
-
-    Logger.recordOutput("Vision/Debug/ts", ts);
-    Logger.recordOutput("Vision/Debug/tFusion", tFusion);
-    Logger.recordOutput("Vision/Debug/alignDtMs", (tFusion - ts) * 1000.0);
-
-    double dt = tFusion - ts;
-
-    Optional<Pose2d> odomAtTsOpt = drive.getPoseAtTime(ts);
-    Optional<Pose2d> odomAtTFOpt = drive.getPoseAtTime(tFusion);
-    // If empty, return null
-    if (odomAtTsOpt.isEmpty() || odomAtTFOpt.isEmpty()) return null;
-
-    // Transform that takes odomAtTs -> odomAtTF (in odomAtTs frame)
-    Transform2d ts_T_tf = odomAtTFOpt.get().minus(odomAtTsOpt.get());
-
-    double dtrans = ts_T_tf.getTranslation().getNorm();
-    double drot = ts_T_tf.getRotation().getRadians();
-
-    boolean finite =
-        Double.isFinite(dt)
-            && Double.isFinite(dtrans)
-            && Double.isFinite(drot)
-            && Double.isFinite(odomAtTsOpt.get().getX())
-            && Double.isFinite(odomAtTFOpt.get().getX());
-
-    // Even more debugging logging
-    Logger.recordOutput("Vision/Debug/alignDt", dt);
-    Logger.recordOutput("Vision/Debug/deltaTranslation", dtrans);
-    Logger.recordOutput("Vision/Debug/deltaRotation", drot);
-    Logger.recordOutput("Vision/Debug/alignFinite", finite);
-    Logger.recordOutput("Vision/Debug/odomAtTs", odomAtTsOpt.get());
-    Logger.recordOutput("Vision/Debug/odomAtTF", odomAtTFOpt.get());
-
-    if (!finite) {
-      Logger.recordOutput("Vision/Debug/odomAtTs", odomAtTsOpt.get());
-      Logger.recordOutput("Vision/Debug/odomAtTF", odomAtTFOpt.get());
-      return null;
-    }
-
-    // Debugging Logging
-    Logger.recordOutput("Vision/Debug/deltaTranslation", ts_T_tf.getTranslation().getNorm());
-    Logger.recordOutput("Vision/Debug/deltaRotation", ts_T_tf.getRotation().getRadians());
-
-    // Apply the same SE(2) transform to the vision pose
-    return visionPoseAtTs.transformBy(ts_T_tf);
   }
 
   /**
@@ -649,7 +582,7 @@ public class Vision extends VirtualSubsystem {
    * @param tFusion Fusion timestamp
    * @return Transformed Pose2d
    */
-  private Pose2d timeAlignPoseFieldDelta(Pose2d visionPoseAtTs, double ts, double tFusion) {
+  private Pose2d timeAlignPose(Pose2d visionPoseAtTs, double ts, double tFusion) {
     Optional<Pose2d> odomAtTsOpt = drive.getPoseAtTime(ts);
     Optional<Pose2d> odomAtTFOpt = drive.getPoseAtTime(tFusion);
     if (odomAtTsOpt.isEmpty() || odomAtTFOpt.isEmpty()) return null;
@@ -777,7 +710,7 @@ public class Vision extends VirtualSubsystem {
 
     final ArrayList<TimedPose> aligned = new ArrayList<>(fusedBuffer.size());
     for (var e : fusedBuffer) {
-      Pose2d alignedPose = timeAlignPoseFieldDelta(e.pose(), e.timestampSeconds(), tFusion);
+      Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) continue;
       aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
       // Debugging Logging

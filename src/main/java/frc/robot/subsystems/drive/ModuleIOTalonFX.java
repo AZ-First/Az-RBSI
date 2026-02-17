@@ -363,7 +363,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Log output and battery
     Logger.recordOutput("Swerve/Drive/OpenLoopOutput", scaledOutput);
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
   }
 
   /**
@@ -384,7 +384,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Log output and battery
     Logger.recordOutput("Swerve/Turn/OpenLoopOutput", scaledOutput);
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
   }
 
   /**
@@ -427,7 +427,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     Logger.recordOutput("Swerve/Drive/VelocityRotPerSec", velocityRotPerSec);
     Logger.recordOutput("Swerve/Drive/AccelerationRotPerSec2", accelerationRotPerSec2);
     Logger.recordOutput("Swerve/Drive/FeedForwardVolts", scaledFFVolts);
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
     Logger.recordOutput("Swerve/Drive/ClosedLoopMode", m_DriveMotorClosedLoopOutput);
   }
 
@@ -455,7 +455,7 @@ public class ModuleIOTalonFX implements ModuleIO {
         });
 
     Logger.recordOutput("Swerve/Turn/TargetRotations", rotation.getRotations());
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
   }
 
   @Override

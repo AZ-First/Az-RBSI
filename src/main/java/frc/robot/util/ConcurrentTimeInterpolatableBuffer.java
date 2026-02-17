@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Az-FIRST
+// Copyright (c) 2026 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2024 FRC 254
 // https://github.com/team254
@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import org.littletonrobotics.junction.Logger;
 
 /**
  * A concurrent version of WPIlib's TimeInterpolatableBuffer class to avoid the need for explicit
@@ -90,9 +89,6 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    * @param sample The sample object.
    */
   public void addSample(double timeSeconds, T sample) {
-    Logger.recordOutput("Odometry/Debug/lastPoseBufferAddTs", timeSeconds);
-    Logger.recordOutput("Odometry/Debug/nowTs", TimeUtil.now());
-
     m_pastSnapshots.put(timeSeconds, sample);
     cleanUp(timeSeconds);
   }
@@ -135,7 +131,7 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
     if (topBound == null) return Optional.of(bottomBound.getValue());
     if (bottomBound == null) return Optional.of(topBound.getValue());
 
-    // NEW: if they are the same sample, no interpolation possible/needed
+    // If they are the same sample, no interpolation possible/needed
     if (topBound.getKey().doubleValue() == bottomBound.getKey().doubleValue()) {
       return Optional.of(bottomBound.getValue());
     }
@@ -144,16 +140,11 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
     double t1 = topBound.getKey();
     double denom = t1 - t0;
 
-    // (optional but good)
+    // If the samples are so close together as to be indistinguishable, they are the same
     if (Math.abs(denom) < 1e-9) return Optional.of(bottomBound.getValue());
 
     double ratio = (timeSeconds - t0) / denom;
     ratio = MathUtil.clamp(ratio, 0.0, 1.0);
-
-    Logger.recordOutput("Odometry/Debug/bottomKey", t0);
-    Logger.recordOutput("Odometry/Debug/topKey", t1);
-    Logger.recordOutput("Odometry/Debug/denom", denom);
-    Logger.recordOutput("Odometry/Debug/snaphotSize", m_pastSnapshots.size());
 
     return Optional.of(
         m_interpolatingFunc.interpolate(bottomBound.getValue(), topBound.getValue(), ratio));

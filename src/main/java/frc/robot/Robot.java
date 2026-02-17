@@ -119,24 +119,8 @@ public class Robot extends LoggedRobot {
   }
 
   // /** This function is called periodically during all modes. */
-  // @Override
-  // public void robotPeriodic() {
-
-  //   // Run all virtual subsystems each time through the loop
-  //   VirtualSubsystem.periodicAll();
-
-  //   // Runs the Scheduler. This is responsible for polling buttons, adding
-  //   // newly-scheduled commands, running already-scheduled commands, removing
-  //   // finished or interrupted commands, and running subsystem periodic() methods.
-  //   // This must be called from the robot's periodic block in order for anything in
-  //   // the Command-based framework to work.
-  //   CommandScheduler.getInstance().run();
-  // }
-
-  /** TESTING VERSION OF ROBOTPERIODIC FOR OVERRUN SOURCES */
   @Override
   public void robotPeriodic() {
-
     final long t0 = System.nanoTime();
 
     if (isReal()) {
@@ -145,20 +129,27 @@ public class Robot extends LoggedRobot {
     }
     final long t1 = System.nanoTime();
 
+    // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
     final long t2 = System.nanoTime();
 
+    // Runs the Scheduler. This is responsible for polling buttons, adding
+    // newly-scheduled commands, running already-scheduled commands, removing
+    // finished or interrupted commands, and running subsystem periodic() methods.
+    // This must be called from the robot's periodic block in order for anything in
+    // the Command-based framework to work.
     CommandScheduler.getInstance().run();
     final long t3 = System.nanoTime();
 
-    Threads.setCurrentThreadPriority(false, 10);
+    if (isReal()) {
+      // Return thread to normal priority
+      Threads.setCurrentThreadPriority(false, 10);
+    }
     final long t4 = System.nanoTime();
 
     Logger.recordOutput("Loop/RobotPeriodic_ms", (t4 - t0) / 1e6);
-    Logger.recordOutput("Loop/ThreadBoost_ms", (t1 - t0) / 1e6);
     Logger.recordOutput("Loop/Virtual_ms", (t2 - t1) / 1e6);
     Logger.recordOutput("Loop/Scheduler_ms", (t3 - t2) / 1e6);
-    Logger.recordOutput("Loop/ThreadRestore_ms", (t4 - t3) / 1e6);
   }
 
   /** This function is called once when the robot is disabled. */

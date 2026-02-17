@@ -15,6 +15,7 @@ package frc.robot.util;
 
 import org.littletonrobotics.junction.Logger;
 
+/** Time utility that works for REAL, SIM, and REPLAY */
 public final class TimeUtil {
   private TimeUtil() {}
 

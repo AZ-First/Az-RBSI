@@ -40,6 +40,9 @@ public final class DriveOdometry extends VirtualSubsystem {
   // Per-cycle cached objects (to avoid repeated allocations)
   private final SwerveModulePosition[] odomPositions = new SwerveModulePosition[4];
 
+  // Checking whether this is a REPLAY
+  private boolean isReplayActive = Logger.hasReplaySource();
+
   /** Constructor */
   public DriveOdometry(Drive drive, Imu imu, Module[] modules) {
     this.drive = drive;
@@ -72,14 +75,10 @@ public final class DriveOdometry extends VirtualSubsystem {
         module.periodic();
       }
 
-      final boolean isReplayActive = Logger.hasReplaySource();
-      Logger.recordOutput("Odometry/Debug/isDisabled", DriverStation.isDisabled());
-      Logger.recordOutput("Odometry/Debug/isReplayActive", isReplayActive);
-
       // ----------------------------------------------------------------------
       // Pure SIM (not replaying a log): use sim pose/yaw
       // ----------------------------------------------------------------------
-      if (Constants.getMode() == Mode.SIM && !isReplayActive) {
+      if (Constants.isPureSim()) {
         final double now = TimeUtil.now();
 
         // Keep buffers alive
@@ -118,8 +117,8 @@ public final class DriveOdometry extends VirtualSubsystem {
             drive.getModulePositions());
 
         // keep pose buffer alive with the *current estimator pose*
-        drive.poseBufferAddSample(now, drive.poseEstimatorGetPose());
-        Logger.recordOutput("Drive/Pose", drive.poseEstimatorGetPose());
+        drive.poseBufferAddSample(now, drive.getPose());
+        Logger.recordOutput("Drive/Pose", drive.getPose());
         drive.setGyroDisconnectedAlert(!imuInputs.connected);
         return;
       }
@@ -260,14 +259,14 @@ public final class DriveOdometry extends VirtualSubsystem {
         drive.poseEstimatorUpdateWithTime(t, Rotation2d.fromRadians(yawRad), odomPositions);
 
         // Maintain pose history in SAME timebase as estimator
-        drive.poseBufferAddSample(t, drive.poseEstimatorGetPose());
+        drive.poseBufferAddSample(t, drive.getPose());
       }
 
-      Logger.recordOutput("Drive/Pose", drive.poseEstimatorGetPose());
+      Logger.recordOutput("Drive/Pose", drive.getPose());
       drive.setGyroDisconnectedAlert(!imuInputs.connected);
 
     } finally {
-      final Pose2d pose = drive.poseEstimatorGetPose();
+      final Pose2d pose = drive.getPose();
       final double x = pose.getX();
       final double y = pose.getY();
       final double th = pose.getRotation().getRadians();

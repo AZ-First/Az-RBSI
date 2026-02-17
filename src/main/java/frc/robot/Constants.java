@@ -47,6 +47,7 @@ import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
 import java.util.Set;
+import org.littletonrobotics.junction.Logger;
 import org.photonvision.simulation.SimCameraProperties;
 import swervelib.math.Matter;
 
@@ -502,6 +503,7 @@ public final class Constants {
               setLatencyStdDevMs(5);
             }
           }),
+      //
       new CameraConfig(
           "camera_1",
           new Transform3d(
@@ -552,6 +554,12 @@ public final class Constants {
       case DEVBOT, COMPBOT -> RobotBase.isReal() ? Mode.REAL : Mode.REPLAY;
       case SIMBOT -> Mode.SIM;
     };
+  }
+
+  /** Return whether this is pure simulation */
+  public static boolean isPureSim() {
+    boolean isReplay = Logger.hasReplaySource();
+    return getMode() == Mode.SIM && !isReplay;
   }
 
   /** Get the current swerve drive type */

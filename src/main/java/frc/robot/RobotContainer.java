@@ -155,8 +155,7 @@ public class RobotContainer {
         m_imu = new Imu(SwerveConstants.kImu.factory.get());
 
         m_drivebase = new Drive(m_imu);
-        m_driveOdometry =
-            new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules()); // see note
+        m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
@@ -170,30 +169,22 @@ public class RobotContainer {
 
         m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
-        m_driveOdometry =
-            new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules()); // see note
-
-        m_flywheel = new Flywheel(new FlywheelIOSim());
-
-        // ---------------- Vision IOs (robot code) ----------------
-        var cams = Cameras.ALL;
+        m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsSim(m_drivebase));
+        m_flywheel = new Flywheel(new FlywheelIOSim());
         m_accel = new Accelerometer(m_imu);
 
-        // ---------------- CameraSweepEvaluator (sim-only analysis) ----------------
+        // CameraSweepEvaluator (sim-only analysis)
         VisionSystemSim visionSim = new VisionSystemSim("CameraSweepWorld");
         visionSim.addAprilTags(FieldConstants.aprilTagLayout);
-
+        var cams = Cameras.ALL;
         PhotonCameraSim[] simCams = new PhotonCameraSim[cams.length];
-
         for (int i = 0; i < cams.length; i++) {
           var cfg = cams[i];
-
           PhotonCamera photonCam = new PhotonCamera(cfg.name());
           PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
-
           visionSim.addCamera(camSim, cfg.robotToCamera());
           simCams[i] = camSim;
         }
@@ -212,21 +203,18 @@ public class RobotContainer {
         RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
-        m_driveOdometry =
-            new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules()); // see note
-
-        m_flywheel = new Flywheel(new FlywheelIO() {});
+        m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay(m_drivebase));
 
+        m_flywheel = new Flywheel(new FlywheelIO() {});
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
     }
 
     // Init all CAN busses specified in the `Constants.CANBuses` class
-    RBSICANBusRegistry.initReal(Constants.CANBuses.ALL);
     canHealth = Arrays.stream(Constants.CANBuses.ALL).map(RBSICANHealth::new).toList();
 
     // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes

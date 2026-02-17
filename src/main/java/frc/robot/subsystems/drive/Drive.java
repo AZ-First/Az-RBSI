@@ -1,11 +1,19 @@
 // Copyright (c) 2024-2026 Az-FIRST
 // http://github.com/AZ-First
-// Copyright (c) 2021-2026 Littleton Robotics
-// http://github.com/Mechanical-Advantage
 //
-// Use of this source code is governed by a BSD
-// license that can be found in the AdvantageKit-License.md file
-// at the root directory of this project.
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation or
+// available in the root directory of this project.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
 
 package frc.robot.subsystems.drive;
 
@@ -86,13 +94,8 @@ public class Drive extends RBSISubsystem {
   // Declare odometry and pose-related variables
   static final Lock odometryLock = new ReentrantLock();
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
-  private SwerveModulePosition[] lastModulePositions = // For delta tracking
-      new SwerveModulePosition[] {
-        new SwerveModulePosition(),
-        new SwerveModulePosition(),
-        new SwerveModulePosition(),
-        new SwerveModulePosition()
-      };
+  private SwerveModulePosition[] lastModulePositions =
+      new SwerveModulePosition[4]; // For delta tracking
   private SwerveDrivePoseEstimator m_PoseEstimator =
       new SwerveDrivePoseEstimator(kinematics, Rotation2d.kZero, lastModulePositions, Pose2d.kZero);
 
@@ -108,10 +111,14 @@ public class Drive extends RBSISubsystem {
   private boolean lastEnabled = false;
   private double disabledCoastUntilTs = Double.NEGATIVE_INFINITY;
   private double disabledCoastStartTs = Double.NEGATIVE_INFINITY;
-
   private final double[] lastWheelDistM = new double[4];
   private boolean haveLastWheelDist = false;
   private int stationaryLoops = 0;
+
+  // Related to vision injection of pose
+  private boolean disabledVisionInitialized = false;
+  private Pose2d lastDisabledVisionPose = new Pose2d();
+  private double lastDisabledVisionTs = Double.NaN;
 
   /** Constructor */
   public Drive(Imu imu) {
@@ -389,18 +396,30 @@ public class Drive extends RBSISubsystem {
     angleController.reset(getHeading().getRadians());
   }
 
-  /** Getter function for the angle controller */
-  public ProfiledPIDController getAngleController() {
-    return angleController;
-  }
-
-  // Drive.java
+  /**
+   * Update the Disabled Coast State
+   *
+   * <p>The purpose of this function is to determine the coasting state of the robot on the ENABLE
+   * -> DISABLE edge. While the robot coasts to a stop, the wheel odometry will continue to
+   * integrate with usual vision input. Once the robot stops moving (within tolerance), the vision
+   * injection to the Pose will take over.
+   *
+   * @param enabledNow Are we enabled now?
+   * @param disabledNow Are we disabled now?
+   * @param now When is now?
+   * @param yawRateRadPerSec Current drivebase rotation rate
+   * @param odomPositions List of module odometry positions
+   */
   public void updateDisabledCoastState(
       boolean enabledNow,
       boolean disabledNow,
       double now,
       double yawRateRadPerSec,
       SwerveModulePosition[] odomPositions) {
+
+    // Don’t end coast “instantly” right after disable edge
+    final double minCoastTime = 0.25; // seconds -- maybe put into Constants???
+    final boolean pastMin = (now - disabledCoastStartTs) >= minCoastTime;
 
     // Detect ENABLED -> DISABLED edge
     if (lastEnabled && !enabledNow) {
@@ -454,10 +473,6 @@ public class Drive extends RBSISubsystem {
       stationaryLoops = 0;
     }
 
-    // Optional: don’t end coast “instantly” right after disable edge
-    final double minCoastTime = 0.25; // seconds
-    final boolean pastMin = (now - disabledCoastStartTs) >= minCoastTime;
-
     // End coast early if stationary long enough
     if (pastMin && stationaryLoops >= DrivebaseConstants.kStationaryLoopsToEndCoast) {
       disabledCoastUntilTs = now; // expires immediately
@@ -494,6 +509,11 @@ public class Drive extends RBSISubsystem {
     return modules;
   }
 
+  /** Return the prodiledPID angle controller */
+  public ProfiledPIDController getAngleController() {
+    return angleController;
+  }
+
   /** Returns the module states (turn angles and drive velocities) for all of the modules. */
   @AutoLogOutput(key = "SwerveStates/Measured")
   private SwerveModuleState[] getModuleStates() {
@@ -520,10 +540,14 @@ public class Drive extends RBSISubsystem {
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
-  /** Returns the current odometry pose. */
+  /**
+   * Returns the current odometry pose.
+   *
+   * <p>If the code is running as pure simulation (i.e., not REPLAY of a log), return the simulated
+   * physics pose. Otherwise, return the pose from the pose estimator.
+   */
   public Pose2d getPose() {
-    boolean isReplay = Logger.hasReplaySource();
-    if (Constants.getMode() == Mode.SIM && !isReplay) {
+    if (Constants.isPureSim()) {
       return simPhysics.getPose();
     }
     return m_PoseEstimator.getEstimatedPosition();
@@ -532,7 +556,7 @@ public class Drive extends RBSISubsystem {
   /** Returns the current odometry YAW. */
   @AutoLogOutput(key = "Odometry/Yaw")
   public Rotation2d getHeading() {
-    if (Constants.getMode() == Mode.SIM) {
+    if (Constants.isPureSim()) {
       return simPhysics.getYaw();
     }
     return imu.getYaw();
@@ -567,10 +591,12 @@ public class Drive extends RBSISubsystem {
     return poseBuffer.getSample(timestampSeconds);
   }
 
+  /** Returns the oldest timetamp in the current pose buffer */
   public double getPoseBufferOldestTime() {
     return poseBuffer.getOldestTimestamp().getAsDouble();
   }
 
+  /** Returns the newest timetamp in the current pose buffer */
   public double getPoseBufferNewestTime() {
     return poseBuffer.getNewestTimestamp().getAsDouble();
   }
@@ -641,15 +667,17 @@ public class Drive extends RBSISubsystem {
     };
   }
 
-  // Drive.java
+  /** Returns whether the robot is currently in the DISABLED_COAST state */
   public boolean isDisabledCoast() {
     return isDisabledCoast(TimeUtil.now());
   }
 
+  /** Returns whether the robot was in the DISABLED_COAST state at time `now` */
   public boolean isDisabledCoast(double now) {
     return DriverStation.isDisabled() && (now < disabledCoastUntilTs);
   }
 
+  /** Returns the disabledCoastStartTs variable */
   public double getDisabledCoastStartTs() {
     return disabledCoastStartTs;
   }
@@ -708,12 +736,6 @@ public class Drive extends RBSISubsystem {
    * @param measurement The pose @ timestamp to add to the pose estimator
    */
   // Called by Vision via consumer.accept(TimedPose)
-  // Drive.java fields
-  private boolean disabledVisionInitialized = false;
-
-  private Pose2d lastDisabledVisionPose = new Pose2d();
-  private double lastDisabledVisionTs = Double.NaN;
-
   public void addVisionMeasurement(TimedPose meas) {
     Drive.odometryLock.lock();
     try {
@@ -852,11 +874,6 @@ public class Drive extends RBSISubsystem {
    * them in order to update and process the odometry. These functions are the appropriate
    * pass-throughs to allow this functionality.
    */
-
-  /** Get the pose estimator current pose */
-  public Pose2d poseEstimatorGetPose() {
-    return m_PoseEstimator.getEstimatedPosition();
-  }
 
   /** Update the pose estimator at a timestamp */
   void poseEstimatorUpdateWithTime(double t, Rotation2d yaw, SwerveModulePosition[] positions) {
