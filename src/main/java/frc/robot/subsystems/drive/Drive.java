@@ -92,10 +92,17 @@ public class Drive extends RBSISubsystem {
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
 
   // Declare odometry and pose-related variables
+  // This one is package-private; used in DriveOdometry, PhoenixOdometryThread, and
+  // SparkOdometryThread
   static final Lock odometryLock = new ReentrantLock();
   private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
-  private SwerveModulePosition[] lastModulePositions =
-      new SwerveModulePosition[4]; // For delta tracking
+  private SwerveModulePosition[] lastModulePositions = // For delta tracking
+      new SwerveModulePosition[] {
+        new SwerveModulePosition(),
+        new SwerveModulePosition(),
+        new SwerveModulePosition(),
+        new SwerveModulePosition()
+      };
   private SwerveDrivePoseEstimator m_PoseEstimator =
       new SwerveDrivePoseEstimator(kinematics, Rotation2d.kZero, lastModulePositions, Pose2d.kZero);
 
@@ -421,7 +428,7 @@ public class Drive extends RBSISubsystem {
     final double minCoastTime = 0.25; // seconds -- maybe put into Constants???
     final boolean pastMin = (now - disabledCoastStartTs) >= minCoastTime;
 
-    // Detect ENABLED -> DISABLED edge
+    // Detect ENABLED -> DISABLED edge -- set `disabledCoastUntilTs` when COAST-phase ends
     if (lastEnabled && !enabledNow) {
       disabledCoastStartTs = now;
       disabledCoastUntilTs = now + DrivebaseConstants.kDisabledCoastSeconds;
@@ -672,9 +679,9 @@ public class Drive extends RBSISubsystem {
     return isDisabledCoast(TimeUtil.now());
   }
 
-  /** Returns whether the robot was in the DISABLED_COAST state at time `now` */
-  public boolean isDisabledCoast(double now) {
-    return DriverStation.isDisabled() && (now < disabledCoastUntilTs);
+  /** Returns whether the robot was in the DISABLED_COAST state at time `timestamp` */
+  public boolean isDisabledCoast(double timestamp) {
+    return DriverStation.isDisabled() && (timestamp < disabledCoastUntilTs);
   }
 
   /** Returns the disabledCoastStartTs variable */
@@ -737,7 +744,7 @@ public class Drive extends RBSISubsystem {
    */
   // Called by Vision via consumer.accept(TimedPose)
   public void addVisionMeasurement(TimedPose meas) {
-    Drive.odometryLock.lock();
+    odometryLock.lock();
     try {
       // Always use measurement timestamp when fusing (enabled path)
       final double t = meas.timestampSeconds();
@@ -751,49 +758,48 @@ public class Drive extends RBSISubsystem {
         return;
       }
 
-      // DISABLED:
-      final boolean coast = isDisabledCoast(t); // your overload (timebase-consistent)
+      // DISABLED -- check if within "coast phase"
+      final boolean coast = isDisabledCoast(t);
 
-      // Optional: ignore vision briefly right after ENABLE->DISABLE (prevents “phase mismatch” at
-      // disable edge)
+      // If coasting,
       if (coast) {
         final double coastAge = t - getDisabledCoastStartTs();
-        Logger.recordOutput("Vision/Dbg/disabledCoastAge", coastAge);
+        Logger.recordOutput("Vision/Debug/disabledCoastAge", coastAge);
 
+        // Ignore vision briefly right after ENABLE->DISABLE (prevents “phase mismatch” at disable
+        // edge)
         if (coastAge >= 0.0 && coastAge < DrivebaseConstants.kDisabledVisionIgnoreAfterDisableSec) {
-          Logger.recordOutput("Vision/Dbg/disabledIgnoreEarlyCoast", true);
+          Logger.recordOutput("Vision/Debug/disabledIgnoreEarlyCoast", true);
           return;
         }
       }
-      Logger.recordOutput("Vision/Dbg/disabledIgnoreEarlyCoast", false);
+      Logger.recordOutput("Vision/Debug/disabledIgnoreEarlyCoast", false);
 
-      // If we're coasting, we *avoid* init snap and we lean gentler than stationary.
-      // (still use the same gating so one bad frame doesn't wreck you)
+      // If we're coasting, avoid snapping Pose to Vision; lean gentler than stationary.
       final double alpha =
           coast
-              ? Math.min(DrivebaseConstants.kDisabledVisionBlendAlpha, 0.05) // gentle during coast
+              ? Math.min(DrivebaseConstants.kDisabledVisionBlendAlpha, 0.05)
               : DrivebaseConstants.kDisabledVisionBlendAlpha;
 
       // "Current" for blending target (estimator pose)
       final Pose2d current = m_PoseEstimator.getEstimatedPosition();
 
       // Debug
-      Logger.recordOutput("Vision/Dbg/disabledCoast", coast);
-      Logger.recordOutput("Vision/Dbg/disabledVisionInitialized", disabledVisionInitialized);
-      Logger.recordOutput("Vision/Dbg/disabledVisionTs", t);
+      Logger.recordOutput("Vision/Debug/disabledCoast", coast);
+      Logger.recordOutput("Vision/Debug/disabledVisionInitialized", disabledVisionInitialized);
+      Logger.recordOutput("Vision/Debug/disabledVisionTs", t);
       Logger.recordOutput(
-          "Vision/Dbg/disabledVisionAge",
+          "Vision/Debug/disabledVisionAge",
           Double.isFinite(lastDisabledVisionTs) ? (t - lastDisabledVisionTs) : Double.NaN);
 
-      // Stale logic (looser = LONGER timeout)
+      // Check if the last while-disabled vision timestamp is stale (too old)
       final boolean stale =
           Double.isFinite(lastDisabledVisionTs)
               && (t - lastDisabledVisionTs) > DrivebaseConstants.kDisabledVisionStale;
-      Logger.recordOutput("Vision/Dbg/visionStale", stale);
+      Logger.recordOutput("Vision/Debug/visionStale", stale);
 
-      // If we're in coast, we intentionally *don't* init-snap.
-      // We also reset initialization so that once coast ends, the first good stationary frame
-      // snaps.
+      // If coasting, intentionally DO NOT snap; reset initialization so that once coast ends, the
+      // first good stationary frame snaps.
       if (coast) {
         disabledVisionInitialized = false;
       }
@@ -815,20 +821,22 @@ public class Drive extends RBSISubsystem {
       }
       Logger.recordOutput("Vision/DisabledInitSnap", false);
 
-      // Gate vs last accepted disabled vision pose (not estimator)
+      // Check that there is not a huge jump from the last accepted disabled vision pose
       final Pose2d gateRef =
           Double.isFinite(lastDisabledVisionTs) ? lastDisabledVisionPose : vision;
 
-      final double dTrans = gateRef.getTranslation().getDistance(vision.getTranslation());
-      final double dRot = Math.abs(gateRef.getRotation().minus(vision.getRotation()).getRadians());
+      final double deltaTranslation = gateRef.getTranslation().getDistance(vision.getTranslation());
+      final double deltaRotation =
+          Math.abs(gateRef.getRotation().minus(vision.getRotation()).getRadians());
 
-      Logger.recordOutput("Vision/Dbg/dTransFromLastVision", dTrans);
-      Logger.recordOutput("Vision/Dbg/dRotFromLastVision", dRot);
+      Logger.recordOutput("Vision/Debug/dTransFromLastVision", deltaTranslation);
+      Logger.recordOutput("Vision/Debug/dRotFromLastVision", deltaRotation);
 
-      // Reject only if NOT stale
+      // Reject large jumps only if vision measurement is not stale (large delta-T can mean large
+      // change in position)
       if (!stale
-          && (dTrans > DrivebaseConstants.kDisabledVisionMaxJumpM
-              || dRot > DrivebaseConstants.kDisabledVisionMaxJumpRad)) {
+          && (deltaTranslation > DrivebaseConstants.kDisabledVisionMaxJumpM
+              || deltaRotation > DrivebaseConstants.kDisabledVisionMaxJumpRad)) {
         Logger.recordOutput("Vision/DisabledReject", true);
         Logger.recordOutput("Vision/DisabledBlendAlphaUsed", alpha);
         return;
@@ -839,9 +847,10 @@ public class Drive extends RBSISubsystem {
       lastDisabledVisionPose = vision;
       lastDisabledVisionTs = t;
 
-      // Blend toward vision
+      // Blend toward vision -- gentle correction
       final Pose2d blended = current.interpolate(vision, alpha);
 
+      // Push values to pose estimator and pose buffer
       m_PoseEstimator.resetPosition(getHeading(), getModulePositions(), blended);
       markPoseReset(t);
       poseBufferAddSample(t, blended);
@@ -850,7 +859,7 @@ public class Drive extends RBSISubsystem {
       Logger.recordOutput("Vision/DisabledBlendAlphaUsed", alpha);
 
     } finally {
-      Drive.odometryLock.unlock();
+      odometryLock.unlock();
     }
   }
 

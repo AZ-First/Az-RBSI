@@ -88,7 +88,7 @@ public class Vision extends VirtualSubsystem {
   // Variance minimum for fusing poses to prevent divide-by-zero explosions
   private static final double kMinVariance = 1e-12;
 
-  // Fields
+  // Last smoothed and fused poses -- used for debugging
   private Pose2d lastFusedPose = new Pose2d();
   private Pose2d lastSmoothedPose = new Pose2d();
   private double lastFusedTs = Double.NaN;
@@ -109,7 +109,7 @@ public class Vision extends VirtualSubsystem {
     this.lastAcceptedTsPerCam = new double[io.length];
     Arrays.fill(lastAcceptedTsPerCam, Double.NEGATIVE_INFINITY);
 
-    // Log robot->camera transforms if available
+    // Log robot->camera transforms
     int n = Math.min(camConfigs.length, io.length);
     for (int i = 0; i < n; i++) {
       Logger.recordOutput("Vision/RobotToCamera" + i, camConfigs[i].robotToCamera());
@@ -131,6 +131,7 @@ public class Vision extends VirtualSubsystem {
   @Override
   public void rbsiPeriodic() {
 
+    // Debugging values
     boolean hasAcceptedThisLoop = false;
     boolean hasFusedThisLoop = false;
     boolean hasSmoothedThisLoop = false;
@@ -138,9 +139,7 @@ public class Vision extends VirtualSubsystem {
     try {
 
       lastAlignDbg.reset();
-      // ----------------------------------------------------------------------
-      // 1) Pose reset gate (clears smoothing state, resets per-cam monotonic gates)
-      // ----------------------------------------------------------------------
+      // Pose reset gate (clears smoothing state, resets per-cam monotonic gates)
       long epoch = drive.getPoseResetEpoch();
       if (epoch != lastSeenPoseResetEpoch) {
         lastSeenPoseResetEpoch = epoch;
@@ -150,15 +149,13 @@ public class Vision extends VirtualSubsystem {
         Logger.recordOutput("Vision/PoseGateResetFromDrive", false);
       }
 
-      // ----------------------------------------------------------------------
-      // 2) Read camera inputs (REAL/SIM/REPLAY all go through IO inputs)
-      // ----------------------------------------------------------------------
+      // Read camera inputs
       for (int i = 0; i < io.length; i++) {
         io[i].updateInputs(inputs[i]);
         Logger.processInputs("Vision/Camera" + i, inputs[i]);
       }
 
-      // Optional always-on “health” debug
+      // Always-on “health” debug -- may consider removing this
       Logger.recordOutput("Vision/Debug/ioLength", io.length);
       int totalObs = 0;
       for (int i = 0; i < io.length; i++) {
@@ -166,13 +163,12 @@ public class Vision extends VirtualSubsystem {
       }
       Logger.recordOutput("Vision/Debug/totalObsThisLoop", totalObs);
 
-      // ----------------------------------------------------------------------
-      // 3) Choose best observation per camera for THIS loop
-      // ----------------------------------------------------------------------
+      // Choose best observation per camera for THIS loop
       final ArrayList<TimedPose> perCamAccepted = new ArrayList<>(io.length);
 
       for (int cam = 0; cam < io.length; cam++) {
 
+        // Count the number of seen, accepted, and rejected poses estimates
         int seen = 0;
         int accepted = 0;
         int rejected = 0;
@@ -184,16 +180,18 @@ public class Vision extends VirtualSubsystem {
 
         final var obsArr = inputs[cam].poseObservations;
         if (obsArr == null) {
+          // Log zeros and move along if we ain't seen nuthin'
           Logger.recordOutput("Vision/Camera" + cam + "/ObsSeen", 0);
           Logger.recordOutput("Vision/Camera" + cam + "/ObsAccepted", 0);
           Logger.recordOutput("Vision/Camera" + cam + "/ObsRejected", 0);
           continue;
         }
 
+        // Loop over pose observations; move along if gating or pose-construction fail
         for (var obs : obsArr) {
           seen++;
 
-          GateResult gate = passesHardGatesAndYawGate(cam, obs);
+          GateResult gate = passesScrutiny(cam, obs);
           Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
           if (!gate.accepted) {
             rejected++;
@@ -206,7 +204,7 @@ public class Vision extends VirtualSubsystem {
             continue;
           }
 
-          // Prefer “best” by your scoring function
+          // Compare this estimate to current "best" -- score current estimate using `isBetter()`
           if (best == null || isBetter(built.estimate, best)) {
             best = built.estimate;
             bestTrustScale = built.trustScale;
@@ -215,11 +213,13 @@ public class Vision extends VirtualSubsystem {
           }
         }
 
+        // Accept the "best" pose, if extant
         if (best != null) {
           accepted++;
           lastAcceptedTsPerCam[cam] = best.timestampSeconds();
           perCamAccepted.add(best);
 
+          // Log everything about the accepted pose
           Logger.recordOutput("Vision/Camera" + cam + "/InjectedPose2d", best.pose());
           Logger.recordOutput(
               "Vision/Camera" + cam + "/InjectedTimestamp", best.timestampSeconds());
@@ -244,9 +244,8 @@ public class Vision extends VirtualSubsystem {
       }
       hasAcceptedThisLoop = true;
 
-      // ----------------------------------------------------------------------
-      // 4) Fuse all accepted cams at the newest timestamp among them
-      // ----------------------------------------------------------------------
+      // =====
+      // Fuse all accepted cams at the newest timestamp among them
       final double tFusion =
           perCamAccepted.stream().mapToDouble(e -> e.timestampSeconds()).max().orElse(Double.NaN);
       if (!Double.isFinite(tFusion)) return;
@@ -255,39 +254,25 @@ public class Vision extends VirtualSubsystem {
       if (fused == null) return;
       hasFusedThisLoop = true;
 
-      // ----------------------------------------------------------------------
-      // 5) Smooth by fusing recent fused estimates aligned to tFusion
-      // ----------------------------------------------------------------------
+      // =====
+      // Smooth by fusing recent fused estimates aligned to tFusion
       pushFused(fused);
       final TimedPose smoothed = smoothAtTime(tFusion);
       if (smoothed == null) return;
       hasSmoothedThisLoop = true;
 
-      // ----------------------------------------------------------------------
-      // 6) Update caches (ONLY HERE) + inject to drive
-      // ----------------------------------------------------------------------
+      // Update caches & inject to drive
       lastFusedPose = fused.pose();
       lastSmoothedPose = smoothed.pose();
       lastFusedTs = tFusion;
       lastFusedValid = true;
       lastSmoothedValid = true;
 
-      Logger.recordOutput("OdometryReplay/PreInjectRobotX", drive.getPose().getX());
-      Logger.recordOutput("OdometryReplay/PreInjectRobotY", drive.getPose().getY());
-
       consumer.accept(smoothed);
-
-      Logger.recordOutput("OdometryReplay/PostInjectRobotX", drive.getPose().getX());
-      Logger.recordOutput("OdometryReplay/PostInjectRobotY", drive.getPose().getY());
-
-      // If you want, you can feed debug values from inside timeAlignPose(...) via fields,
-      // but leaving the plumbing as-is since you’re already logging inside helpers.
 
     } finally {
 
-      // ----------------------------------------------------------------------
-      // 7) “Ultra-clean” logging: one place, every loop, replay-safe
-      // ----------------------------------------------------------------------
+      // Log everything on our way out of this function
 
       // Always-present “outputs”
       Logger.recordOutput("Vision/FusedPose", lastFusedPose);
@@ -300,12 +285,6 @@ public class Vision extends VirtualSubsystem {
       Logger.recordOutput("Vision/HasAcceptedThisLoop", hasAcceptedThisLoop);
       Logger.recordOutput("Vision/HasFusedThisLoop", hasFusedThisLoop);
       Logger.recordOutput("Vision/HasSmoothedThisLoop", hasSmoothedThisLoop);
-
-      // Debug keys (exist even if not touched)
-      Logger.recordOutput("Vision/Debug/alignDt", lastAlignDbg.alignDt);
-      Logger.recordOutput("Vision/Debug/deltaTranslation", lastAlignDbg.deltaTranslation);
-      Logger.recordOutput("Vision/Debug/deltaRotation", lastAlignDbg.deltaRotation);
-      Logger.recordOutput("Vision/Debug/alignFinite", lastAlignDbg.alignFinite);
     }
   }
 
@@ -385,7 +364,7 @@ public class Vision extends VirtualSubsystem {
    * @param cam Camera index
    * @param obs PoseObservation
    */
-  private GateResult passesHardGatesAndYawGate(int cam, VisionIO.PoseObservation obs) {
+  private GateResult passesScrutiny(int cam, VisionIO.PoseObservation obs) {
     final double ts = obs.timestamp();
 
     // Monotonic per-camera time
@@ -411,7 +390,7 @@ public class Vision extends VirtualSubsystem {
     if (p.getY() < 0.0 || p.getY() > FieldConstants.aprilTagLayout.getFieldWidth())
       return new GateResult(false, "out of bounds field Y");
 
-    // Optional yaw gate: only meaningful for single-tag
+    // Yaw gate; only meaningful for single-tag
     if (enableSingleTagYawGate && obs.tagCount() == 1) {
       OptionalDouble maxYaw = drive.getMaxAbsYawRateRadPerSec(ts - yawGateLookbackSec, ts);
       if (maxYaw.isPresent() && maxYaw.getAsDouble() > yawGateLimitRadPerSec) {
