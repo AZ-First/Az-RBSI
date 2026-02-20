@@ -14,10 +14,10 @@
 package frc.robot.subsystems.accelerometer;
 
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants;
 import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.Imu;
+import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
 
@@ -29,9 +29,6 @@ import org.littletonrobotics.junction.Logger;
  * accelerations, the jerk (a-dot or x-tripple-dot) is computed from the delta accelerations.
  */
 public class Accelerometer extends VirtualSubsystem {
-
-  // Gravitational acceleration
-  private static final double G_TO_MPS2 = 9.80665;
 
   // Define hardware interfaces
   private final RioAccelIO rio;
@@ -55,6 +52,12 @@ public class Accelerometer extends VirtualSubsystem {
     this.rio = new RioAccelIORoboRIO(200.0); // 200 Hz is a good start
   }
 
+  // Priority value for this virtual subsystem
+  @Override
+  protected int getPeriodPriority() {
+    return +10;
+  }
+
   @Override
   public void rbsiPeriodic() {
     final boolean doProfile = (++profileCount >= PROFILE_EVERY_N);
@@ -65,8 +68,12 @@ public class Accelerometer extends VirtualSubsystem {
     rio.updateInputs(rioInputs);
 
     // Compute RIO accelerations and jerks
-    rawRio = new Translation3d(rioInputs.xG, rioInputs.yG, rioInputs.zG);
-    rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation).times(G_TO_MPS2);
+    rawRio =
+        new Translation3d(
+            rioInputs.xG * Constants.G_TO_MPS2,
+            rioInputs.yG * Constants.G_TO_MPS2,
+            rioInputs.zG * Constants.G_TO_MPS2);
+    rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation);
 
     // Acceleration from previous loop
     prevRioAcc = rioAcc;
@@ -89,7 +96,7 @@ public class Accelerometer extends VirtualSubsystem {
 
       final double[] ts = imuInputs.odometryYawTimestamps;
       if (ts.length > 0) {
-        Logger.recordOutput("IMU/OdometryLatencySec", Timer.getFPGATimestamp() - ts[ts.length - 1]);
+        Logger.recordOutput("Odometry/IMULatencySec", TimeUtil.now() - ts[ts.length - 1]);
       }
     }
   }

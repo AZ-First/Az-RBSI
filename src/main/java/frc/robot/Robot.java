@@ -19,12 +19,12 @@ package frc.robot;
 
 import com.revrobotics.util.StatusLogger;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.PowerConstants;
+import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
@@ -48,7 +48,6 @@ public class Robot extends LoggedRobot {
   private Command m_autoCommandPathPlanner;
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
-  private static boolean isBlueAlliance = false;
 
   // Define simulation fields here
   private VisionSystemSim visionSim;
@@ -120,26 +119,8 @@ public class Robot extends LoggedRobot {
   }
 
   // /** This function is called periodically during all modes. */
-  // @Override
-  // public void robotPeriodic() {
-
-  //   // Run all virtual subsystems each time through the loop
-  //   VirtualSubsystem.periodicAll();
-
-  //   // Runs the Scheduler. This is responsible for polling buttons, adding
-  //   // newly-scheduled commands, running already-scheduled commands, removing
-  //   // finished or interrupted commands, and running subsystem periodic() methods.
-  //   // This must be called from the robot's periodic block in order for anything in
-  //   // the Command-based framework to work.
-  //   CommandScheduler.getInstance().run();
-  // }
-
-  /** TESTING VERSION OF ROBOTPERIODIC FOR OVERRUN SOURCES */
   @Override
   public void robotPeriodic() {
-
-    isBlueAlliance = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue;
-
     final long t0 = System.nanoTime();
 
     if (isReal()) {
@@ -148,20 +129,27 @@ public class Robot extends LoggedRobot {
     }
     final long t1 = System.nanoTime();
 
+    // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
     final long t2 = System.nanoTime();
 
+    // Runs the Scheduler. This is responsible for polling buttons, adding
+    // newly-scheduled commands, running already-scheduled commands, removing
+    // finished or interrupted commands, and running subsystem periodic() methods.
+    // This must be called from the robot's periodic block in order for anything in
+    // the Command-based framework to work.
     CommandScheduler.getInstance().run();
     final long t3 = System.nanoTime();
 
-    Threads.setCurrentThreadPriority(false, 10);
+    if (isReal()) {
+      // Return thread to normal priority
+      Threads.setCurrentThreadPriority(false, 10);
+    }
     final long t4 = System.nanoTime();
 
-    Logger.recordOutput("Loop/RobotPeriodic_ms", (t4 - t0) / 1e6);
-    Logger.recordOutput("Loop/ThreadBoost_ms", (t1 - t0) / 1e6);
-    Logger.recordOutput("Loop/Virtual_ms", (t2 - t1) / 1e6);
-    Logger.recordOutput("Loop/Scheduler_ms", (t3 - t2) / 1e6);
-    Logger.recordOutput("Loop/ThreadRestore_ms", (t4 - t3) / 1e6);
+    Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
+    Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+    Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
   }
 
   /** This function is called once when the robot is disabled. */
@@ -192,7 +180,7 @@ public class Robot extends LoggedRobot {
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
-    m_robotContainer.getVision().resetPoseGate(Timer.getFPGATimestamp());
+    m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
     switch (Constants.getAutoType()) {
@@ -321,14 +309,5 @@ public class Robot extends LoggedRobot {
   public void simulationPeriodic() {
     // Update sim each sim tick
     visionSim.update(m_robotContainer.getDrivebase().getPose());
-  }
-
-  // Helper method to simplify checking if the robot is blue or red alliance
-  public static boolean isBlue() {
-    return isBlueAlliance;
-  }
-
-  public static boolean isRed() {
-    return !isBlue();
   }
 }

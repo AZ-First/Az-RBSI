@@ -20,8 +20,10 @@ package frc.robot.subsystems.imu;
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import frc.robot.Constants;
 import frc.robot.subsystems.drive.PhoenixOdometryThread;
 import frc.robot.subsystems.drive.SwerveConstants;
 import java.util.Iterator;
@@ -29,23 +31,23 @@ import java.util.Queue;
 
 /** IMU IO for NavX. Primitive-only: yaw/rate in radians, accel in m/s^2, jerk in m/s^3. */
 public class ImuIONavX implements ImuIO {
-  private static final double DEG_TO_RAD = Math.PI / 180.0;
-  private static final double G_TO_MPS2 = 9.80665;
 
+  // Define the NavX Hardware
   private final AHRS navx;
 
-  // Phoenix odometry queues (boxed Doubles, but we drain without streams)
+  // Queues
   private final Queue<Double> yawPositionDegQueue;
   private final Queue<Double> yawTimestampQueue;
 
-  // Previous accel (m/s^2) for jerk
+  // Previous accel for jerk calculation (m/s/s)
   private Translation3d prevAcc = Translation3d.kZero;
   private long prevTimestampNs = 0L;
 
-  // Reusable buffers for queue drain
+  // Reusable buffers for queue-drain (to avoid using streams)
   private double[] odomTsBuf = new double[8];
   private double[] odomYawRadBuf = new double[8];
 
+  /** Constructor */
   public ImuIONavX() {
     // Initialize NavX over SPI
     navx = new AHRS(NavXComType.kMXP_SPI, (byte) SwerveConstants.kOdometryFrequency);
@@ -63,9 +65,13 @@ public class ImuIONavX implements ImuIO {
     yawPositionDegQueue = PhoenixOdometryThread.getInstance().registerSignal(navx::getYaw);
   }
 
+  /** Update the Inputs */
   @Override
   public void updateInputs(ImuIOInputs inputs) {
     final long start = System.nanoTime();
+
+    // Load the nanosecond timestamp
+    inputs.timestampNs = start;
 
     inputs.connected = navx.isConnected();
 
@@ -76,21 +82,17 @@ public class ImuIONavX implements ImuIO {
     // NavX:
     //  - getAngle() is degrees (continuous)
     //  - getRawGyroZ() is deg/sec
-    final double yawDeg = -navx.getAngle();
-    final double yawRateDegPerSec = -navx.getRawGyroZ();
+    inputs.yawPositionRad = Units.degreesToRadians(-navx.getAngle());
+    inputs.yawRateRadPerSec = Units.degreesToRadians(-navx.getRawGyroZ());
 
-    inputs.yawPositionRad = yawDeg * DEG_TO_RAD;
-    inputs.yawRateRadPerSec = yawRateDegPerSec * DEG_TO_RAD;
-
-    // World linear accel (NavX returns "g" typically). Convert to m/s^2.
+    // World linear accel (NavX returns "g" typically); convert to m/s/s
     inputs.linearAccel =
         new Translation3d(
-                navx.getWorldLinearAccelX(),
-                navx.getWorldLinearAccelY(),
-                navx.getWorldLinearAccelZ())
-            .times(G_TO_MPS2);
+            navx.getWorldLinearAccelX() * Constants.G_TO_MPS2,
+            navx.getWorldLinearAccelY() * Constants.G_TO_MPS2,
+            navx.getWorldLinearAccelZ() * Constants.G_TO_MPS2);
 
-    // Jerk
+    // Jerk computed as (delta accel) / dt
     if (prevTimestampNs != 0L) {
       final double dt = (start - prevTimestampNs) * 1e-9;
       if (dt > 1e-6) {
@@ -98,14 +100,14 @@ public class ImuIONavX implements ImuIO {
       }
     }
 
+    // Load "previous values" for the next loop
     prevTimestampNs = start;
     prevAcc = inputs.linearAccel;
 
-    inputs.timestampNs = start;
-
-    // Odometry history
+    // Drain odometry queues to primitive arrays (timestamps == doubles; yaws == degrees)
     final int n = drainOdomQueues();
     if (n > 0) {
+      // If there's anything to drain...
       final double[] tsOut = new double[n];
       final double[] yawOut = new double[n];
       System.arraycopy(odomTsBuf, 0, tsOut, 0, n);
@@ -113,10 +115,12 @@ public class ImuIONavX implements ImuIO {
       inputs.odometryYawTimestamps = tsOut;
       inputs.odometryYawPositionsRad = yawOut;
     } else {
+      // ...otherwise return empty arrays
       inputs.odometryYawTimestamps = new double[] {};
       inputs.odometryYawPositionsRad = new double[] {};
     }
 
+    // Compute how long this took in seconds
     final long end = System.nanoTime();
     inputs.latencySeconds = (end - start) * 1e-9;
   }
@@ -128,7 +132,7 @@ public class ImuIONavX implements ImuIO {
    */
   @Override
   public void zeroYawRad(double yawRad) {
-    navx.setAngleAdjustment(yawRad / DEG_TO_RAD);
+    navx.setAngleAdjustment(Units.radiansToDegrees(yawRad));
     navx.zeroYaw();
 
     // Reset jerk history so you don't spike on the next frame
@@ -136,6 +140,11 @@ public class ImuIONavX implements ImuIO {
     prevAcc = Translation3d.kZero;
   }
 
+  /**
+   * Drain the Odometry Queues into a Buffer
+   *
+   * <p>Private function that does the heavy lifting of draining the queues
+   */
   private int drainOdomQueues() {
     final int nTs = yawTimestampQueue.size();
     final int nYaw = yawPositionDegQueue.size();
@@ -157,7 +166,7 @@ public class ImuIONavX implements ImuIO {
 
       // queue provides degrees (navx::getYaw). Apply your sign convention (-d) then rad.
       final double yawDeg = -itY.next();
-      odomYawRadBuf[i] = yawDeg * DEG_TO_RAD;
+      odomYawRadBuf[i] = Units.degreesToRadians(yawDeg);
 
       i++;
     }
@@ -167,6 +176,11 @@ public class ImuIONavX implements ImuIO {
     return i;
   }
 
+  /**
+   * Check that buffer is big enough for this queue
+   *
+   * <p>Private function that ensures odometry buffer capacity
+   */
   private void ensureOdomCapacity(int n) {
     if (odomTsBuf.length >= n) return;
     int newCap = odomTsBuf.length;

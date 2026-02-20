@@ -192,7 +192,7 @@ public class ModuleIOTalonFX implements ModuleIO {
             .withKP(DrivebaseConstants.kSteerP)
             .withKI(0.0)
             .withKD(DrivebaseConstants.kSteerD)
-            .withKS(0.0)
+            .withKS(DrivebaseConstants.kSteerS)
             .withKV(0.0)
             .withKA(0.0)
             .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign);
@@ -265,14 +265,14 @@ public class ModuleIOTalonFX implements ModuleIO {
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
 
-    // -------------------- Refresh Phoenix signals --------------------
+    // Refresh Phoenix signals
     var driveStatus =
         BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
     var turnStatus =
         BaseStatusSignal.refreshAll(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
     var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
 
-    // Log refresh failures explicitly (debug gold)
+    // Log *which* groups are failing and what the code is
     if (!driveStatus.isOK()) {
       Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
     }
@@ -283,29 +283,30 @@ public class ModuleIOTalonFX implements ModuleIO {
       Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
     }
 
-    // -------------------- Connectivity flags --------------------
+    // Connectivity flags
     inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
     inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus.isOK());
     inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
 
-    // -------------------- Instantaneous state --------------------
+    // Update drive inputs
     inputs.drivePositionRad = Units.rotationsToRadians(drivePosition.getValueAsDouble());
     inputs.driveVelocityRadPerSec = Units.rotationsToRadians(driveVelocity.getValueAsDouble());
     inputs.driveAppliedVolts = driveAppliedVolts.getValueAsDouble();
     inputs.driveCurrentAmps = driveCurrent.getValueAsDouble();
 
+    // Update turn inputs
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());
     inputs.turnAppliedVolts = turnAppliedVolts.getValueAsDouble();
     inputs.turnCurrentAmps = turnCurrent.getValueAsDouble();
 
-    // -------------------- Odometry queue drain --------------------
+    // Odometry queue drain
     final int tsCount = timestampQueue.size();
     final int driveCount = drivePositionQueue.size();
     final int turnCount = turnPositionQueue.size();
 
-    // Only consume the common prefix — guarantees alignment
+    // Only consume the common prefix -- guarantees alignment
     final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
 
     if (sampleCount <= 0) {
@@ -362,7 +363,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Log output and battery
     Logger.recordOutput("Swerve/Drive/OpenLoopOutput", scaledOutput);
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
   }
 
   /**
@@ -383,7 +384,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     // Log output and battery
     Logger.recordOutput("Swerve/Turn/OpenLoopOutput", scaledOutput);
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
   }
 
   /**
@@ -426,7 +427,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     Logger.recordOutput("Swerve/Drive/VelocityRotPerSec", velocityRotPerSec);
     Logger.recordOutput("Swerve/Drive/AccelerationRotPerSec2", accelerationRotPerSec2);
     Logger.recordOutput("Swerve/Drive/FeedForwardVolts", scaledFFVolts);
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
     Logger.recordOutput("Swerve/Drive/ClosedLoopMode", m_DriveMotorClosedLoopOutput);
   }
 
@@ -454,7 +455,7 @@ public class ModuleIOTalonFX implements ModuleIO {
         });
 
     Logger.recordOutput("Swerve/Turn/TargetRotations", rotation.getRotations());
-    Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
+    Logger.recordOutput("Swerve/BatteryVoltage", busVoltage);
   }
 
   @Override

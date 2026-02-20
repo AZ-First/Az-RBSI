@@ -30,6 +30,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -46,6 +47,7 @@ import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
 import java.util.Set;
+import org.littletonrobotics.junction.Logger;
 import org.photonvision.simulation.SimCameraProperties;
 import swervelib.math.Matter;
 
@@ -72,9 +74,9 @@ public final class Constants {
   //       under strict caveat emptor -- and submit any error and bugfixes
   //       via GitHub issues.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
-  private static CTREPro phoenixPro = CTREPro.UNLICENSED; // LICENSED, UNLICENSED
+  private static CTREPro phoenixPro = CTREPro.LICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
-  private static VisionType visionType = VisionType.NONE; // PHOTON, LIMELIGHT, NONE
+  private static VisionType visionType = VisionType.PHOTON; // PHOTON, LIMELIGHT, NONE
 
   /** Enumerate the robot types (name your robots here) */
   public static enum RobotType {
@@ -105,6 +107,8 @@ public final class Constants {
   public static final double loopPeriodSecs = 0.02;
 
   public static final boolean tuningMode = false;
+
+  public static final double G_TO_MPS2 = 9.80665; // Gravitational acceleration in m/s/s
 
   /************************************************************************* */
   /** Physical Constants for Robot Operation ******************************* */
@@ -164,7 +168,7 @@ public final class Constants {
   /************************************************************************* */
   /** List of Robot CAN Busses ********************************************* */
   public static final class CANBuses {
-    public static final String RIO = "";
+    public static final String RIO = "rio";
     public static final String DRIVE = "DriveTrain";
 
     public static final String[] ALL = {RIO, DRIVE};
@@ -180,30 +184,30 @@ public final class Constants {
 
     // Front Left
     public static final RobotDeviceId FL_DRIVE =
-        new RobotDeviceId(SwerveConstants.kFLDriveMotorId, SwerveConstants.kFLDriveCanbus, 16);
+        new RobotDeviceId(SwerveConstants.kFLDriveMotorId, SwerveConstants.kFLDriveCanbus, 18);
     public static final RobotDeviceId FL_ROTATION =
-        new RobotDeviceId(SwerveConstants.kFLSteerMotorId, SwerveConstants.kFLSteerCanbus, 17);
+        new RobotDeviceId(SwerveConstants.kFLSteerMotorId, SwerveConstants.kFLSteerCanbus, 19);
     public static final RobotDeviceId FL_CANCODER =
         new RobotDeviceId(SwerveConstants.kFLEncoderId, SwerveConstants.kFLEncoderCanbus, null);
     // Front Right
     public static final RobotDeviceId FR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kFRDriveMotorId, SwerveConstants.kFRDriveCanbus, 13);
+        new RobotDeviceId(SwerveConstants.kFRDriveMotorId, SwerveConstants.kFRDriveCanbus, 17);
     public static final RobotDeviceId FR_ROTATION =
-        new RobotDeviceId(SwerveConstants.kFRSteerMotorId, SwerveConstants.kFRSteerCanbus, 12);
+        new RobotDeviceId(SwerveConstants.kFRSteerMotorId, SwerveConstants.kFRSteerCanbus, 16);
     public static final RobotDeviceId FR_CANCODER =
         new RobotDeviceId(SwerveConstants.kFREncoderId, SwerveConstants.kFREncoderCanbus, null);
     // Back Left
     public static final RobotDeviceId BL_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBLDriveMotorId, SwerveConstants.kBLDriveCanbus, 2);
+        new RobotDeviceId(SwerveConstants.kBLDriveMotorId, SwerveConstants.kBLDriveCanbus, 1);
     public static final RobotDeviceId BL_ROTATION =
-        new RobotDeviceId(SwerveConstants.kBLSteerMotorId, SwerveConstants.kBLSteerCanbus, 3);
+        new RobotDeviceId(SwerveConstants.kBLSteerMotorId, SwerveConstants.kBLSteerCanbus, 0);
     public static final RobotDeviceId BL_CANCODER =
         new RobotDeviceId(SwerveConstants.kBLEncoderId, SwerveConstants.kBLEncoderCanbus, null);
     // Back Right
     public static final RobotDeviceId BR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 7);
+        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 2);
     public static final RobotDeviceId BR_ROTATION =
-        new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 6);
+        new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 3);
     public static final RobotDeviceId BR_CANCODER =
         new RobotDeviceId(SwerveConstants.kBREncoderId, SwerveConstants.kBREncoderCanbus, null);
     // Pigeon
@@ -324,9 +328,26 @@ public final class Constants {
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
     public static final double kSteerP = 400.0;
     public static final double kSteerD = 20.0;
+    public static final double kSteerS = 2.0;
 
-    // Odometry-related constants
+    // Odometry-related constants ==================================
     public static final double kHistorySize = 1.5; // seconds
+    // How aggressively to pull pose toward vision while DISABLED.
+    // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
+    public static final double kDisabledVisionBlendAlpha = 0.15;
+    // Optional: ignore obviously insane measurements while disabled.
+    public static final double kDisabledVisionMaxJumpM = 2.0; // meters
+    public static final double kDisabledVisionMaxJumpRad = Units.degreesToRadians(20.0);
+    public static final double kDisabledVisionStale = 0.75; // seconds
+
+    // Coast window config
+    public static final double kDisabledCoastSeconds = 5.0;
+
+    // "Stationary" detection config (tune)
+    public static final double kStationaryMaxWheelDeltaM = 0.002; // 2mm per loop
+    public static final double kStationaryMaxYawRateRadPerSec = 0.05; // ~3 deg/s
+    public static final int kStationaryLoopsToEndCoast = 10; // ~0.20s @ 20ms
+    public static final double kDisabledVisionIgnoreAfterDisableSec = 0.25; // 250ms
   }
 
   /************************************************************************* */
@@ -466,7 +487,7 @@ public final class Constants {
     // Example Cameras are mounted in the back corners, 18" up from the floor, facing sideways
     public static final CameraConfig[] ALL = {
       new CameraConfig(
-          "camera_0",
+          "Photon_BW7",
           new Transform3d(
               Inches.of(-13.0),
               Inches.of(13.0),
@@ -483,23 +504,23 @@ public final class Constants {
             }
           }),
       //
-      new CameraConfig(
-          "camera_1",
-          new Transform3d(
-              Inches.of(-13.0),
-              Inches.of(-13.0),
-              Inches.of(12.0),
-              new Rotation3d(0.0, 0.0, -Math.PI / 2)),
-          1.0,
-          new SimCameraProperties() {
-            {
-              setCalibration(1280, 800, Rotation2d.fromDegrees(120));
-              setCalibError(0.25, 0.08);
-              setFPS(30);
-              setAvgLatencyMs(20);
-              setLatencyStdDevMs(5);
-            }
-          }),
+      // new CameraConfig(
+      //     "camera_1",
+      //     new Transform3d(
+      //         Inches.of(-13.0),
+      //         Inches.of(-13.0),
+      //         Inches.of(12.0),
+      //         new Rotation3d(0.0, 0.0, -Math.PI / 2)),
+      //     1.0,
+      //     new SimCameraProperties() {
+      //       {
+      //         setCalibration(1280, 800, Rotation2d.fromDegrees(120));
+      //         setCalibError(0.25, 0.08);
+      //         setFPS(30);
+      //         setAvgLatencyMs(20);
+      //         setLatencyStdDevMs(5);
+      //       }
+      //     }),
 
       // ... And more, if needed
     };
@@ -533,6 +554,12 @@ public final class Constants {
       case DEVBOT, COMPBOT -> RobotBase.isReal() ? Mode.REAL : Mode.REPLAY;
       case SIMBOT -> Mode.SIM;
     };
+  }
+
+  /** Return whether this is pure simulation */
+  public static boolean isPureSim() {
+    boolean isReplay = Logger.hasReplaySource();
+    return getMode() == Mode.SIM && !isReplay;
   }
 
   /** Get the current swerve drive type */

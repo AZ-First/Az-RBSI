@@ -47,6 +47,7 @@ import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.drive.DriveOdometry;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
@@ -81,9 +82,6 @@ import org.photonvision.simulation.VisionSystemSim;
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
 public class RobotContainer {
 
-  private static final boolean USE_MAPLESIM = true;
-  public static final boolean MAPLESIM = USE_MAPLESIM && Robot.isSimulation();
-
   /** Define the Driver and, optionally, the Operator/Co-Driver Controllers */
   // Replace with ``CommandPS4Controller`` or ``CommandJoystick`` if needed
   final CommandXboxController driverController = new CommandXboxController(0); // Main Driver
@@ -106,6 +104,9 @@ public class RobotContainer {
   // These are "Virtual Subsystems" that report information but have no motors
   private final Imu m_imu;
   private final Vision m_vision;
+
+  @SuppressWarnings("unused")
+  private final DriveOdometry m_driveOdometry;
 
   @SuppressWarnings("unused")
   private final Accelerometer m_accel;
@@ -135,8 +136,6 @@ public class RobotContainer {
   // Alerts
   private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
 
-  public static RobotContainer instance;
-
   /**
    * Constructor for the Robot Container. This container holds subsystems, opertator interface
    * devices, and commands.
@@ -156,10 +155,11 @@ public class RobotContainer {
         m_imu = new Imu(SwerveConstants.kImu.factory.get());
 
         m_drivebase = new Drive(m_imu);
-        m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
+        m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
+        m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
@@ -169,27 +169,22 @@ public class RobotContainer {
 
         m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
-        m_flywheel = new Flywheel(new FlywheelIOSim());
-
-        // ---------------- Vision IOs (robot code) ----------------
-        var cams = Cameras.ALL;
+        m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsSim(m_drivebase));
+        m_flywheel = new Flywheel(new FlywheelIOSim());
         m_accel = new Accelerometer(m_imu);
 
-        // ---------------- CameraSweepEvaluator (sim-only analysis) ----------------
+        // CameraSweepEvaluator (sim-only analysis)
         VisionSystemSim visionSim = new VisionSystemSim("CameraSweepWorld");
         visionSim.addAprilTags(FieldConstants.aprilTagLayout);
-
+        var cams = Cameras.ALL;
         PhotonCameraSim[] simCams = new PhotonCameraSim[cams.length];
-
         for (int i = 0; i < cams.length; i++) {
           var cfg = cams[i];
-
           PhotonCamera photonCam = new PhotonCamera(cfg.name());
           PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
-
           visionSim.addCamera(camSim, cfg.robotToCamera());
           simCams[i] = camSim;
         }
@@ -208,16 +203,18 @@ public class RobotContainer {
         RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
         m_imu = new Imu(new ImuIOSim() {});
         m_drivebase = new Drive(m_imu);
-        m_flywheel = new Flywheel(new FlywheelIO() {});
+        m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
-            new Vision(m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay());
+            new Vision(
+                m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay(m_drivebase));
+
+        m_flywheel = new Flywheel(new FlywheelIO() {});
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
     }
 
     // Init all CAN busses specified in the `Constants.CANBuses` class
-    RBSICANBusRegistry.initReal(Constants.CANBuses.ALL);
     canHealth = Arrays.stream(Constants.CANBuses.ALL).map(RBSICANHealth::new).toList();
 
     // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
@@ -457,7 +454,8 @@ public class RobotContainer {
   /** Updates the alerts. */
   public void updateAlerts() {
     // AprilTag layout alert
-    boolean aprilTagAlertActive = Constants.getAprilTagLayoutType() != AprilTagLayoutType.OFFICIAL;
+    boolean aprilTagAlertActive =
+        Constants.getAprilTagLayoutType() != AprilTagLayoutType.REBUILT_WELDED;
     aprilTagLayoutAlert.set(aprilTagAlertActive);
     if (aprilTagAlertActive) {
       aprilTagLayoutAlert.setText(
@@ -550,8 +548,21 @@ public class RobotContainer {
   }
 
   // Vision Factories (REPLAY)
-  private VisionIO[] buildVisionIOsReplay() {
-    return new VisionIO[] {}; // simplest: Vision does nothing during replay
+  private VisionIO[] buildVisionIOsReplay(Drive drive) {
+    var cams = Constants.Cameras.ALL;
+
+    VisionIO[] ios = new VisionIO[cams.length];
+    for (int i = 0; i < cams.length; i++) {
+      ios[i] =
+          new VisionIO() {
+            @Override
+            public void updateInputs(VisionIOInputs inputs) {
+              // Intentionally empty.
+              // Logger.processInputs("Vision/Camera" + i, inputs) will populate these from the log.
+            }
+          };
+    }
+    return ios;
   }
 
   /**

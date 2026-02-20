@@ -38,6 +38,7 @@ import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.SparkUtil;
+import java.util.Arrays;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
@@ -47,6 +48,10 @@ import org.littletonrobotics.junction.Logger;
  * and duty cycle absolute encoder.
  */
 public class ModuleIOSparkCANcoder implements ModuleIO {
+
+  // This module number (for logging)
+  private final int module;
+
   private final Rotation2d zeroRotation;
 
   // Hardware objects
@@ -87,6 +92,9 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
    * Spark I/O w/ CANcoders
    */
   public ModuleIOSparkCANcoder(int module) {
+    // Record the module number for logging purposes
+    this.module = module;
+
     zeroRotation =
         switch (module) {
           case 0 -> new Rotation2d(SwerveConstants.kFLEncoderOffset);
@@ -202,7 +210,8 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
             SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
         .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
-        .kV(0.0);
+        .kV(0.0)
+        .kS(DrivebaseConstants.kSteerS);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
@@ -236,11 +245,13 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
+    // Refresh CANcoder absolute
+    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+    if (!encStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    }
 
-    // Refresh all signals
-    var turnEncoderStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
-
-    // Update drive inputs
+    // Drive inputs (Spark)
     SparkUtil.sparkStickyFault = false;
     SparkUtil.ifOk(
         driveSpark, driveEncoder::getPosition, (value) -> inputs.drivePositionRad = value);
@@ -254,9 +265,9 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         driveSpark, driveSpark::getOutputCurrent, (value) -> inputs.driveCurrentAmps = value);
     inputs.driveConnected = driveConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
-    // Update turn inputs
+    // Turn inputs (CANcoder abs + Spark velocity/applied/current)
     SparkUtil.sparkStickyFault = false;
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(turnEncoderStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());
@@ -268,18 +279,43 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         turnSpark, turnSpark::getOutputCurrent, (value) -> inputs.turnCurrentAmps = value);
     inputs.turnConnected = turnConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
-    // Update odometry inputs
-    inputs.odometryTimestamps =
-        timestampQueue.stream().mapToDouble((Double value) -> value).toArray();
-    inputs.odometryDrivePositionsRad =
-        drivePositionQueue.stream().mapToDouble((Double value) -> value).toArray();
-    inputs.odometryTurnPositions =
-        turnPositionQueue.stream()
-            .map((Double value) -> new Rotation2d(value).minus(zeroRotation))
-            .toArray(Rotation2d[]::new);
-    timestampQueue.clear();
-    drivePositionQueue.clear();
-    turnPositionQueue.clear();
+    // Odometry queue drain (common prefix only)
+    final int tsCount = timestampQueue.size();
+    final int driveCount = drivePositionQueue.size();
+    final int turnCount = turnPositionQueue.size();
+    final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
+
+    if (sampleCount <= 0) {
+      inputs.odometryTimestamps = new double[0];
+      inputs.odometryDrivePositionsRad = new double[0];
+      inputs.odometryTurnPositions = new Rotation2d[0];
+      return;
+    }
+
+    final double[] outTs = new double[sampleCount];
+    final double[] outDriveRad = new double[sampleCount];
+    final Rotation2d[] outTurn = new Rotation2d[sampleCount];
+
+    for (int i = 0; i < sampleCount; i++) {
+      final Double t = timestampQueue.poll();
+      final Double drivePosRad = drivePositionQueue.poll(); // already rad in your existing code
+      final Double turnPosRad = turnPositionQueue.poll(); // rad, then minus zeroRotation below
+
+      if (t == null || drivePosRad == null || turnPosRad == null) {
+        inputs.odometryTimestamps = Arrays.copyOf(outTs, i);
+        inputs.odometryDrivePositionsRad = Arrays.copyOf(outDriveRad, i);
+        inputs.odometryTurnPositions = Arrays.copyOf(outTurn, i);
+        return;
+      }
+
+      outTs[i] = t.doubleValue();
+      outDriveRad[i] = drivePosRad.doubleValue();
+      outTurn[i] = new Rotation2d(turnPosRad.doubleValue()).minus(zeroRotation);
+    }
+
+    inputs.odometryTimestamps = outTs;
+    inputs.odometryDrivePositionsRad = outDriveRad;
+    inputs.odometryTurnPositions = outTurn;
   }
 
   /**
