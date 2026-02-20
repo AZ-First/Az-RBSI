@@ -94,7 +94,7 @@ public class ImuIOSim implements ImuIO {
     inputs.odometryYawTimestamps = tsOut;
     inputs.odometryYawPositionsRad = yawOut;
 
-    // Optional: SIM logging (primitive-friendly)
+    // SIM logging
     Logger.recordOutput("IMU/YawRad", yawRad);
     Logger.recordOutput("IMU/YawDeg", Units.radiansToDegrees(yawRad));
     Logger.recordOutput("IMU/YawRateDps", Units.radiansToDegrees(yawRateRadPerSec));

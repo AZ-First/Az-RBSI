@@ -96,7 +96,7 @@ public class Accelerometer extends VirtualSubsystem {
 
       final double[] ts = imuInputs.odometryYawTimestamps;
       if (ts.length > 0) {
-        Logger.recordOutput("IMU/OdometryLatencySec", TimeUtil.now() - ts[ts.length - 1]);
+        Logger.recordOutput("Odometry/IMULatencySec", TimeUtil.now() - ts[ts.length - 1]);
       }
     }
   }

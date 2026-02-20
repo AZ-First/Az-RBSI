@@ -17,7 +17,6 @@
 
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -34,8 +33,6 @@ public final class DriveOdometry extends VirtualSubsystem {
   private final Drive drive;
   private final Imu imu;
   private final Module[] modules;
-
-  private long writeNumber = 0L;
 
   // Per-cycle cached objects (to avoid repeated allocations)
   private final SwerveModulePosition[] odomPositions = new SwerveModulePosition[4];
@@ -64,7 +61,6 @@ public final class DriveOdometry extends VirtualSubsystem {
   /** Periodic function to read inputs */
   @Override
   public void rbsiPeriodic() {
-    Logger.recordOutput("Odometry/Debug/alive", true);
 
     Drive.odometryLock.lock();
     try {
@@ -118,7 +114,6 @@ public final class DriveOdometry extends VirtualSubsystem {
 
         // keep pose buffer alive with the *current estimator pose*
         drive.poseBufferAddSample(now, drive.getPose());
-        Logger.recordOutput("Drive/Pose", drive.getPose());
         drive.setGyroDisconnectedAlert(!imuInputs.connected);
         return;
       }
@@ -262,23 +257,11 @@ public final class DriveOdometry extends VirtualSubsystem {
         drive.poseBufferAddSample(t, drive.getPose());
       }
 
-      Logger.recordOutput("Drive/Pose", drive.getPose());
       drive.setGyroDisconnectedAlert(!imuInputs.connected);
 
     } finally {
-      final Pose2d pose = drive.getPose();
-      final double x = pose.getX();
-      final double y = pose.getY();
-      final double th = pose.getRotation().getRadians();
 
-      Logger.recordOutput("OdometryReplay/Debug/wroteRobotPose", ++writeNumber);
-      Logger.recordOutput("OdometryReplay/Debug/xFinite", Double.isFinite(x));
-      Logger.recordOutput("OdometryReplay/Debug/yFinite", Double.isFinite(y));
-      Logger.recordOutput("OdometryReplay/Debug/thFinite", Double.isFinite(th));
-
-      Logger.recordOutput("OdometryReplay/RobotX", x);
-      Logger.recordOutput("OdometryReplay/RobotY", y);
-      Logger.recordOutput("OdometryReplay/RobotThetaRad", th);
+      Logger.recordOutput("Odometry/Robot", drive.getPose());
 
       Drive.odometryLock.unlock();
     }

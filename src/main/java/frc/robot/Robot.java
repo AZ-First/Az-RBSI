@@ -147,9 +147,9 @@ public class Robot extends LoggedRobot {
     }
     final long t4 = System.nanoTime();
 
-    Logger.recordOutput("Loop/RobotPeriodic_ms", (t4 - t0) / 1e6);
-    Logger.recordOutput("Loop/Virtual_ms", (t2 - t1) / 1e6);
-    Logger.recordOutput("Loop/Scheduler_ms", (t3 - t2) / 1e6);
+    Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
+    Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+    Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
   }
 
   /** This function is called once when the robot is disabled. */

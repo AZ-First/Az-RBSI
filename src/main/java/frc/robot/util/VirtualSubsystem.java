@@ -73,7 +73,8 @@ public abstract class VirtualSubsystem {
     long start = System.nanoTime();
     rbsiPeriodic();
     // Log the timing for this subsystem
-    Logger.recordOutput("Loop/Virtual/" + name + "_ms", (System.nanoTime() - start) / 1e6);
+    Logger.recordOutput(
+        "LogPeriodic/VirtualSubsystem/" + name + "MS", (System.nanoTime() - start) / 1e6);
   }
 
   /** Subclasses must implement this instead of periodic(). */
