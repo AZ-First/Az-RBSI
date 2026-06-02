@@ -17,15 +17,13 @@
 
 package frc.robot.subsystems.imu;
 
+import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.util.RBSIIO;
 import org.littletonrobotics.junction.AutoLog;
 
 /**
  * Single IMU interface exposing all relevant state: orientation, rates, linear accel, jerk, and
  * odometry samples.
- *
- * <p>Primitive-only core: NO WPILib geometry objects, NO Units objects. Conversions happen at the
- * boundary in the Imu subsystem (wrapper methods).
  */
 public interface ImuIO extends RBSIIO {
 
@@ -33,34 +31,21 @@ public interface ImuIO extends RBSIIO {
   class ImuIOInputs {
     public boolean connected = false;
 
-    /** FPGA-local timestamp when inputs were captured (ns) */
+    // FPGA-local timestamp when inputs were captured (ns)
     public long timestampNs = 0L;
-
-    /** Yaw angle (robot frame) in radians */
+    // Yaw angle (robot frame) in radians
     public double yawPositionRad = 0.0;
-
-    /** Yaw angular rate in radians/sec */
+    // Yaw angular rate in radians/sec
     public double yawRateRadPerSec = 0.0;
-
-    /** Linear acceleration in robot frame (m/s^2) */
-    public double linearAccelX = 0.0;
-
-    public double linearAccelY = 0.0;
-    public double linearAccelZ = 0.0;
-
-    /** Linear jerk in robot frame (m/s^3) */
-    public double jerkX = 0.0;
-
-    public double jerkY = 0.0;
-    public double jerkZ = 0.0;
-
-    /** Time spent in the IO update call (seconds) */
+    // Linear acceleration in robot frame (m/s^2)
+    public Translation3d linearAccel = Translation3d.kZero;
+    // Linear jerk in robot frame (m/s^3)
+    public Translation3d linearJerk = Translation3d.kZero;
+    // Time spent in the IO update call (seconds)
     public double latencySeconds = 0.0;
-
-    /** Optional odometry samples (timestamps in seconds) */
+    // Odometry samples (timestamps in seconds)
     public double[] odometryYawTimestamps = new double[] {};
-
-    /** Optional odometry samples (yaw positions in radians) */
+    // Odometry samples (yaw positions in radians)
     public double[] odometryYawPositionsRad = new double[] {};
   }
 
