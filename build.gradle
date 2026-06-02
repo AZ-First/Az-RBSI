@@ -1,10 +1,10 @@
 plugins {
     id "java"
     id "edu.wpi.first.GradleRIO" version "2026.2.1"
-    id "com.peterabeles.gversion" version "1.10.3"
-    id "com.diffplug.spotless" version "8.2.1"
-    id "io.freefair.lombok" version "9.2.0"
-    id "com.google.protobuf" version "0.9.6"
+    id "com.peterabeles.gversion" version "1.11.0"
+    id "com.diffplug.spotless" version "8.6.0"
+    id "io.freefair.lombok" version "9.5.0"
+    id "com.google.protobuf" version "0.10.0"
 }
 
 java {
@@ -87,7 +87,7 @@ dependencies {
     nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
     simulationRelease wpi.sim.enableRelease()
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:6.0.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
