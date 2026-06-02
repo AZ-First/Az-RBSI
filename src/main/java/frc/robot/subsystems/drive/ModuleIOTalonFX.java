@@ -45,7 +45,7 @@ import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
-import frc.robot.generated.TunerConstants;
+import frc.robot.generated.TunerFactory;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.RBSICANBusRegistry;
 import java.util.Arrays;
@@ -138,10 +138,10 @@ public class ModuleIOTalonFX implements ModuleIO {
 
     constants =
         switch (module) {
-          case 0 -> TunerConstants.FrontLeft;
-          case 1 -> TunerConstants.FrontRight;
-          case 2 -> TunerConstants.BackLeft;
-          case 3 -> TunerConstants.BackRight;
+          case 0 -> TunerFactory.INSTANCE.frontLeft();
+          case 1 -> TunerFactory.INSTANCE.frontRight();
+          case 2 -> TunerFactory.INSTANCE.backLeft();
+          case 3 -> TunerFactory.INSTANCE.backRight();
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
@@ -149,6 +149,8 @@ public class ModuleIOTalonFX implements ModuleIO {
     driveTalon = new TalonFX(constants.DriveMotorId, canBus);
     turnTalon = new TalonFX(constants.SteerMotorId, canBus);
     cancoder = new CANcoder(constants.EncoderId, canBus);
+
+    Logger.recordOutput("Drive/EncoderOffsets/Module" + module, constants.EncoderOffset);
 
     // Configure drive motor
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -219,7 +221,7 @@ public class ModuleIOTalonFX implements ModuleIO {
         constants.EncoderInverted
             ? SensorDirectionValue.Clockwise_Positive
             : SensorDirectionValue.CounterClockwise_Positive;
-    cancoder.getConfigurator().apply(cancoderConfig);
+    PhoenixUtil.tryUntilOk(5, () -> cancoder.getConfigurator().apply(cancoderConfig));
 
     // Create timestamp queue
     timestampQueue = PhoenixOdometryThread.getInstance().makeTimestampQueue();

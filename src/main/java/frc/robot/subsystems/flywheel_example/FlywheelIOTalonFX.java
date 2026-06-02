@@ -46,6 +46,11 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     FLYWHEEL_LEADER.getPowerPort(), FLYWHEEL_FOLLOWER.getPowerPort()
   };
 
+  @Override
+  public int[] powerPorts() {
+    return powerPorts;
+  }
+
   private final StatusSignal<Angle> leaderPosition = leader.getPosition();
   private final StatusSignal<AngularVelocity> leaderVelocity = leader.getVelocity();
   private final StatusSignal<Voltage> leaderAppliedVolts = leader.getMotorVoltage();

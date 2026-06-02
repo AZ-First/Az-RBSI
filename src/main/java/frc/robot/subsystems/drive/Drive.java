@@ -45,6 +45,8 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
@@ -109,6 +111,7 @@ public class Drive extends RBSISubsystem {
   // Declare PID controller and siumulation physics
   private ProfiledPIDController angleController;
   private DriveSimPhysics simPhysics;
+  private final Field2d field = new Field2d();
 
   // Pose reset gate (vision + anything latency-sensitive)
   private volatile long poseResetEpoch = 0; // monotonic counter
@@ -138,7 +141,7 @@ public class Drive extends RBSISubsystem {
             DrivebaseConstants.kISPin,
             DrivebaseConstants.kDSpin,
             new TrapezoidProfile.Constraints(
-                getMaxAngularSpeedRadPerSec(), getMaxLinearAccelMetersPerSecPerSec()));
+                getMaxAngularSpeedRadPerSec(), getMaxAngularAccelRadPerSecPerSec()));
     angleController.enableContinuousInput(-Math.PI, Math.PI);
 
     // If REAL (i.e., NOT simulation), parse out the module types
@@ -262,6 +265,8 @@ public class Drive extends RBSISubsystem {
                 (state) -> Logger.recordOutput("Drive/SysIdState", state.toString())),
             new SysIdRoutine.Mechanism(
                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
+
+    SmartDashboard.putData("Field", field);
   }
 
   /************************************************************************* */
@@ -276,6 +281,8 @@ public class Drive extends RBSISubsystem {
       Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
       Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
     }
+
+    field.setRobotPose(m_PoseEstimator.getEstimatedPosition());
   }
 
   /**

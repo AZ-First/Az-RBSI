@@ -37,6 +37,7 @@ import frc.robot.util.VirtualSubsystem;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
@@ -131,10 +132,10 @@ public class Vision extends VirtualSubsystem {
   @Override
   public void rbsiPeriodic() {
 
-    // Debugging values
     boolean hasAcceptedThisLoop = false;
     boolean hasFusedThisLoop = false;
     boolean hasSmoothedThisLoop = false;
+    final LinkedHashSet<Integer> tagIdsSeenThisLoop = new LinkedHashSet<>();
 
     try {
 
@@ -190,6 +191,13 @@ public class Vision extends VirtualSubsystem {
         // Loop over pose observations; move along if gating or pose-construction fail
         for (var obs : obsArr) {
           seen++;
+
+          int[] tagIds = obs.usedTagIds();
+          if (tagIds != null) {
+            for (int tagId : tagIds) {
+              tagIdsSeenThisLoop.add(tagId);
+            }
+          }
 
           GateResult gate = passesScrutiny(cam, obs);
           Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
@@ -285,6 +293,19 @@ public class Vision extends VirtualSubsystem {
       Logger.recordOutput("Vision/HasAcceptedThisLoop", hasAcceptedThisLoop);
       Logger.recordOutput("Vision/HasFusedThisLoop", hasFusedThisLoop);
       Logger.recordOutput("Vision/HasSmoothedThisLoop", hasSmoothedThisLoop);
+
+      Pose3d[] tagsSeenThisLoop =
+          tagIdsSeenThisLoop.stream()
+              .map(FieldConstants.aprilTagLayout::getTagPose)
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .toArray(Pose3d[]::new);
+
+      Logger.recordOutput("Vision/TagCountThisLoop", tagIdsSeenThisLoop.size());
+      Logger.recordOutput("Vision/TagsSeenThisLoop", tagsSeenThisLoop);
+      Logger.recordOutput(
+          "Vision/TagIdsSeenThisLoop",
+          tagIdsSeenThisLoop.stream().mapToInt(Integer::intValue).toArray());
     }
   }
 

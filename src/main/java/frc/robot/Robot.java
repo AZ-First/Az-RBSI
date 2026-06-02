@@ -17,7 +17,10 @@
 
 package frc.robot;
 
+import com.pathplanner.lib.commands.PathPlannerAuto;
+import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
@@ -190,8 +193,19 @@ public class Robot extends LoggedRobot {
 
       case PATHPLANNER:
         m_autoCommandPathPlanner = m_robotContainer.getAutonomousCommandPathPlanner();
-        // schedule the autonomous command
+
         if (m_autoCommandPathPlanner != null) {
+          Pose2d startingPose = getSelectedAutoStartingPosePathPlanner();
+          if (startingPose != null) {
+            Pose2d allianceStartingPose =
+                DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)
+                        == DriverStation.Alliance.Red
+                    ? FlippingUtil.flipFieldPose(startingPose)
+                    : startingPose;
+            m_robotContainer.getDrivebase().resetPose(allianceStartingPose);
+            Logger.recordOutput("Auto/StartingPose", allianceStartingPose);
+          }
+
           CommandScheduler.getInstance().schedule(m_autoCommandPathPlanner);
         }
         break;
@@ -309,5 +323,12 @@ public class Robot extends LoggedRobot {
   public void simulationPeriodic() {
     // Update sim each sim tick
     visionSim.update(m_robotContainer.getDrivebase().getPose());
+  }
+
+  private Pose2d getSelectedAutoStartingPosePathPlanner() {
+    if (m_autoCommandPathPlanner instanceof PathPlannerAuto pathPlannerAuto) {
+      return pathPlannerAuto.getStartingPose();
+    }
+    return null;
   }
 }

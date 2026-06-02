@@ -132,7 +132,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     for (int port : ports) {
       sum += conduit.getPDPChannelCurrent(port);
     }
-    Logger.recordOutput("Power/Subsystems/" + name + "Current", sum);
+    Logger.recordOutput("Power/Subsystems/" + name + "_Current", sum);
   }
 
   // TODO: Do something about setting priorities if drawing too much current

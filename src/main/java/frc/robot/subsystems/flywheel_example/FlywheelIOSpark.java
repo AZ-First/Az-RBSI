@@ -57,6 +57,11 @@ public class FlywheelIOSpark implements FlywheelIO {
   };
   private final SimpleMotorFeedforward ff = new SimpleMotorFeedforward(kSreal, kVreal, kAreal);
 
+  @Override
+  public int[] powerPorts() {
+    return powerPorts;
+  }
+
   public FlywheelIOSpark() {
 
     // Configure leader motor

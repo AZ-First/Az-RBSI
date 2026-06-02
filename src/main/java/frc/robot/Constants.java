@@ -63,7 +63,7 @@ public final class Constants {
 
   /***************************************************************************/
   /**
-   * Define the various multiple robots that use this same code (e.g., COMPBOT, DEVBOT, SIMBOT,
+   * Define the various multiple robots that use this same code (e.g., COMPBOT, DEVBOT1, SIMBOT,
    * etc.) and the operating modes of the code (REAL, SIM, or REPLAY)
    */
   private static RobotType robotType = RobotType.COMPBOT;
@@ -80,7 +80,8 @@ public final class Constants {
 
   /** Enumerate the robot types (name your robots here) */
   public static enum RobotType {
-    DEVBOT, // Development / Alpha / Practice Bot
+    DEVBOT1, // Development / Alpha / Practice Bot
+    DEVBOT2, // Development / Alpha / Practice Bot
     COMPBOT, // Competition robot
     SIMBOT // Simulated robot
   }
@@ -134,14 +135,14 @@ public final class Constants {
     public static final Rotation3d kRioOrientation =
         switch (getRobot()) {
           case COMPBOT -> new Rotation3d(0, 0, -90);
-          case DEVBOT -> Rotation3d.kZero;
+          case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
           default -> Rotation3d.kZero;
         };
     // IMU can be one of Pigeon2 or NavX
     public static final Rotation3d kIMUOrientation =
         switch (getRobot()) {
           case COMPBOT -> Rotation3d.kZero;
-          case DEVBOT -> Rotation3d.kZero;
+          case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
           default -> Rotation3d.kZero;
         };
   }
@@ -551,7 +552,7 @@ public final class Constants {
   /** Get the current robot mode */
   public static Mode getMode() {
     return switch (robotType) {
-      case DEVBOT, COMPBOT -> RobotBase.isReal() ? Mode.REAL : Mode.REPLAY;
+      case DEVBOT1, DEVBOT2, COMPBOT -> RobotBase.isReal() ? Mode.REAL : Mode.REPLAY;
       case SIMBOT -> Mode.SIM;
     };
   }

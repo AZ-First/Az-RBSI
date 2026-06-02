@@ -60,7 +60,8 @@ commands/
     of teams.
 
 generated/
-    This directory holds the ``TunerConstants.java`` file produced by Phoenix
+    This directory holds the generated CTRE tuner constants selected by
+    ``TunerFactory.java``. These files are produced by Phoenix
     Tuner X's swerve generator  (you must generate this file for your specific
     drivetrain -- the one included in the Az-RBSI is an example only).  It must
     be modified as described in the AdvantageKit documentation (removal of
