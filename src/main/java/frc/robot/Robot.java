@@ -42,9 +42,12 @@ import org.littletonrobotics.urcl.URCL;
  * project.
  */
 public class Robot extends LoggedRobot {
+  private static final int TIMING_LOG_PERIOD_LOOPS = 5;
+
   private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
+  private int timingLogLoops = 0;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -141,9 +144,12 @@ public class Robot extends LoggedRobot {
     }
     final long t4 = System.nanoTime();
 
-    Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
-    Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
-    Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
+    if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
+      timingLogLoops = 0;
+      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
+    }
   }
 
   /** This function is called once when the robot is disabled. */

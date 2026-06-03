@@ -116,8 +116,8 @@ public class ImuIONavX implements ImuIO {
       inputs.odometryYawPositionsRad = yawOut;
     } else {
       // ...otherwise return empty arrays
-      inputs.odometryYawTimestamps = new double[] {};
-      inputs.odometryYawPositionsRad = new double[] {};
+      inputs.odometryYawTimestamps = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryYawPositionsRad = EMPTY_DOUBLE_ARRAY;
     }
 
     // Compute how long this took in seconds

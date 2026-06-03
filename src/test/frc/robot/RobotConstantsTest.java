@@ -45,6 +45,34 @@ class RobotConstantsTest {
   }
 
   @Test
+  void selectedTunableConstantsAreInUsableRanges() {
+    assertPositive(Constants.OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec);
+    assertPositive(Constants.SensorConstants.kRioAccelerometerSampleRateHz);
+
+    assertPositive(Constants.DrivebaseConstants.kSysIdPreRunStopSecs);
+    assertPositive(Constants.DrivebaseConstants.kFeedforwardCharacterizationStartDelaySecs);
+    assertPositive(Constants.DrivebaseConstants.kFeedforwardCharacterizationRampRateVoltsPerSec);
+    assertPositive(Constants.DrivebaseConstants.kWheelRadiusCharacterizationStartDelaySecs);
+    assertPositive(Constants.DrivebaseConstants.kWheelRadiusCharacterizationMaxVelocityRadPerSec);
+    assertPositive(Constants.DrivebaseConstants.kWheelRadiusCharacterizationRampRateRadPerSecSq);
+    assertPositive(Constants.DrivebaseConstants.kDisabledCoastMinSeconds);
+    assertPositive(Constants.DrivebaseConstants.kDisabledVisionCoastBlendAlpha);
+
+    assertPositive(Constants.FlywheelConstants.kMaxVoltage);
+    assertPositive(Constants.FlywheelConstants.kMotionMagicAccelerationRotPerSecSq);
+    assertPositive(Constants.FlywheelConstants.kMotionMagicJerkRotPerSecCubed);
+    assertPositive(Constants.FlywheelConstants.kSimGearing);
+    assertPositive(Constants.FlywheelConstants.kSimMomentOfInertiaKgMetersSq);
+
+    assertEquals(
+        Math.min(
+            Constants.DrivebaseConstants.kDisabledVisionBlendAlpha,
+            Constants.DrivebaseConstants.kDisabledVisionCoastBlendAlpha),
+        Constants.DrivebaseConstants.kDisabledVisionCoastBlendAlpha,
+        1e-9);
+  }
+
+  @Test
   void constantsDoNotExposeLegacyAliasNames() {
     assertMissing(Constants.class, "loopPeriodSecs");
     assertMissing(Constants.class, "tuningMode");
@@ -83,5 +111,9 @@ class RobotConstantsTest {
 
   private static void assertMissing(Class<?> constantsClass, String fieldName) {
     assertThrows(NoSuchFieldException.class, () -> constantsClass.getDeclaredField(fieldName));
+  }
+
+  private static void assertPositive(double value) {
+    org.junit.jupiter.api.Assertions.assertTrue(value > 0.0);
   }
 }

@@ -16,6 +16,7 @@ package frc.robot.subsystems.accelerometer;
 import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.Constants;
 import frc.robot.Constants.RobotConstants;
+import frc.robot.Constants.SensorConstants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
@@ -48,8 +49,12 @@ public class Accelerometer extends VirtualSubsystem {
   private static final int PROFILE_EVERY_N = 50; // 1Hz profiling
 
   public Accelerometer(Imu imu) {
+    this(imu, new RioAccelIORoboRIO(SensorConstants.kRioAccelerometerSampleRateHz));
+  }
+
+  public Accelerometer(Imu imu, RioAccelIO rio) {
     this.imu = imu;
-    this.rio = new RioAccelIORoboRIO(200.0); // 200 Hz is a good start
+    this.rio = rio;
   }
 
   // Priority value for this virtual subsystem

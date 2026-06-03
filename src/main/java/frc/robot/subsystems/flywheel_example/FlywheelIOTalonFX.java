@@ -88,8 +88,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     // set Motion Magic Velocity settings
     var motionMagicConfigs = config.MotionMagic;
     motionMagicConfigs.MotionMagicAcceleration =
-        400; // Target acceleration of 400 rps/s (0.25 seconds to max)
-    motionMagicConfigs.MotionMagicJerk = 4000; // Target jerk of 4000 rps/s/s (0.1 seconds)
+        kMotionMagicAccelerationRotPerSecSq; // Target acceleration in rotations/s/s
+    motionMagicConfigs.MotionMagicJerk = kMotionMagicJerkRotPerSecCubed; // rotations/s/s/s
 
     // Apply the configurations to the flywheel motors
     PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));

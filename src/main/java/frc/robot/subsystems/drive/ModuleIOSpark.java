@@ -256,9 +256,9 @@ public class ModuleIOSpark implements ModuleIO {
     final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
 
     if (sampleCount <= 0) {
-      inputs.odometryTimestamps = new double[0];
-      inputs.odometryDrivePositionsRad = new double[0];
-      inputs.odometryTurnPositions = new Rotation2d[0];
+      inputs.odometryTimestamps = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryDrivePositionsRad = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryTurnPositions = EMPTY_ROTATION_ARRAY;
       return;
     }
 

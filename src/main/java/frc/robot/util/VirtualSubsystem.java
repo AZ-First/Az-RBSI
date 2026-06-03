@@ -18,12 +18,14 @@ import org.littletonrobotics.junction.Logger;
  * Base class for virtual subsystems -- not robot hardware -- that should be treated as subsystems
  */
 public abstract class VirtualSubsystem {
+  private static final int TIMING_LOG_PERIOD_LOOPS = 5;
   private static final List<VirtualSubsystem> subsystems = new ArrayList<>();
   private static boolean needsSort = false;
   private static long nextConstructionOrder = 0;
 
   private final String name = getClass().getSimpleName();
   private final long constructionOrder;
+  private int timingLogLoops = 0;
 
   // Load all defined virtual subsystems into a list
   public VirtualSubsystem() {
@@ -75,9 +77,11 @@ public abstract class VirtualSubsystem {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
-    // Log the timing for this subsystem
-    Logger.recordOutput(
-        "LogPeriodic/VirtualSubsystem/" + name + "MS", (System.nanoTime() - start) / 1e6);
+    if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
+      timingLogLoops = 0;
+      Logger.recordOutput(
+          "LogPeriodic/VirtualSubsystem/" + name + "MS", (System.nanoTime() - start) / 1e6);
+    }
   }
 
   /** Subclasses must implement this instead of periodic(). */

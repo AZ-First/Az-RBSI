@@ -28,6 +28,7 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import frc.robot.Constants;
 import frc.robot.Constants.Cameras;
 import frc.robot.FieldConstants;
 import frc.robot.subsystems.drive.Drive;
@@ -88,6 +89,8 @@ public class Vision extends VirtualSubsystem {
 
   // Variance minimum for fusing poses to prevent divide-by-zero explosions
   private static final double kMinVariance = 1e-12;
+  private static final Pose3d[] kEmptyTagPoseArray = new Pose3d[0];
+  private static final int[] kEmptyTagIdArray = new int[0];
 
   // Last smoothed and fused poses -- used for debugging
   private Pose2d lastFusedPose = new Pose2d();
@@ -95,6 +98,8 @@ public class Vision extends VirtualSubsystem {
   private double lastFusedTs = Double.NaN;
   private boolean lastFusedValid = false;
   private boolean lastSmoothedValid = false;
+  private final LinkedHashSet<Integer> tagIdsSeenThisLoop = new LinkedHashSet<>();
+  private final ArrayList<TimedPose> perCamAccepted = new ArrayList<>();
 
   /** Constructor */
   public Vision(Drive drive, PoseMeasurementConsumer consumer, VisionIO... io) {
@@ -135,11 +140,13 @@ public class Vision extends VirtualSubsystem {
     boolean hasAcceptedThisLoop = false;
     boolean hasFusedThisLoop = false;
     boolean hasSmoothedThisLoop = false;
-    final LinkedHashSet<Integer> tagIdsSeenThisLoop = new LinkedHashSet<>();
+    final boolean tuningMode = Constants.kTuningMode;
 
     try {
 
       lastAlignDbg.reset();
+      tagIdsSeenThisLoop.clear();
+      perCamAccepted.clear();
       // Pose reset gate (clears smoothing state, resets per-cam monotonic gates)
       long epoch = drive.getPoseResetEpoch();
       if (epoch != lastSeenPoseResetEpoch) {
@@ -157,15 +164,14 @@ public class Vision extends VirtualSubsystem {
       }
 
       // Always-on “health” debug -- may consider removing this
-      Logger.recordOutput("Vision/Debug/ioLength", io.length);
       int totalObs = 0;
       for (int i = 0; i < io.length; i++) {
         totalObs += (inputs[i].poseObservations != null) ? inputs[i].poseObservations.length : 0;
       }
-      Logger.recordOutput("Vision/Debug/totalObsThisLoop", totalObs);
-
-      // Choose best observation per camera for THIS loop
-      final ArrayList<TimedPose> perCamAccepted = new ArrayList<>(io.length);
+      if (tuningMode) {
+        Logger.recordOutput("Vision/Debug/ioLength", io.length);
+        Logger.recordOutput("Vision/Debug/totalObsThisLoop", totalObs);
+      }
 
       for (int cam = 0; cam < io.length; cam++) {
 
@@ -200,7 +206,9 @@ public class Vision extends VirtualSubsystem {
           }
 
           GateResult gate = passesScrutiny(cam, obs);
-          Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
+          if (tuningMode) {
+            Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
+          }
           if (!gate.accepted) {
             rejected++;
             continue;
@@ -244,7 +252,9 @@ public class Vision extends VirtualSubsystem {
         Logger.recordOutput("Vision/Camera" + cam + "/ObsRejected", rejected);
       }
 
-      Logger.recordOutput("Vision/Debug/perCamAcceptedSize", perCamAccepted.size());
+      if (tuningMode) {
+        Logger.recordOutput("Vision/Debug/perCamAcceptedSize", perCamAccepted.size());
+      }
 
       if (perCamAccepted.isEmpty()) {
         // No new vision accepted this loop; we still log cached outputs below (in finally).
@@ -254,8 +264,13 @@ public class Vision extends VirtualSubsystem {
 
       // =====
       // Fuse all accepted cams at the newest timestamp among them
-      final double tFusion =
-          perCamAccepted.stream().mapToDouble(e -> e.timestampSeconds()).max().orElse(Double.NaN);
+      double tFusion = Double.NaN;
+      for (int i = 0; i < perCamAccepted.size(); i++) {
+        final double timestamp = perCamAccepted.get(i).timestampSeconds();
+        if (!Double.isFinite(tFusion) || timestamp > tFusion) {
+          tFusion = timestamp;
+        }
+      }
       if (!Double.isFinite(tFusion)) return;
 
       final TimedPose fused = fuseAtTime(perCamAccepted, tFusion);
@@ -294,18 +309,27 @@ public class Vision extends VirtualSubsystem {
       Logger.recordOutput("Vision/HasFusedThisLoop", hasFusedThisLoop);
       Logger.recordOutput("Vision/HasSmoothedThisLoop", hasSmoothedThisLoop);
 
-      Pose3d[] tagsSeenThisLoop =
-          tagIdsSeenThisLoop.stream()
-              .map(FieldConstants.aprilTagLayout::getTagPose)
-              .filter(Optional::isPresent)
-              .map(Optional::get)
-              .toArray(Pose3d[]::new);
-
       Logger.recordOutput("Vision/TagCountThisLoop", tagIdsSeenThisLoop.size());
-      Logger.recordOutput("Vision/TagsSeenThisLoop", tagsSeenThisLoop);
-      Logger.recordOutput(
-          "Vision/TagIdsSeenThisLoop",
-          tagIdsSeenThisLoop.stream().mapToInt(Integer::intValue).toArray());
+      if (tagIdsSeenThisLoop.isEmpty()) {
+        Logger.recordOutput("Vision/TagsSeenThisLoop", kEmptyTagPoseArray);
+        Logger.recordOutput("Vision/TagIdsSeenThisLoop", kEmptyTagIdArray);
+      } else {
+        final Pose3d[] tagsSeen = new Pose3d[tagIdsSeenThisLoop.size()];
+        final int[] tagIdsSeen = new int[tagIdsSeenThisLoop.size()];
+        int tagCount = 0;
+        for (int tagId : tagIdsSeenThisLoop) {
+          tagIdsSeen[tagCount] = tagId;
+          Optional<Pose3d> tagPose = FieldConstants.aprilTagLayout.getTagPose(tagId);
+          if (tagPose.isPresent()) {
+            tagsSeen[tagCount] = tagPose.get();
+            tagCount++;
+          }
+        }
+        Logger.recordOutput(
+            "Vision/TagsSeenThisLoop",
+            tagCount == tagsSeen.length ? tagsSeen : Arrays.copyOf(tagsSeen, tagCount));
+        Logger.recordOutput("Vision/TagIdsSeenThisLoop", tagIdsSeen);
+      }
     }
   }
 
@@ -486,12 +510,13 @@ public class Vision extends VirtualSubsystem {
     angularStdDev = Math.max(angularStdDev, kAngularStdDevBaseline);
 
     // Output logs for tuning
-    Logger.recordOutput("Vision/Camera" + cam + "/InjectedFracTrusted", fracTrusted);
-
-    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_linearStdDev", linearStdDev);
-    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_angularStdDev", angularStdDev);
-    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_avgDist", avgDist);
-    Logger.recordOutput("Vision/Camera" + cam + "/Dbg_tagCount", obs.tagCount());
+    if (Constants.kTuningMode) {
+      Logger.recordOutput("Vision/Camera" + cam + "/InjectedFracTrusted", fracTrusted);
+      Logger.recordOutput("Vision/Camera" + cam + "/Dbg_linearStdDev", linearStdDev);
+      Logger.recordOutput("Vision/Camera" + cam + "/Dbg_angularStdDev", angularStdDev);
+      Logger.recordOutput("Vision/Camera" + cam + "/Dbg_avgDist", avgDist);
+      Logger.recordOutput("Vision/Camera" + cam + "/Dbg_tagCount", obs.tagCount());
+    }
 
     return new BuiltEstimate(
         new TimedPose(
@@ -719,8 +744,9 @@ public class Vision extends VirtualSubsystem {
       Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) continue;
       aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
-      // Debugging Logging
-      Logger.recordOutput("Vision/Debug/deltaTime", tFusion - e.timestampSeconds());
+      if (Constants.kTuningMode) {
+        Logger.recordOutput("Vision/Debug/deltaTime", tFusion - e.timestampSeconds());
+      }
     }
 
     if (aligned.isEmpty()) return fusedBuffer.peekLast();

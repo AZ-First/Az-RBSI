@@ -26,8 +26,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.GenericHID;
@@ -44,6 +42,7 @@ import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
+import frc.robot.subsystems.accelerometer.RioAccelIO;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveOdometry;
 import frc.robot.subsystems.drive.SwerveConstants;
@@ -51,6 +50,7 @@ import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
 import frc.robot.subsystems.flywheel_example.FlywheelIOSim;
 import frc.robot.subsystems.imu.Imu;
+import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIOSim;
 import frc.robot.subsystems.vision.CameraSweepEvaluator;
 import frc.robot.subsystems.vision.Vision;
@@ -199,7 +199,7 @@ public class RobotContainer {
       default:
         // Replayed robot, disable IO implementations
         RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
-        m_imu = new Imu(new ImuIOSim() {});
+        m_imu = new Imu(new ImuIO() {});
         m_drivebase = new Drive(m_imu);
         m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
         m_vision =
@@ -207,7 +207,7 @@ public class RobotContainer {
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay(m_drivebase));
 
         m_flywheel = new Flywheel(new FlywheelIO() {});
-        m_accel = new Accelerometer(m_imu);
+        m_accel = new Accelerometer(m_imu, RioAccelIO.noop());
         sweep = null;
         break;
     }
@@ -324,22 +324,16 @@ public class RobotContainer {
                 m_drivebase,
                 () -> -driveStickY.value(),
                 () -> -driveStickX.value(),
-                () -> turnStickX.value()));
+                () -> -turnStickX.value()));
 
     // Press A button -> BRAKE
-    driverController
-        .a()
-        .whileTrue(Commands.runOnce(() -> m_drivebase.setMotorBrake(true), m_drivebase));
+    driverController.a().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
 
     // Press X button --> Stop with wheels in X-Lock position
-    driverController.x().onTrue(Commands.runOnce(m_drivebase::stopWithX, m_drivebase));
+    driverController.x().whileTrue(DriveCommands.stopWithX(m_drivebase));
 
     // Press Y button --> Manually Re-Zero the Gyro
-    driverController
-        .y()
-        .onTrue(
-            Commands.runOnce(m_drivebase::zeroHeadingForAlliance, m_drivebase)
-                .ignoringDisable(true));
+    driverController.y().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
     // Press RIGHT BUMPER --> Run the example flywheel
     driverController
@@ -350,18 +344,21 @@ public class RobotContainer {
                 m_flywheel::stop,
                 m_flywheel));
 
-    // Press LEFT BUMPER --> Drive to a pose 10 feet closer to the BLUE ALLIANCE wall
+    // Press LEFT BUMPER --> Drive to a demo pose offset defined in OperatorConstants
     driverController
         .leftBumper()
         .whileTrue(
             Commands.defer(
                 () -> {
-                  // New pose 2 feet closer to BLUE ALLIANCE wall
+                  // Demo target relative to the current pose.
                   Pose2d pose =
                       m_drivebase
                           .getPose()
                           .transformBy(
-                              new Transform2d(Units.feetToMeters(-10.0), 0.0, Rotation2d.kZero));
+                              new Transform2d(
+                                  OperatorConstants.kAutopilotDemoXOffsetMeters,
+                                  0.0,
+                                  Rotation2d.kZero));
 
                   // Alternatively, you could define a pose in a separate module and call it here.
                   //
@@ -377,14 +374,23 @@ public class RobotContainer {
     driverController
         .povLeft()
         .whileTrue(
-            Commands.startEnd(
-                () -> {
-                  m_drivebase.runVelocity(
-                      new ChassisSpeeds(Units.inchesToMeters(0.), Units.inchesToMeters(11.0), 0.));
-                },
-                // Stop when command ended
-                m_drivebase::stop,
-                m_drivebase));
+            DriveCommands.robotRelativeNudge(
+                m_drivebase, 0.0, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
+    driverController
+        .povRight()
+        .whileTrue(
+            DriveCommands.robotRelativeNudge(
+                m_drivebase, 0.0, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
+    driverController
+        .povUp()
+        .whileTrue(
+            DriveCommands.robotRelativeNudge(
+                m_drivebase, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
+    driverController
+        .povDown()
+        .whileTrue(
+            DriveCommands.robotRelativeNudge(
+                m_drivebase, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
 
     if (Constants.getMode() == Mode.SIM) {
       // IN SIMULATION ONLY:

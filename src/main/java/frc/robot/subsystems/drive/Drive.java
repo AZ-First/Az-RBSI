@@ -146,6 +146,7 @@ public class Drive extends RBSISubsystem {
             new TrapezoidProfile.Constraints(
                 getMaxAngularSpeedRadPerSec(), getMaxAngularAccelRadPerSecPerSec()));
     angleController.enableContinuousInput(-Math.PI, Math.PI);
+    m_pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
 
     // If REAL (i.e., NOT simulation), parse out the module types
     if (Constants.getMode() == Mode.REAL) {
@@ -437,8 +438,8 @@ public class Drive extends RBSISubsystem {
       SwerveModulePosition[] odomPositions) {
 
     // Don’t end coast “instantly” right after disable edge
-    final double minCoastTime = 0.25; // seconds -- maybe put into Constants???
-    final boolean pastMin = (now - disabledCoastStartTs) >= minCoastTime;
+    final boolean pastMin =
+        (now - disabledCoastStartTs) >= DrivebaseConstants.kDisabledCoastMinSeconds;
 
     // Detect ENABLED -> DISABLED edge -- set `disabledCoastUntilTs` when COAST-phase ends
     if (lastEnabled && !enabledNow) {
@@ -513,13 +514,15 @@ public class Drive extends RBSISubsystem {
   /** Returns a command to run a quasistatic test in the specified direction. */
   public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
     return run(() -> runCharacterization(0.0))
-        .withTimeout(1.0)
+        .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
         .andThen(sysId.quasistatic(direction));
   }
 
   /** Returns a command to run a dynamic test in the specified direction. */
   public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    return run(() -> runCharacterization(0.0)).withTimeout(1.0).andThen(sysId.dynamic(direction));
+    return run(() -> runCharacterization(0.0))
+        .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
+        .andThen(sysId.dynamic(direction));
   }
 
   /************************************************************************* */
@@ -792,7 +795,9 @@ public class Drive extends RBSISubsystem {
       // If we're coasting, avoid snapping Pose to Vision; lean gentler than stationary.
       final double alpha =
           coast
-              ? Math.min(DrivebaseConstants.kDisabledVisionBlendAlpha, 0.05)
+              ? Math.min(
+                  DrivebaseConstants.kDisabledVisionBlendAlpha,
+                  DrivebaseConstants.kDisabledVisionCoastBlendAlpha)
               : DrivebaseConstants.kDisabledVisionBlendAlpha;
 
       // "Current" for blending target (estimator pose)
@@ -981,9 +986,21 @@ public class Drive extends RBSISubsystem {
       new SwerveRequest.ApplyFieldSpeeds();
 
   // Choreo Controller Values
-  private final PIDController m_pathXController = new PIDController(10, 0, 0);
-  private final PIDController m_pathYController = new PIDController(10, 0, 0);
-  private final PIDController m_pathThetaController = new PIDController(7, 0, 0);
+  private final PIDController m_pathXController =
+      new PIDController(
+          AutoConstants.kChoreoDrivePID.kP,
+          AutoConstants.kChoreoDrivePID.kI,
+          AutoConstants.kChoreoDrivePID.kD);
+  private final PIDController m_pathYController =
+      new PIDController(
+          AutoConstants.kChoreoDrivePID.kP,
+          AutoConstants.kChoreoDrivePID.kI,
+          AutoConstants.kChoreoDrivePID.kD);
+  private final PIDController m_pathThetaController =
+      new PIDController(
+          AutoConstants.kChoreoSteerPID.kP,
+          AutoConstants.kChoreoSteerPID.kI,
+          AutoConstants.kChoreoSteerPID.kD);
 
   /**
    * Follows the given field-centric path sample with PID for Choreo
@@ -992,8 +1009,6 @@ public class Drive extends RBSISubsystem {
    * @param sample Sample along the path to follow
    */
   public void choreoController(Pose2d pose, SwerveSample sample) {
-    m_pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
-
     var targetSpeeds = sample.getChassisSpeeds();
     targetSpeeds.vxMetersPerSecond += m_pathXController.calculate(pose.getX(), sample.x);
     targetSpeeds.vyMetersPerSecond += m_pathYController.calculate(pose.getY(), sample.y);
@@ -1011,8 +1026,8 @@ public class Drive extends RBSISubsystem {
     // Get the current pose of the robot
     Pose2d pose = getPose();
 
-    // Generate the next speeds for the robot
-    ChassisSpeeds speeds =
+    // Choreo samples are field-relative; convert to robot-relative before sending to modules.
+    ChassisSpeeds fieldRelativeSpeeds =
         new ChassisSpeeds(
             sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
             sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
@@ -1020,6 +1035,6 @@ public class Drive extends RBSISubsystem {
                 + m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading));
 
     // Apply the generated speeds
-    runVelocity(speeds);
+    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, pose.getRotation()));
   }
 }

@@ -234,6 +234,14 @@ public final class Constants {
   }
 
   /************************************************************************* */
+  /** Sensor Constants ***************************************************** */
+  public static final class SensorConstants {
+
+    // RoboRIO accelerometer sampler rate.
+    public static final double kRioAccelerometerSampleRateHz = 200.0;
+  }
+
+  /************************************************************************* */
   /** Operator Constants *************************************************** */
   public static class OperatorConstants {
 
@@ -249,6 +257,12 @@ public final class Constants {
 
     // Joystick slew rate limiters to smooth erratic joystick motions, measured in units per second
     public static final double kJoystickSlewRateLimit = 0.5;
+
+    // Fixed robot-relative nudge speed used by the driver POV bindings.
+    public static final double kRobotRelativeNudgeSpeedMetersPerSec = Inches.of(11.0).in(Meters);
+
+    // Demo teleop drive-to-pose target offset from the current pose.
+    public static final double kAutopilotDemoXOffsetMeters = Feet.of(-10.0).in(Meters);
 
     // Override and Console Toggle Switches
     // Assumes this controller: https://www.amazon.com/gp/product/B00UUROWWK
@@ -306,6 +320,12 @@ public final class Constants {
     public static final double kSysIdDelaySecs = 3.0;
     public static final double kSysIdQuasistaticTimeoutSecs = 5.0;
     public static final double kSysIdDynamicTimeoutSecs = 3.0;
+    public static final double kSysIdPreRunStopSecs = 1.0;
+    public static final double kFeedforwardCharacterizationStartDelaySecs = 2.0;
+    public static final double kFeedforwardCharacterizationRampRateVoltsPerSec = 0.1;
+    public static final double kWheelRadiusCharacterizationStartDelaySecs = 1.0;
+    public static final double kWheelRadiusCharacterizationMaxVelocityRadPerSec = 0.25;
+    public static final double kWheelRadiusCharacterizationRampRateRadPerSecSq = 0.05;
 
     // Drive motor open-loop and closed-loop ramp periods for current smoothing
     //   Time from from 0 -> full duty
@@ -343,6 +363,8 @@ public final class Constants {
 
     // Coast window config
     public static final double kDisabledCoastSeconds = 5.0;
+    public static final double kDisabledCoastMinSeconds = 0.25;
+    public static final double kDisabledVisionCoastBlendAlpha = 0.05;
 
     // "Stationary" detection config (tune)
     public static final double kStationaryMaxWheelDeltaM = 0.002; // 2mm per loop
@@ -360,6 +382,7 @@ public final class Constants {
 
     // Mechanism motor gear ratio
     public static final double kGearRatio = 1.5;
+    public static final double kMaxVoltage = 12.0;
 
     // Flywheel motor open-loop and closed-loop ramp periods for current smoothing
     //   Time from from 0 -> full duty
@@ -370,6 +393,10 @@ public final class Constants {
     public static final double kSysIdQuasistaticRampRateVoltsPerSec = 1.0;
     public static final double kSysIdDynamicStepVoltageVolts = 7.0;
     public static final double kSysIdTimeoutSecs = 10.0;
+
+    // CTRE Motion Magic Velocity settings
+    public static final double kMotionMagicAccelerationRotPerSecSq = 400.0;
+    public static final double kMotionMagicJerkRotPerSecCubed = 4000.0;
 
     // MODE == REAL / REPLAY
     // Feedforward constants
@@ -388,6 +415,10 @@ public final class Constants {
     // Feedback (PID) constants
     public static final double kSimP = 0.0;
     public static final double kSimD = 0.0;
+    // Simulation plant constants
+    public static final double kSimGearing = 1.0;
+    public static final double kSimMomentOfInertiaKgMetersSq =
+        0.5 * Pounds.of(1.5).in(Kilograms) * Math.pow(Inches.of(4.0).in(Meters), 2.0);
   }
 
   /************************************************************************* */

@@ -25,6 +25,8 @@ import org.littletonrobotics.junction.Logger;
  * the robot. This is not a true subsystem, but an abstraction layer.
  */
 public class Module {
+  private static final SwerveModulePosition[] EMPTY_ODOMETRY_POSITIONS =
+      new SwerveModulePosition[0];
 
   // Define IO
   private final ModuleIO io;
@@ -35,7 +37,7 @@ public class Module {
   private final Alert driveDisconnectedAlert;
   private final Alert turnDisconnectedAlert;
   private final Alert turnEncoderDisconnectedAlert;
-  private SwerveModulePosition[] odometryPositions = new SwerveModulePosition[] {};
+  private SwerveModulePosition[] odometryPositions = EMPTY_ODOMETRY_POSITIONS;
 
   /** Constructor */
   public Module(ModuleIO io, int index) {
@@ -65,6 +67,13 @@ public class Module {
         Math.min(
             inputs.odometryTimestamps.length,
             Math.min(inputs.odometryDrivePositionsRad.length, inputs.odometryTurnPositions.length));
+    if (sampleCount <= 0) {
+      odometryPositions = EMPTY_ODOMETRY_POSITIONS;
+      driveDisconnectedAlert.set(!inputs.driveConnected);
+      turnDisconnectedAlert.set(!inputs.turnConnected);
+      turnEncoderDisconnectedAlert.set(!inputs.turnEncoderConnected);
+      return;
+    }
     odometryPositions = new SwerveModulePosition[sampleCount];
     for (int i = 0; i < sampleCount; i++) {
       double positionMeters =

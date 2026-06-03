@@ -121,6 +121,16 @@ Teams should tune this section carefully:
 
 Bad entries here cause misleading power logs and can make CAN health debugging much harder.
 
+## SensorConstants
+
+`SensorConstants` holds configuration values for robot-wide sensors that do not naturally belong to
+one mechanism:
+
+- `kRioAccelerometerSampleRateHz`
+
+Most teams can leave this alone. Increase it only if you have a specific acceleration or jerk
+logging need and have verified that the extra sampling work is worth it.
+
 ## OperatorConstants
 
 `OperatorConstants` configures driver controls:
@@ -129,6 +139,8 @@ Bad entries here cause misleading power logs and can make CAN health debugging m
 - `kJoystickDeadband`
 - `kTurnSensitivity`
 - `kJoystickSlewRateLimit`
+- `kRobotRelativeNudgeSpeedMetersPerSec`
+- `kAutopilotDemoXOffsetMeters`
 - driver/operator switch IDs
 - `MULTI_TOGGLE`
 
@@ -137,6 +149,9 @@ Tune this section with drivers:
 - Set `kDriveStyle` to match team preference.
 - Adjust `kJoystickDeadband` until joystick drift disappears without making the robot feel numb.
 - Adjust `kTurnSensitivity` and `kJoystickSlewRateLimit` after real driver practice.
+- Adjust `kRobotRelativeNudgeSpeedMetersPerSec` to change the POV nudge speed from a single place.
+- Adjust or remove `kAutopilotDemoXOffsetMeters` when replacing the example bumper drive-to-pose
+  binding with a game-specific target.
 - Verify all console switches against the actual HID device.
 
 ## DrivebaseConstants
@@ -169,10 +184,27 @@ Odometry and disabled-vision behavior:
 - `kDisabledVisionMaxJumpM` and `kDisabledVisionMaxJumpRad`: reject unreasonable disabled-vision
   jumps.
 - `kDisabledCoastSeconds`: time to keep disabled coast behavior active.
+- `kDisabledCoastMinSeconds`: minimum time before stationary detection can end the coast phase.
+- `kDisabledVisionCoastBlendAlpha`: gentler disabled-vision blend while the robot is still
+  coasting.
 - stationary detection constants: tune if disabled pose behavior ends too quickly or too slowly.
 
 Do not blindly copy drive gains between robots. Module type, wheel type, gearing, mass, current
 limits, and CTRE license status all matter.
+
+Drive characterization helpers also use constants here:
+
+- `kSysIdPreRunStopSecs`: short stop/settle period before WPILib SysId drive tests.
+- `kFeedforwardCharacterizationStartDelaySecs`: module-orientation delay before simple drive
+  feedforward characterization begins collecting samples.
+- `kFeedforwardCharacterizationRampRateVoltsPerSec`: voltage ramp rate for simple drive
+  feedforward characterization.
+- `kWheelRadiusCharacterizationStartDelaySecs`: module-orientation delay before wheel radius
+  characterization begins measuring.
+- `kWheelRadiusCharacterizationMaxVelocityRadPerSec`: maximum robot spin speed during wheel radius
+  characterization.
+- `kWheelRadiusCharacterizationRampRateRadPerSecSq`: spin-speed slew rate during wheel radius
+  characterization.
 
 ## FlywheelConstants
 
@@ -180,18 +212,26 @@ limits, and CTRE license status all matter.
 
 - `kIdleMode`
 - `kGearRatio`
+- `kMaxVoltage`
 - `kClosedLoopRampPeriodSecs`
 - `kOpenLoopRampPeriodSecs`
 - SysId settings
+- CTRE Motion Magic Velocity settings
 - real feedforward and feedback gains
 - sim feedforward and feedback gains
+- sim plant gearing and moment of inertia
 
 Tune this section when using the example flywheel:
 
 - `kGearRatio`: must match motor rotations to mechanism rotations.
+- `kMaxVoltage`: voltage clamp for simulation and mechanism safety expectations.
+- `kMotionMagicAccelerationRotPerSecSq` and `kMotionMagicJerkRotPerSecCubed`: CTRE Motion Magic
+  Velocity profile settings for TalonFX control.
 - `kRealS`, `kRealV`, `kRealA`: copy from WPILib SysId voltage characterization.
 - `kRealP`, `kRealD`: tune after feedforward is correct.
 - `kSimS`, `kSimV`, `kSimA`, `kSimP`, `kSimD`: tune separately for simulation.
+- `kSimGearing` and `kSimMomentOfInertiaKgMetersSq`: tune when changing the example simulated
+  flywheel's mass, radius, gearing, or motor.
 
 See `doc/RBSI-SysId.md` for how to run the flywheel SysId routines and apply the results.
 
@@ -271,13 +311,14 @@ Most teams should not change these unless they intentionally reorganize deploy f
 1. Select `robotType`, `swerveType`, `autoType`, `visionType`, and `phoenixPro`.
 2. Configure `CANBuses` and `RobotDevices`.
 3. Set `RobotConstants` mass, moment of inertia, wheel friction, and sensor orientations.
-4. Set `PowerConstants`.
-5. Characterize and tune `DrivebaseConstants`.
-6. Configure and validate cameras in `Cameras`.
-7. Tune `VisionConstants`.
-8. Tune `AutoConstants` after drive and vision are stable.
-9. Tune mechanism sections such as `FlywheelConstants`.
-10. Re-run tests and simulation after each major tuning pass.
+4. Set `SensorConstants` and `PowerConstants`.
+5. Tune `OperatorConstants` with driver feedback.
+6. Characterize and tune `DrivebaseConstants`.
+7. Configure and validate cameras in `Cameras`.
+8. Tune `VisionConstants`.
+9. Tune `AutoConstants` after drive and vision are stable.
+10. Tune mechanism sections such as `FlywheelConstants`.
+11. Re-run tests and simulation after each major tuning pass.
 
 ## Common Failure Modes
 
