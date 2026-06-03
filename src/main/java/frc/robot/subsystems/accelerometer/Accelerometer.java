@@ -37,7 +37,7 @@ public class Accelerometer extends VirtualSubsystem {
 
   // Variables needed during the periodic
   private Translation3d rawRio, rioAcc, rioJerk, imuAcc, imuJerk;
-  private Translation3d prevRioAcc = Translation3d.kZero;
+  private Translation3d prevRioAcc = null;
 
   // Log decimation
   private int loopCount = 0;
@@ -75,7 +75,10 @@ public class Accelerometer extends VirtualSubsystem {
             rioInputs.zG * Constants.G_TO_MPS2);
     rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation);
 
-    // Acceleration from previous loop
+    Translation3d rioJerkThisLoop =
+        prevRioAcc == null
+            ? Translation3d.kZero
+            : rioAcc.minus(prevRioAcc).div(Constants.loopPeriodSecs);
     prevRioAcc = rioAcc;
 
     // IMU accelerations and jerks
@@ -89,7 +92,7 @@ public class Accelerometer extends VirtualSubsystem {
     final boolean doHeavyLogs = (++loopCount >= LOG_EVERY_N);
     if (doHeavyLogs) {
       loopCount = 0;
-      rioJerk = rioAcc.minus(prevRioAcc).div(Constants.loopPeriodSecs);
+      rioJerk = rioJerkThisLoop;
       imuJerk = imuInputs.linearJerk.rotateBy(RobotConstants.kIMUOrientation);
       Logger.recordOutput("Accel/Rio/Jerk_mps3", rioJerk);
       Logger.recordOutput("Accel/IMU/Jerk_mps3", imuJerk);

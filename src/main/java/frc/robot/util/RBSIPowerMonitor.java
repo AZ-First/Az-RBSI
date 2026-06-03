@@ -72,6 +72,11 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     }
   }
 
+  @Override
+  protected int getPeriodPriority() {
+    return 30;
+  }
+
   /** Periodic Method */
   @Override
   public void rbsiPeriodic() {

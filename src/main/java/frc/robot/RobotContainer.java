@@ -537,7 +537,8 @@ public class RobotContainer {
               .map(
                   c ->
                       (VisionIO)
-                          new VisionIOPhotonVisionSim(c.name(), c.robotToCamera(), drive::getPose))
+                          new VisionIOPhotonVisionSim(
+                              c.name(), c.robotToCamera(), c.simProps(), drive::getPose))
               .toArray(VisionIO[]::new);
 
       case LIMELIGHT ->

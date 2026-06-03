@@ -20,11 +20,14 @@ import org.littletonrobotics.junction.Logger;
 public abstract class VirtualSubsystem {
   private static final List<VirtualSubsystem> subsystems = new ArrayList<>();
   private static boolean needsSort = false;
+  private static long nextConstructionOrder = 0;
 
   private final String name = getClass().getSimpleName();
+  private final long constructionOrder;
 
   // Load all defined virtual subsystems into a list
   public VirtualSubsystem() {
+    constructionOrder = nextConstructionOrder++;
     subsystems.add(this);
     needsSort = true; // a new subsystem changed ordering
   }
@@ -32,7 +35,7 @@ public abstract class VirtualSubsystem {
   /**
    * Override to control ordering. Lower runs earlier.
    *
-   * <p>Example: IMU inputs -30, Drive odometry -20, Vision -10, Coordinator 0.
+   * <p>Example: IMU inputs -30, Drive odometry -20, Vision -10, telemetry/health monitors +20.
    */
   protected int getPeriodPriority() {
     return 0;
@@ -47,8 +50,8 @@ public abstract class VirtualSubsystem {
     if (needsSort) {
       subsystems.sort(
           Comparator.comparingInt(VirtualSubsystem::getPeriodPriority)
-              // deterministic tie-break to avoid “random” order when priorities match
-              .thenComparingInt(System::identityHashCode));
+              // Preserve construction order when priorities match.
+              .thenComparingLong(subsystem -> subsystem.constructionOrder));
       needsSort = false;
     }
 
@@ -79,4 +82,10 @@ public abstract class VirtualSubsystem {
 
   /** Subclasses must implement this instead of periodic(). */
   protected abstract void rbsiPeriodic();
+
+  static void resetForTesting() {
+    subsystems.clear();
+    needsSort = false;
+    nextConstructionOrder = 0;
+  }
 }

@@ -154,7 +154,7 @@ public class PhoenixOdometryThread extends Thread {
           if (!phoenixQueues.get(i).offer(phoenixSignals[i].getValueAsDouble())) droppedSamples++;
         }
         for (int i = 0; i < genericSignals.size(); i++) {
-          genericQueues.get(i).offer(genericSignals.get(i).getAsDouble());
+          if (!genericQueues.get(i).offer(genericSignals.get(i).getAsDouble())) droppedSamples++;
         }
         for (int i = 0; i < timestampQueues.size(); i++) {
           if (!timestampQueues.get(i).offer(timestamp)) droppedSamples++;

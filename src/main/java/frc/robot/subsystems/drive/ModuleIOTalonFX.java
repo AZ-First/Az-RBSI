@@ -21,7 +21,6 @@ import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.PositionVoltage;
-import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
@@ -87,7 +86,6 @@ public class ModuleIOTalonFX implements ModuleIO {
   private final VelocityVoltage velocityVoltageRequest = new VelocityVoltage(0.0);
 
   // Torque-current control requests
-  private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
   private final PositionTorqueCurrentFOC positionTorqueCurrentRequest =
       new PositionTorqueCurrentFOC(0.0);
   private final VelocityTorqueCurrentFOC velocityTorqueCurrentRequest =
@@ -357,11 +355,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     double busVoltage = RobotController.getBatteryVoltage();
     double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
 
-    driveTalon.setControl(
-        switch (m_DriveMotorClosedLoopOutput) {
-          case Voltage -> voltageRequest.withOutput(scaledOutput);
-          case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(scaledOutput);
-        });
+    driveTalon.setControl(voltageRequest.withOutput(scaledOutput));
 
     // Log output and battery
     Logger.recordOutput("Swerve/Drive/OpenLoopOutput", scaledOutput);
@@ -378,11 +372,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     double busVoltage = RobotController.getBatteryVoltage();
     double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
 
-    turnTalon.setControl(
-        switch (m_SteerMotorClosedLoopOutput) {
-          case Voltage -> voltageRequest.withOutput(scaledOutput);
-          case TorqueCurrentFOC -> torqueCurrentRequest.withOutput(scaledOutput);
-        });
+    turnTalon.setControl(voltageRequest.withOutput(scaledOutput));
 
     // Log output and battery
     Logger.recordOutput("Swerve/Turn/OpenLoopOutput", scaledOutput);

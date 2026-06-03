@@ -30,6 +30,7 @@ import com.pathplanner.lib.util.PathPlannerLogging;
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
@@ -464,8 +465,10 @@ public class Drive extends RBSISubsystem {
       return;
     }
 
-    // Compute max wheel delta this loop
+    // Compute max wheel delta this loop. The first sample after a reset only establishes the
+    // baseline and should not count as stationary.
     double maxDelta = 0.0;
+    boolean hadLastWheelDist = haveLastWheelDist;
     if (haveLastWheelDist) {
       for (int i = 0; i < 4; i++) {
         double dist = odomPositions[i].distanceMeters;
@@ -481,7 +484,7 @@ public class Drive extends RBSISubsystem {
     haveLastWheelDist = true;
 
     // Stationary test (must have baseline)
-    if (haveLastWheelDist
+    if (hadLastWheelDist
         && maxDelta <= DrivebaseConstants.kStationaryMaxWheelDeltaM
         && Math.abs(yawRateRadPerSec) <= DrivebaseConstants.kStationaryMaxYawRateRadPerSec) {
       stationaryLoops++;
@@ -609,12 +612,12 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the oldest timetamp in the current pose buffer */
   public double getPoseBufferOldestTime() {
-    return poseBuffer.getOldestTimestamp().getAsDouble();
+    return poseBuffer.getOldestTimestamp().orElse(Double.NaN);
   }
 
   /** Returns the newest timetamp in the current pose buffer */
   public double getPoseBufferNewestTime() {
-    return poseBuffer.getNewestTimestamp().getAsDouble();
+    return poseBuffer.getNewestTimestamp().orElse(Double.NaN);
   }
 
   /**
@@ -921,7 +924,7 @@ public class Drive extends RBSISubsystem {
       if (k > 0) {
         double dt = yawTs[k] - yawTs[k - 1];
         if (dt > 1e-6) {
-          yawRateBuffer.addSample(yawTs[k], (yawPosRad[k] - yawPosRad[k - 1]) / dt);
+          yawRateBuffer.addSample(yawTs[k], yawRateRadPerSec(yawPosRad[k - 1], yawPosRad[k], dt));
         }
       }
     }
@@ -933,9 +936,14 @@ public class Drive extends RBSISubsystem {
     if (i > 0) {
       double dt = yawTs[i] - yawTs[i - 1];
       if (dt > 1e-6) {
-        yawRateBuffer.addSample(t, (yawPos[i] - yawPos[i - 1]) / dt);
+        yawRateBuffer.addSample(t, yawRateRadPerSec(yawPos[i - 1], yawPos[i], dt));
       }
     }
+  }
+
+  static double yawRateRadPerSec(double previousYawRad, double currentYawRad, double dtSec) {
+    if (dtSec <= 1e-6) return 0.0;
+    return MathUtil.angleModulus(currentYawRad - previousYawRad) / dtSec;
   }
 
   /** Set the gyroDisconnectedAlert */

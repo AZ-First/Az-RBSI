@@ -660,24 +660,30 @@ public class Vision extends VirtualSubsystem {
       sumSin += rot.getSin() * wth;
     }
 
-    // If everything got skipped; return null
-    if (sumWx <= 0.0 || sumWy <= 0.0 || sumWth <= 0.0) return null;
+    // If every translational measurement got skipped, there is nothing useful to inject.
+    if (sumWx <= 0.0 || sumWy <= 0.0) return null;
 
     // Construct the fused translation
     final Translation2d fusedTranslation = new Translation2d(sumX / sumWx, sumY / sumWy);
 
-    // Rotation2d(cos, sin) will normalize internally; if both are ~0, fall back to zero.
+    // Rotation2d(cos, sin) will normalize internally. If all accepted observations have infinite
+    // angular uncertainty (e.g. MegaTag2), retain the newest aligned rotation and report infinite
+    // theta uncertainty so the downstream estimator ignores heading correction.
+    final boolean hasAngularWeight = sumWth > 0.0;
     final Rotation2d fusedRotation =
-        (Math.abs(sumCos) < 1e-12 && Math.abs(sumSin) < 1e-12)
-            ? Rotation2d.kZero
-            : new Rotation2d(sumCos, sumSin);
+        hasAngularWeight
+            ? new Rotation2d(sumCos, sumSin)
+            : alignedAtTF.get(alignedAtTF.size() - 1).pose().getRotation();
 
     // The fused pose is the combination of translation and rotation
     final Pose2d fusedPose = new Pose2d(fusedTranslation, fusedRotation);
 
     // Fused standard deviations
     final Matrix<N3, N1> fusedStdDevs =
-        VecBuilder.fill(Math.sqrt(1.0 / sumWx), Math.sqrt(1.0 / sumWy), Math.sqrt(1.0 / sumWth));
+        VecBuilder.fill(
+            Math.sqrt(1.0 / sumWx),
+            Math.sqrt(1.0 / sumWy),
+            hasAngularWeight ? Math.sqrt(1.0 / sumWth) : Double.POSITIVE_INFINITY);
 
     // Construct and return the TimedPose objects
     return new TimedPose(fusedPose, tFusion, fusedStdDevs);
