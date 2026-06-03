@@ -629,7 +629,7 @@ public class Drive extends RBSISubsystem {
     if (t1 < t0) return OptionalDouble.empty();
 
     // Get the subset of entries from the buffer
-    var sub = yawRateBuffer.getInternalBuffer().subMap(t0, true, t1, true);
+    var sub = yawRateBuffer.getSamplesInRange(t0, true, t1, true);
     if (sub.isEmpty()) return OptionalDouble.empty();
 
     double maxAbs = 0.0;

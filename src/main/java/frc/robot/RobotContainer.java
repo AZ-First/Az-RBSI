@@ -118,6 +118,7 @@ public class RobotContainer {
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
   private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+
   private final LoggedDashboardChooser<Command> autoChooserChoreo;
   private final AutoFactory autoFactoryChoreo;
 

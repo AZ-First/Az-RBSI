@@ -206,7 +206,7 @@ public final class Constants {
         new RobotDeviceId(SwerveConstants.kBLEncoderId, SwerveConstants.kBLEncoderCanbus, null);
     // Back Right
     public static final RobotDeviceId BR_DRIVE =
-        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRSteerCanbus, 2);
+        new RobotDeviceId(SwerveConstants.kBRDriveMotorId, SwerveConstants.kBRDriveCanbus, 2);
     public static final RobotDeviceId BR_ROTATION =
         new RobotDeviceId(SwerveConstants.kBRSteerMotorId, SwerveConstants.kBRSteerCanbus, 3);
     public static final RobotDeviceId BR_CANCODER =
