@@ -12,6 +12,7 @@
 // the WPILib BSD license file in the root directory of this project.
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
@@ -174,6 +175,6 @@ public class FusedCANcoderTests {
     do {
       finalCode = toApply.get();
     } while (!finalCode.isOK() && --triesLeftOver > 0);
-    assert (finalCode.isOK());
+    assertTrue(finalCode.isOK(), "Config apply failed: " + finalCode);
   }
 }

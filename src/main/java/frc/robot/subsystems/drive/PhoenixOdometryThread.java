@@ -12,6 +12,7 @@ package frc.robot.subsystems.drive;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.generated.TunerFactory;
 import java.util.ArrayList;
@@ -126,7 +127,9 @@ public class PhoenixOdometryThread extends Thread {
           if (phoenixSignals.length > 0) BaseStatusSignal.refreshAll(phoenixSignals);
         }
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        DriverStation.reportWarning("Phoenix odometry thread interrupted", e.getStackTrace());
+        Thread.currentThread().interrupt();
+        return;
       } finally {
         signalsLock.unlock();
       }

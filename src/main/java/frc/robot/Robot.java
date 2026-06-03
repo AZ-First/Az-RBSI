@@ -17,10 +17,7 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.commands.PathPlannerAuto;
-import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Timer;
@@ -37,9 +34,6 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
-import org.photonvision.PhotonCamera;
-import org.photonvision.simulation.PhotonCameraSim;
-import org.photonvision.simulation.VisionSystemSim;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -48,12 +42,9 @@ import org.photonvision.simulation.VisionSystemSim;
  * project.
  */
 public class Robot extends LoggedRobot {
-  private Command m_autoCommandPathPlanner;
+  private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
-
-  // Define simulation fields here
-  private VisionSystemSim visionSim;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -186,36 +177,18 @@ public class Robot extends LoggedRobot {
     m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
     // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
-    switch (Constants.getAutoType()) {
-      case MANUAL:
-        CommandScheduler.getInstance().schedule(m_robotContainer.getManualAuto());
-        break;
+    m_autonomousCommand =
+        switch (Constants.getAutoType()) {
+          case MANUAL -> m_robotContainer.getManualAuto();
+          case PATHPLANNER -> m_robotContainer.getAutonomousCommandPathPlanner();
+          case CHOREO -> m_robotContainer.getAutonomousCommandChoreo();
+          default ->
+              throw new RuntimeException(
+                  "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+        };
 
-      case PATHPLANNER:
-        m_autoCommandPathPlanner = m_robotContainer.getAutonomousCommandPathPlanner();
-
-        if (m_autoCommandPathPlanner != null) {
-          Pose2d startingPose = getSelectedAutoStartingPosePathPlanner();
-          if (startingPose != null) {
-            Pose2d allianceStartingPose =
-                DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)
-                        == DriverStation.Alliance.Red
-                    ? FlippingUtil.flipFieldPose(startingPose)
-                    : startingPose;
-            m_robotContainer.getDrivebase().resetPose(allianceStartingPose);
-            Logger.recordOutput("Auto/StartingPose", allianceStartingPose);
-          }
-
-          CommandScheduler.getInstance().schedule(m_autoCommandPathPlanner);
-        }
-        break;
-
-      case CHOREO:
-        m_robotContainer.getAutonomousCommandChoreo();
-        break;
-      default:
-        throw new RuntimeException(
-            "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+    if (m_autonomousCommand != null) {
+      CommandScheduler.getInstance().schedule(m_autonomousCommand);
     }
   }
 
@@ -230,10 +203,9 @@ public class Robot extends LoggedRobot {
     // teleop starts running. If you want the autonomous to
     // continue until interrupted by another command, remove
     // this line or comment it out.
-    if (m_autoCommandPathPlanner != null) {
-      m_autoCommandPathPlanner.cancel();
-    } else {
-      CommandScheduler.getInstance().cancelAll();
+    if (m_autonomousCommand != null) {
+      m_autonomousCommand.cancel();
+      m_autonomousCommand = null;
     }
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
@@ -286,49 +258,4 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
-
-  /** This function is called once when the robot is first started up. */
-  @Override
-  public void simulationInit() {
-    // ---------------- SIM-ONLY: vision simulation world + camera sims ----------------
-    // 1) Create the vision simulation world
-    visionSim = new VisionSystemSim("CameraSweepWorld");
-
-    // 2) Add AprilTags (field layout)
-    visionSim.addAprilTags(FieldConstants.aprilTagLayout);
-
-    // 3) Build PhotonCameraSim objects from Constants camera configs
-    final Constants.Cameras.CameraConfig[] camConfigs = Constants.Cameras.ALL;
-
-    PhotonCameraSim[] simCams = new PhotonCameraSim[camConfigs.length];
-
-    for (int i = 0; i < camConfigs.length; i++) {
-      final var cfg = camConfigs[i];
-
-      // Name must match the VisionIOPhotonVisionSim name
-      PhotonCamera photonCam = new PhotonCamera(cfg.name());
-
-      // 2026 API: wrap camera with sim properties from Constants
-      PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
-
-      // Register camera with the sim using the robot-to-camera transform
-      visionSim.addCamera(camSim, cfg.robotToCamera());
-
-      simCams[i] = camSim;
-    }
-  }
-
-  /** This function is called periodically whilst in simulation. */
-  @Override
-  public void simulationPeriodic() {
-    // Update sim each sim tick
-    visionSim.update(m_robotContainer.getDrivebase().getPose());
-  }
-
-  private Pose2d getSelectedAutoStartingPosePathPlanner() {
-    if (m_autoCommandPathPlanner instanceof PathPlannerAuto pathPlannerAuto) {
-      return pathPlannerAuto.getStartingPose();
-    }
-    return null;
-  }
 }

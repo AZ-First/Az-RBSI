@@ -19,7 +19,6 @@
 
 package frc.robot;
 
-import choreo.auto.AutoChooser;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
@@ -29,15 +28,14 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.Cameras;
@@ -120,12 +118,12 @@ public class RobotContainer {
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
   private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+  private final LoggedDashboardChooser<Command> autoChooserChoreo;
+  private final AutoFactory autoFactoryChoreo;
 
   private final LoggedDashboardChooser<DriveStyle> driveStyle =
       new LoggedDashboardChooser<>("Drive Style");
 
-  private final AutoChooser autoChooserChoreo;
-  private final AutoFactory autoFactoryChoreo;
   // Input estimated battery capacity (if full, use printed value)
   private final LoggedTunableNumber batteryCapacity =
       new LoggedTunableNumber("Battery Amp-Hours", 18.0);
@@ -176,24 +174,23 @@ public class RobotContainer {
         m_flywheel = new Flywheel(new FlywheelIOSim());
         m_accel = new Accelerometer(m_imu);
 
-        // CameraSweepEvaluator (sim-only analysis)
-        VisionSystemSim visionSim = new VisionSystemSim("CameraSweepWorld");
-        visionSim.addAprilTags(FieldConstants.aprilTagLayout);
-        var cams = Cameras.ALL;
-        PhotonCameraSim[] simCams = new PhotonCameraSim[cams.length];
-        for (int i = 0; i < cams.length; i++) {
-          var cfg = cams[i];
-          PhotonCamera photonCam = new PhotonCamera(cfg.name());
-          PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
-          visionSim.addCamera(camSim, cfg.robotToCamera());
-          simCams[i] = camSim;
-        }
-
-        // Create the sweep evaluator (expects two cameras; adapt if you add more later)
-        if (simCams.length >= 2) {
+        // CameraSweepEvaluator uses isolated sweep-only Photon cameras to avoid colliding with
+        // robot vision camera names in NetworkTables.
+        if (Constants.getVisionType() == frc.robot.util.RBSIEnum.VisionType.PHOTON
+            && Cameras.ALL.length >= 2) {
+          VisionSystemSim visionSim = new VisionSystemSim("CameraSweepWorld");
+          visionSim.addAprilTags(FieldConstants.aprilTagLayout);
+          PhotonCameraSim[] simCams = new PhotonCameraSim[Cameras.ALL.length];
+          for (int i = 0; i < Cameras.ALL.length; i++) {
+            var cfg = Cameras.ALL[i];
+            PhotonCamera photonCam = new PhotonCamera("Sweep_" + cfg.name());
+            PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
+            visionSim.addCamera(camSim, cfg.robotToCamera());
+            simCams[i] = camSim;
+          }
           sweep = new CameraSweepEvaluator(visionSim, simCams[0], simCams[1]);
         } else {
-          sweep = null; // or throw if you require exactly 2 cameras
+          sweep = null;
         }
 
         break;
@@ -221,6 +218,9 @@ public class RobotContainer {
     // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
     // include ``m_drivebase``, as that is automatically monitored.
     m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
+
+    // Define PathPlanner named commands before any autos or paths are created.
+    defineAutoCommands();
 
     // Set up the SmartDashboard Auto Chooser based on auto type
     switch (Constants.getAutoType()) {
@@ -251,8 +251,9 @@ public class RobotContainer {
                 true, // If alliance flipping should be enabled
                 m_drivebase // The drive subsystem
                 );
-        autoChooserChoreo = new AutoChooser();
-        autoChooserChoreo.addRoutine("twoPieceAuto", this::twoPieceAuto);
+        autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
+        autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
+        autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
         // Set the others to null
         autoChooserPathPlanner = null;
         break;
@@ -267,8 +268,6 @@ public class RobotContainer {
     driveStyle.addDefaultOption("TANK", DriveStyle.TANK);
     driveStyle.addOption("GAMER", DriveStyle.GAMER);
 
-    // Define Auto commands
-    defineAutoCommands();
     // Define SysIs Routines
     definesysIdRoutines();
     // Configure the button and trigger bindings
@@ -319,15 +318,12 @@ public class RobotContainer {
     // Press B button while driving --> ROBOT-CENTRIC
     driverController
         .b()
-        .onTrue(
-            Commands.runOnce(
-                () ->
-                    DriveCommands.robotRelativeDrive(
-                        m_drivebase,
-                        () -> -driveStickY.value(),
-                        () -> -driveStickX.value(),
-                        () -> turnStickX.value()),
-                m_drivebase));
+        .whileTrue(
+            DriveCommands.robotRelativeDrive(
+                m_drivebase,
+                () -> -driveStickY.value(),
+                () -> -driveStickX.value(),
+                () -> turnStickX.value()));
 
     // Press A button -> BRAKE
     driverController
@@ -406,7 +402,7 @@ public class RobotContainer {
                               .resolve("camera_sweep.csv")
                               .toString());
                     } catch (Exception e) {
-                      e.printStackTrace();
+                      DriverStation.reportError("Camera sweep failed", e.getStackTrace());
                     }
                   }));
     }
@@ -443,12 +439,8 @@ public class RobotContainer {
    *
    * @return the command to run in autonomous
    */
-  public void getAutonomousCommandChoreo() {
-    // Put the auto chooser on the dashboard
-    SmartDashboard.putData(autoChooserChoreo);
-
-    // Schedule the selected auto during the autonomous period
-    RobotModeTriggers.autonomous().whileTrue(autoChooserChoreo.selectedCommandScheduler());
+  public Command getAutonomousCommandChoreo() {
+    return autoChooserChoreo.get();
   }
 
   /** Updates the alerts. */
@@ -538,13 +530,22 @@ public class RobotContainer {
 
   // Vision Factories (SIM)
   private VisionIO[] buildVisionIOsSim(Drive drive) {
-    var cams = Constants.Cameras.ALL;
-    VisionIO[] ios = new VisionIO[cams.length];
-    for (int i = 0; i < cams.length; i++) {
-      var cfg = cams[i];
-      ios[i] = new VisionIOPhotonVisionSim(cfg.name(), cfg.robotToCamera(), drive::getPose);
-    }
-    return ios;
+    return switch (Constants.getVisionType()) {
+      case PHOTON ->
+          Arrays.stream(Constants.Cameras.ALL)
+              .map(
+                  c ->
+                      (VisionIO)
+                          new VisionIOPhotonVisionSim(c.name(), c.robotToCamera(), drive::getPose))
+              .toArray(VisionIO[]::new);
+
+      case LIMELIGHT ->
+          Arrays.stream(Constants.Cameras.ALL)
+              .map(c -> (VisionIO) new VisionIOLimelight(c.name(), drive::getHeading))
+              .toArray(VisionIO[]::new);
+
+      case NONE -> new VisionIO[] {};
+    };
   }
 
   // Vision Factories (REPLAY)

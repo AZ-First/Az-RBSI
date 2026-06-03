@@ -159,6 +159,6 @@ public class CurrentLimitTests implements AutoCloseable {
     do {
       finalCode = toApply.get();
     } while (!finalCode.isOK() && --triesLeftOver > 0);
-    assert (finalCode.isOK());
+    assertTrue(finalCode.isOK(), "Config apply failed: " + finalCode);
   }
 }

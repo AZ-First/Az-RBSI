@@ -134,7 +134,7 @@ public final class Constants {
     //   frame.
     public static final Rotation3d kRioOrientation =
         switch (getRobot()) {
-          case COMPBOT -> new Rotation3d(0, 0, -90);
+          case COMPBOT -> new Rotation3d(0, 0, Units.degreesToRadians(-90));
           case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
           default -> Rotation3d.kZero;
         };

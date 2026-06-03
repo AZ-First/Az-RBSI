@@ -21,8 +21,7 @@ public class RobotContainerTest {
     try {
       new RobotContainer();
     } catch (Exception e) {
-      e.printStackTrace();
-      fail("Failed to instantiate RobotContainer, see stack trace above.");
+      fail("Failed to instantiate RobotContainer.", e);
     }
   }
 }
