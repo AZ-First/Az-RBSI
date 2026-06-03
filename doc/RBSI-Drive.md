@@ -161,11 +161,22 @@ Recommended order:
 
 Driver feel is shaped by:
 
+- `OperatorConstants.kDriveStyle`
 - `OperatorConstants.kJoystickDeadband`
 - `OperatorConstants.kTurnSensitivity`
 - `OperatorConstants.kJoystickSlewRateLimit`
 - `DrivebaseConstants.kMaxLinearSpeedMetersPerSec`
 - `DrivebaseConstants.kMaxLinearAccelMetersPerSecSq`
+
+RBSI supports two driver stick layouts:
+
+- `TANK`: left stick drives the robot forward/back and left/right; right stick turns the robot.
+- `GAMER`: right stick drives the robot forward/back and left/right; left stick turns the robot.
+
+`OperatorConstants.kDriveStyle` sets the boot/default layout. `RobotContainer` also publishes a
+`Drive Style` dashboard chooser with the same options, so a team can swap between driver
+preferences without recompiling or redeploying code. Change the chooser before driving, then verify
+forward, strafe, and turn on blocks or at low speed before full-speed practice.
 
 Tune these with drivers on carpet. A robot that feels good on blocks or on a
 shop floor may feel different on event carpet.

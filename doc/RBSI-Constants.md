@@ -146,7 +146,10 @@ logging need and have verified that the extra sampling work is worth it.
 
 Tune this section with drivers:
 
-- Set `kDriveStyle` to match team preference.
+- Set `kDriveStyle` to the preferred boot/default drive style. `TANK` uses the left stick for
+  translation and the right stick for turning; `GAMER` uses the right stick for translation and the
+  left stick for turning. RBSI also exposes this choice as the `Drive Style` dashboard chooser, so
+  teams can switch between drivers without recompiling or redeploying.
 - Adjust `kJoystickDeadband` until joystick drift disappears without making the robot feel numb.
 - Adjust `kTurnSensitivity` and `kJoystickSlewRateLimit` after real driver practice.
 - Adjust `kRobotRelativeNudgeSpeedMetersPerSec` to change the POV nudge speed from a single place.

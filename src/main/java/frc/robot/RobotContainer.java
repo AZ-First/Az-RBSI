@@ -60,7 +60,6 @@ import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.Alert;
 import frc.robot.util.Alert.AlertType;
-import frc.robot.util.GetJoystickValue;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSICANBusRegistry;
@@ -265,9 +264,15 @@ public class RobotContainer {
             "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
     }
 
-    // Get drive style from the Dashboard Chooser
-    driveStyle.addDefaultOption("TANK", DriveStyle.TANK);
-    driveStyle.addOption("GAMER", DriveStyle.GAMER);
+    // Get drive style from the Dashboard Chooser. The constant controls the boot default, and the
+    // dashboard chooser lets teams swap stick layouts between drivers without recompiling.
+    driveStyle.addDefaultOption(
+        OperatorConstants.kDriveStyle.name(), OperatorConstants.kDriveStyle);
+    for (DriveStyle style : DriveStyle.values()) {
+      if (style != OperatorConstants.kDriveStyle) {
+        driveStyle.addOption(style.name(), style);
+      }
+    }
 
     // Define SysIs Routines
     definesysIdRoutines();
@@ -289,31 +294,10 @@ public class RobotContainer {
    */
   private void configureBindings() {
 
-    // Send the proper joystick input based on driver preference -- Set this in `Constants.java`
-    GetJoystickValue driveStickY;
-    GetJoystickValue driveStickX;
-    GetJoystickValue turnStickX;
-    // OPTIONAL: Use the DashboardChooser rather than the Constants file for Drive Style
-    // switch (driveStyle.get()) {
-    switch (OperatorConstants.kDriveStyle) {
-      case GAMER:
-        driveStickY = driverController::getRightY;
-        driveStickX = driverController::getRightX;
-        turnStickX = driverController::getLeftX;
-        break;
-      default: // Includes case TANK
-        driveStickY = driverController::getLeftY;
-        driveStickX = driverController::getLeftX;
-        turnStickX = driverController::getRightX;
-    }
-
     // SET STANDARD DRIVING AS DEFAULT COMMAND FOR THE DRIVEBASE
     m_drivebase.setDefaultCommand(
         DriveCommands.fieldRelativeDrive(
-            m_drivebase,
-            () -> -driveStickY.value(),
-            () -> -driveStickX.value(),
-            () -> -turnStickX.value()));
+            m_drivebase, () -> -getDriveStickY(), () -> -getDriveStickX(), () -> -getTurnStickX()));
 
     // ** Example Commands -- Remap, remove, or change as desired **
     // Press B button while driving --> ROBOT-CENTRIC
@@ -322,9 +306,9 @@ public class RobotContainer {
         .whileTrue(
             DriveCommands.robotRelativeDrive(
                 m_drivebase,
-                () -> -driveStickY.value(),
-                () -> -driveStickX.value(),
-                () -> -turnStickX.value()));
+                () -> -getDriveStickY(),
+                () -> -getDriveStickX(),
+                () -> -getTurnStickX()));
 
     // Press A button -> BRAKE
     driverController.a().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
@@ -614,5 +598,31 @@ public class RobotContainer {
     // scoreTraj.done().onTrue(scoringSubsystem.score());
 
     return routine;
+  }
+
+  private DriveStyle getSelectedDriveStyle() {
+    DriveStyle selected = driveStyle.get();
+    return selected != null ? selected : OperatorConstants.kDriveStyle;
+  }
+
+  private double getDriveStickY() {
+    return switch (getSelectedDriveStyle()) {
+      case GAMER -> driverController.getRightY();
+      case TANK -> driverController.getLeftY();
+    };
+  }
+
+  private double getDriveStickX() {
+    return switch (getSelectedDriveStyle()) {
+      case GAMER -> driverController.getRightX();
+      case TANK -> driverController.getLeftX();
+    };
+  }
+
+  private double getTurnStickX() {
+    return switch (getSelectedDriveStyle()) {
+      case GAMER -> driverController.getLeftX();
+      case TANK -> driverController.getRightX();
+    };
   }
 }

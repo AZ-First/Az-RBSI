@@ -182,7 +182,8 @@ public class Robot extends LoggedRobot {
     m_robotContainer.getDrivebase().resetHeadingController();
     m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
-    // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
+    // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
+    // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
     m_autonomousCommand =
         switch (Constants.getAutoType()) {
           case MANUAL -> m_robotContainer.getManualAuto();
