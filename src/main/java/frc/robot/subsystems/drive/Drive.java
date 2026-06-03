@@ -21,7 +21,6 @@ import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import choreo.trajectory.SwerveSample;
-import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
@@ -252,7 +251,7 @@ public class Drive extends RBSISubsystem {
         break;
 
       case CHOREO:
-        // TODO: If your team is using Choreo, you'll know what to do here...
+        // Choreo autos are configured in RobotContainer through AutoFactory.
         break;
 
       case MANUAL:
@@ -980,11 +979,6 @@ public class Drive extends RBSISubsystem {
     resetPose(pose);
   }
 
-  /** Swerve request to apply during field-centric path following */
-  @SuppressWarnings("unused")
-  private final SwerveRequest.ApplyFieldSpeeds m_pathApplyFieldSpeeds =
-      new SwerveRequest.ApplyFieldSpeeds();
-
   // Choreo Controller Values
   private final PIDController m_pathXController =
       new PIDController(
@@ -1015,11 +1009,7 @@ public class Drive extends RBSISubsystem {
     targetSpeeds.omegaRadiansPerSecond +=
         m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading);
 
-    // setControl(
-    //     m_pathApplyFieldSpeeds
-    //         .withSpeeds(targetSpeeds)
-    //         .withWheelForceFeedforwardsX(sample.moduleForcesX())
-    //         .withWheelForceFeedforwardsY(sample.moduleForcesY()));
+    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds, getHeading()));
   }
 
   public void followTrajectory(SwerveSample sample) {

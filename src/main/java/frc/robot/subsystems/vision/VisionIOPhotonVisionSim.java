@@ -26,9 +26,6 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
 
   private final Supplier<Pose2d> poseSupplier;
 
-  @SuppressWarnings("unused")
-  private final PhotonCameraSim cameraSim;
-
   /**
    * Creates a new VisionIOPhotonVisionSim.
    *
@@ -63,7 +60,7 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
       visionSim.addAprilTags(FieldConstants.aprilTagLayout);
     }
 
-    cameraSim = new PhotonCameraSim(camera, cameraProperties);
+    PhotonCameraSim cameraSim = new PhotonCameraSim(camera, cameraProperties);
     visionSim.addCamera(cameraSim, robotToCamera);
   }
 

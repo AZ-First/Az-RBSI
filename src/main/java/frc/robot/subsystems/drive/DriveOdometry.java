@@ -187,7 +187,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       // ----------------------------------------------------------------------
       final double[] lastDist = new double[4];
       boolean haveLastDist = false;
-      final boolean logDebug = Constants.kTuningMode;
+      final boolean logDebug = Constants.isTuningMode();
 
       for (int i = 0; i < n; i++) {
         final double t = ts[i];

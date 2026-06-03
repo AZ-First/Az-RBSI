@@ -75,7 +75,7 @@ public class ModuleIOSim implements ModuleIO {
     }
 
     if (turnClosedLoop) {
-      // TODO: turn PID has no feedforward or inertia compensation; fix
+      // Simple angle loop for module simulation; real feedforward is handled by hardware IO.
       turnAppliedVolts = turnController.calculate(turnSim.getAngularPositionRad());
     } else {
       turnController.reset();

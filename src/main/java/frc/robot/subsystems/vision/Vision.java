@@ -140,7 +140,7 @@ public class Vision extends VirtualSubsystem {
     boolean hasAcceptedThisLoop = false;
     boolean hasFusedThisLoop = false;
     boolean hasSmoothedThisLoop = false;
-    final boolean tuningMode = Constants.kTuningMode;
+    final boolean tuningMode = Constants.isTuningMode();
 
     try {
 
@@ -510,7 +510,7 @@ public class Vision extends VirtualSubsystem {
     angularStdDev = Math.max(angularStdDev, kAngularStdDevBaseline);
 
     // Output logs for tuning
-    if (Constants.kTuningMode) {
+    if (Constants.isTuningMode()) {
       Logger.recordOutput("Vision/Camera" + cam + "/InjectedFracTrusted", fracTrusted);
       Logger.recordOutput("Vision/Camera" + cam + "/Dbg_linearStdDev", linearStdDev);
       Logger.recordOutput("Vision/Camera" + cam + "/Dbg_angularStdDev", angularStdDev);
@@ -744,7 +744,7 @@ public class Vision extends VirtualSubsystem {
       Pose2d alignedPose = timeAlignPose(e.pose(), e.timestampSeconds(), tFusion);
       if (alignedPose == null) continue;
       aligned.add(new TimedPose(alignedPose, tFusion, e.stdDevs()));
-      if (Constants.kTuningMode) {
+      if (Constants.isTuningMode()) {
         Logger.recordOutput("Vision/Debug/deltaTime", tFusion - e.timestampSeconds());
       }
     }

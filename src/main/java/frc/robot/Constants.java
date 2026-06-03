@@ -297,8 +297,8 @@ public final class Constants {
     // Characterized Wheel Radius (using the "Drive Wheel Radius Characterization" auto routine)
     public static final double kWheelRadiusMeters = Inches.of(2.000).in(Meters);
 
-    // Maximum chassis accelerations desired for robot motion  -- metric / radians
-    // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
+    // Maximum chassis accelerations desired for robot motion -- metric / radians.
+    // Estimate from drivetrain characterization and robot physics, then tune on carpet.
     public static final double kMaxLinearAccelMetersPerSecSq = 4.0;
 
     // For Profiled PID Motion -- NEED TUNING!
@@ -597,6 +597,11 @@ public final class Constants {
   public static boolean isPureSim() {
     boolean isReplay = Logger.hasReplaySource();
     return getMode() == Mode.SIM && !isReplay;
+  }
+
+  /** Return whether live tuning/debug logging is enabled. */
+  public static boolean isTuningMode() {
+    return kTuningMode;
   }
 
   /** Get the current swerve drive type */
