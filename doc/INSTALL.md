@@ -1,28 +1,31 @@
 # Az-RBSI Installation Instructions
 
-### Pre install
-Before you even think about Az-RBSI,  you need these _minimum_ versions of the
+### Pre-Install
+Before you even think about Az-RBSI, you need these _minimum_ versions of the
 following components on your laptop and devices.
 
-* WPILib ` v2026.2.1`
+* WPILib `v2026.2.1`
 * RoboRIO image `FRC_roboRIO_2026_v1.2` (comes with the FRC Game Tools from
   National Instruments)
 * Driver Station `Version 26.0` (comes with the FRC Game Tools from National
   Instruments)
-* CTRE Tunner X `26.2.4.0`, with all devices running firmware  `26.0` or newer.
-  This includes all motors, CANivore, Pigeon 2.0, and all CANcoders!
-* Rev Hardware Client `2.0`, with the PDH and all SparkMax's, and other devices
+* CTRE Tuner X `26.2.4.0`, with all devices running firmware `26.0` or newer.
+  This includes all motors, CANivore, Pigeon 2.0, and all CANcoders.
+* REV Hardware Client `2.0`, with the PDH, all SPARK MAXs, and other devices
   running firmware `26.1` or newer.
 * Vivid Hosting Radio firmware `2.0.1` or newer is required for competition this
   year.
 * Photon Vision ([Orange Pi or other device](https://docs.photonvision.org/en/latest/docs/quick-start/quick-install.html))
-  **running `26.1` or newer** (make sure you are **not** acidentially running
-  `25.3`).  We HIGHLY recomend downloading the image and re-imaging the SD Card
-  in your co-processor instead of trying to upgrade it.
+  **running `26.1` or newer** (make sure you are **not** accidentally running
+  `25.3`). We strongly recommend downloading the image and re-imaging the SD
+  card in your co-processor instead of trying to upgrade it.
 
-It is highly recommmended to update all you devices, and label what can id's or ip adresses and firmware versions they are running. This helps your team, and the FRC field staff quickly identify issues.
+Update all of your devices and label each device with its CAN ID or IP address
+and firmware version. This helps your team and FRC field staff identify issues
+quickly.
 
-If you are running a RoboRIO 1.0 (no sd card) you also neeed to disable the web server ([Instructions Here](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/roborio-team-number-setter/index.html))
+If you are running a RoboRIO 1.0 (no SD card), you also need to disable the web
+server ([instructions here](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/roborio-team-number-setter/index.html)).
 
 --------
 
@@ -40,12 +43,13 @@ already have a GitHub account where you will store your 2026 FRC robot code.
 
 ### Creating a 2026 FRC project from the Az-RBSI Template
 
-From the [Az-RBSI GiuHub page](https://github.com/AZ-First/Az-RBSI/), click the
+From the [Az-RBSI GitHub page](https://github.com/AZ-First/Az-RBSI/), click the
 "Use this template" button in the upper right corner of the page.
 
 In the page that opens, select the Owner (most likely your team's account) and
 Repository name (*e.g.*, "FRC-2026" or "REBUILT Robot Code" or whatever your
-team's naming convention is) into which the create the new robot project.
+team's naming convention is) into which GitHub will create the new robot
+project.
 Optionally, include a description of the repository for your reference.  Select
 "public" or "private" repository based on the usual practices of your team.
 
@@ -56,7 +60,8 @@ If you want to keep caught up on dependencies, you will need to ENABLE the
 Dependency Graph selection under the "Advanced Security" tab of the repository
 Settings.
 
-* If you are struggling with this step, you may need the mentor or teacher that owns your github org to to it.
+* If you are struggling with this step, you may need the mentor or teacher who
+  owns your GitHub organization to do it.
 
 <img src="dependency_enable.png" alt="Enable Dependency Graph" width="50%" />
 
@@ -73,8 +78,6 @@ https://www.ni.com/en/support/downloads/drivers/download.frc-game-tools.html)
 https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html).  Take a
 moment to update all software and firmware to the latest versions before
 attempting to load your new robot project.
-
-
 
 --------
 
@@ -127,6 +130,11 @@ steps you need to complete:
    `kDriveInertia` to `0.025` to allow the AdvantageKit simulation code to
    operate as expected.
 
+7. Open [RBSI-Constants.md](RBSI-Constants.md) and work through the sections
+   that match your robot. At minimum, verify `RobotDevices`,
+   `DrivebaseConstants`, `OperatorConstants`, `AutoConstants`, and
+   `VisionConstants` before your first serious drive test.
+
 
 **NOTE:** If you have any other combination of hardware (including REV NEOs,
 NavX IMU, etc.) you will need to use the [YAGSL Swerve Configurator](
@@ -139,9 +147,11 @@ repository](https://github.com/AZ-First/Az-RBSI).
 
 --------
 
-### Getting Started with your Robot Code
+### Getting Started with Your Robot Code
 
-See the Az-RBSI [Getting Started Guide](RBSI-GSG.md) for next steps.
+See the Az-RBSI [Getting Started Guide](RBSI-GSG.md) for next steps. The
+[documentation index](README.md) also links the drivetrain, vision, autonomous,
+constants, pose-buffer, and SysId guides.
 
 --------
 

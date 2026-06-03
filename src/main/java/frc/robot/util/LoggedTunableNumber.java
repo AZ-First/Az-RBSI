@@ -129,6 +129,6 @@ public class LoggedTunableNumber implements DoubleSupplier {
   }
 
   private static boolean isTuningMode() {
-    return Constants.tuningMode;
+    return Constants.kTuningMode;
   }
 }

@@ -497,17 +497,29 @@ public class RobotContainer {
 
       // Example Flywheel SysId Characterization
       autoChooserPathPlanner.addOption(
-          "Flywheel SysId (Quasistatic Forward)",
-          m_flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+          "Flywheel SysId Voltage (Quasistatic Forward)",
+          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward));
       autoChooserPathPlanner.addOption(
-          "Flywheel SysId (Quasistatic Reverse)",
-          m_flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+          "Flywheel SysId Voltage (Quasistatic Reverse)",
+          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kReverse));
       autoChooserPathPlanner.addOption(
-          "Flywheel SysId (Dynamic Forward)",
-          m_flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
+          "Flywheel SysId Voltage (Dynamic Forward)",
+          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kForward));
       autoChooserPathPlanner.addOption(
-          "Flywheel SysId (Dynamic Reverse)",
-          m_flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+          "Flywheel SysId Voltage (Dynamic Reverse)",
+          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse));
+      autoChooserPathPlanner.addOption(
+          "Flywheel SysId Duty Cycle (Quasistatic Forward)",
+          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward));
+      autoChooserPathPlanner.addOption(
+          "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
+          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kReverse));
+      autoChooserPathPlanner.addOption(
+          "Flywheel SysId Duty Cycle (Dynamic Forward)",
+          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kForward));
+      autoChooserPathPlanner.addOption(
+          "Flywheel SysId Duty Cycle (Dynamic Reverse)",
+          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse));
     }
   }
 

@@ -19,12 +19,13 @@ modifications to extant RBSI code will be done to files within the
    for `CommandXboxController` near the top of the `RobotContainer.java` file.
 
 2. **Robot Project Constants**: All of the configurable values for your robot
-   will be in the ``Constants.java`` file.  This file contains the outer
-   ``Constants`` class with various high-level configuration variables such as
-   ``swerveType``, ``autoType``, ``visionType``, and whether your team has
-   purchased a [CTRE Pro license](https://v6.docs.ctr-electronics.com/en/stable/docs/licensing/team-licensing.html)
+   will be in the `Constants.java` file. This file contains the outer
+   `Constants` class with high-level configuration variables such as
+   `swerveType`, `autoType`, `visionType`, and whether your team has purchased
+   a [CTRE Pro license](https://v6.docs.ctr-electronics.com/en/stable/docs/licensing/team-licensing.html)
    for unlocking some of the more advanced communication and control features
-   available for CTRE devices.
+   available for CTRE devices. See [RBSI-Constants.md](RBSI-Constants.md) for
+   a field-by-field guide to the constants file.
 
 3. **Robot Physical Constants**: The next four classes in ``Constants.java``
    contain information about the robot's physical characteristics, power
@@ -67,8 +68,8 @@ field.**
 
 6. In the `Constants.java` file, the classes following `RobotDevices` contain
    individual containers for robot subsystems and interaction methods.  The
-   `OperatorConstants` class determines how the OPERATOR interacts with the
-   robot.  `DriveBaseConstants` and `FlywheelConstants` (and additional classes
+   `OperatorConstants` class determines how the operator interacts with the
+   robot.  `DrivebaseConstants` and `FlywheelConstants` (and additional classes
    you add for your own mechanisms) contain human-scale conversions and limits
    for the subsystem (_e.g._, maximum speed, gear ratios, PID constants, etc.).
    `AutoConstants` contains the values needed for your autonomous period method
@@ -95,6 +96,18 @@ Additionally, both [PhotonVision](https://docs.photonvision.org/en/latest/) and
 [Limelight](
 https://docs.limelightvision.io/docs/docs-limelight/getting-started/summary)
 computer vision systems are supported in the present release.
+
+For deeper subsystem bring-up, use these pages after the first compile and
+deploy:
+
+* [RBSI-Drive.md](RBSI-Drive.md): swerve configuration, odometry ordering, pose
+  buffers, and drive characterization.
+* [RBSI-Vision.md](RBSI-Vision.md): PhotonVision and Limelight configuration,
+  camera transforms, observation filtering, and simulation.
+* [RBSI-Autonomous.md](RBSI-Autonomous.md): Manual, PathPlanner, Choreo, and
+  Autopilot autonomous workflows.
+* [RBSI-SysId.md](RBSI-SysId.md): example flywheel SysId routines and how to use
+  the generated gains.
 
 --------
 
@@ -132,21 +145,23 @@ section of [each release](https://github.com/AZ-First/Az-RBSI/releases).
 
    See the [PhotonVision Wiring documentation
    ](https://docs.photonvision.org/en/latest/docs/quick-start/wiring.html) for
-   more details. DO NOT put the orange pi's (or any devices that cannnot loose power) on port 23 of the PDH. It is a mechanical switch, and if the robot is hit, it briefly will loose power.
+   more details. Do not put the Orange Pis, radio, or any device that cannot
+   lose power on port 23 of the REV PDH. Port 23 is switched, and a robot impact
+   can briefly interrupt power.
 
    Mounting the case to the robot requires 4x #10-32 nylock nuts (placed in the
    hex-shaped mounts inside the case) and 4x #10-32 bolts.
 
-   Order of addembly of the Orange Pi Double Case matters given tight clearances:
+   Order of assembly of the Orange Pi Double Case matters given tight clearances:
    1. Super-glue the nylock nuts into the hex mounting holes.
-   2. Intall the fans and grates into the case side.
-   3. Assemble the Pi's into the standoffs outside the box.
-   4. Solder / mount the Voltage Regular solution of your choice.
+   2. Install the fans and grates into the case side.
+   3. Assemble the Pis into the standoffs outside the box.
+   4. Solder or mount the voltage regulator solution of your choice.
    5. Connect the USB-C power cables to the Pi's.
    6. Connect the fan power to the 5V (red) and GND (black) pins in the Pi's.
    7. Install the Pi/standoff assembly into the case using screws at the bottom,
       be careful of the tight clearance between the USB sockets and the case opening.
-   8. Tie a knot in the incoing power line _to be placed inside the box
+   8. Tie a knot in the incoming power line _to be placed inside the box
       for strain relief_, and pass the incoming power line through the notch
       in the lower case.
    9. Install the cover on the box using screws.

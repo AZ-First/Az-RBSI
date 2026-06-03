@@ -70,15 +70,15 @@ public class Accelerometer extends VirtualSubsystem {
     // Compute RIO accelerations and jerks
     rawRio =
         new Translation3d(
-            rioInputs.xG * Constants.G_TO_MPS2,
-            rioInputs.yG * Constants.G_TO_MPS2,
-            rioInputs.zG * Constants.G_TO_MPS2);
+            rioInputs.xG * Constants.kGravityMetersPerSecSq,
+            rioInputs.yG * Constants.kGravityMetersPerSecSq,
+            rioInputs.zG * Constants.kGravityMetersPerSecSq);
     rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation);
 
     Translation3d rioJerkThisLoop =
         prevRioAcc == null
             ? Translation3d.kZero
-            : rioAcc.minus(prevRioAcc).div(Constants.loopPeriodSecs);
+            : rioAcc.minus(prevRioAcc).div(Constants.kLoopPeriodSecs);
     prevRioAcc = rioAcc;
 
     // IMU accelerations and jerks

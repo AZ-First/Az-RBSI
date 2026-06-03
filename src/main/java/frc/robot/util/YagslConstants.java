@@ -33,7 +33,7 @@ public class YagslConstants {
 
   // Define the internal YAGSL objects we will read into
   private static final File yagslDir =
-      new File(Filesystem.getDeployDirectory(), DeployConstants.yagslDir);
+      new File(Filesystem.getDeployDirectory(), DeployConstants.kYagslDir);
   public static final SwerveDriveJson swerveDriveJson; // Needed by the Accelerometer subsystem
   private static final PIDFPropertiesJson pidfPropertiesJson;
   private static final PhysicalPropertiesJson physicalPropertiesJson;

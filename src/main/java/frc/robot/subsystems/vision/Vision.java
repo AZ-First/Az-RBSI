@@ -398,11 +398,11 @@ public class Vision extends VirtualSubsystem {
     if (obs.tagCount() <= 0) return new GateResult(false, "no tags");
 
     // Single-tag ambiguity gate
-    if (obs.tagCount() == 1 && obs.ambiguity() > maxAmbiguity)
+    if (obs.tagCount() == 1 && obs.ambiguity() > kMaxAmbiguity)
       return new GateResult(false, "highly ambiguous");
 
     // Z sanity
-    if (Math.abs(obs.pose().getZ()) > maxZError) return new GateResult(false, "z not sane");
+    if (Math.abs(obs.pose().getZ()) > kMaxZErrorMeters) return new GateResult(false, "z not sane");
 
     // Field bounds
     Pose3d p = obs.pose();
@@ -450,13 +450,13 @@ public class Vision extends VirtualSubsystem {
     // Camera uncertainty factor
     final double camFactor = (cam < camConfigs.length) ? camConfigs[cam].stdDevFactor() : 1.0;
 
-    double linearStdDev = linearStdDevBaseline * camFactor * distFactor;
-    double angularStdDev = angularStdDevBaseline * camFactor * distFactor;
+    double linearStdDev = kLinearStdDevBaseline * camFactor * distFactor;
+    double angularStdDev = kAngularStdDevBaseline * camFactor * distFactor;
 
     // MegaTag2 bonus if applicable
     if (obs.type() == PoseObservationType.MEGATAG_2) {
-      linearStdDev *= linearStdDevMegatag2Factor;
-      angularStdDev *= angularStdDevMegatag2Factor;
+      linearStdDev *= kLinearStdDevMegatag2Factor;
+      angularStdDev *= kAngularStdDevMegatag2Factor;
     }
 
     // Trusted tag blending
@@ -482,8 +482,8 @@ public class Vision extends VirtualSubsystem {
     linearStdDev *= trustScale;
     angularStdDev *= trustScale;
 
-    linearStdDev = Math.max(linearStdDev, linearStdDevBaseline);
-    angularStdDev = Math.max(angularStdDev, angularStdDevBaseline);
+    linearStdDev = Math.max(linearStdDev, kLinearStdDevBaseline);
+    angularStdDev = Math.max(angularStdDev, kAngularStdDevBaseline);
 
     // Output logs for tuning
     Logger.recordOutput("Vision/Camera" + cam + "/InjectedFracTrusted", fracTrusted);

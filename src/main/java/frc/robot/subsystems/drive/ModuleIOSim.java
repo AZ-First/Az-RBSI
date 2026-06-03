@@ -86,8 +86,8 @@ public class ModuleIOSim implements ModuleIO {
     turnSim.setInputVoltage(MathUtil.clamp(turnAppliedVolts, -12.0, 12.0));
 
     // Advance physics
-    driveSim.update(Constants.loopPeriodSecs);
-    turnSim.update(Constants.loopPeriodSecs);
+    driveSim.update(Constants.kLoopPeriodSecs);
+    turnSim.update(Constants.kLoopPeriodSecs);
   }
 
   @Override

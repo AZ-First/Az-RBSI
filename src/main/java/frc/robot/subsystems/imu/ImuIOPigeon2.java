@@ -97,9 +97,9 @@ public class ImuIOPigeon2 implements ImuIO {
     // Accel: Phoenix returns "g" for these signals; convert to m/s/s
     inputs.linearAccel =
         new Translation3d(
-            accelX.getValueAsDouble() * Constants.G_TO_MPS2,
-            accelY.getValueAsDouble() * Constants.G_TO_MPS2,
-            accelZ.getValueAsDouble() * Constants.G_TO_MPS2);
+            accelX.getValueAsDouble() * Constants.kGravityMetersPerSecSq,
+            accelY.getValueAsDouble() * Constants.kGravityMetersPerSecSq,
+            accelZ.getValueAsDouble() * Constants.kGravityMetersPerSecSq);
 
     // Jerk computed as (delta accel) / dt
     if (prevTimestampNs != 0L) {

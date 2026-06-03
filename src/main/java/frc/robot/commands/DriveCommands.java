@@ -157,7 +157,8 @@ public class DriveCommands {
    */
   private static Translation2d getLinearVelocity(double x, double y) {
     // Apply deadband
-    double linearMagnitude = MathUtil.applyDeadband(Math.hypot(x, y), OperatorConstants.kDeadband);
+    double linearMagnitude =
+        MathUtil.applyDeadband(Math.hypot(x, y), OperatorConstants.kJoystickDeadband);
     Rotation2d linearDirection = new Rotation2d(Math.atan2(y, x));
 
     // Square magnitude for more precise control
@@ -175,7 +176,7 @@ public class DriveCommands {
    * smoothness. Also apply the angular Slew Rate Limiter.
    */
   private static double getOmega(double omega) {
-    omega = MathUtil.applyDeadband(omega, OperatorConstants.kDeadband);
+    omega = MathUtil.applyDeadband(omega, OperatorConstants.kJoystickDeadband);
     return Math.copySign(omega * omega, omega);
   }
 

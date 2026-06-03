@@ -30,7 +30,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
   // private final LoggedPowerDistribution m_pdm =
-  //     LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+  //     LoggedPowerDistribution.getInstance(PowerConstants.kPdmCanId, PowerConstants.kPdmType);
   ConduitApi conduit = ConduitApi.getInstance();
 
   // Define local variables
@@ -88,12 +88,13 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     double totalCurrent = conduit.getPDPTotalCurrent();
 
     // --- Safety alerts ---
-    totalCurrentAlert.set(totalCurrent > PowerConstants.kTotalMaxCurrent);
-    lowVoltageAlert.set(voltage < PowerConstants.kVoltageWarning);
-    criticalVoltageAlert.set(voltage < PowerConstants.kVoltageCritical);
+    totalCurrentAlert.set(totalCurrent > PowerConstants.kTotalMaxCurrentAmps);
+    lowVoltageAlert.set(voltage < PowerConstants.kWarningVoltage);
+    criticalVoltageAlert.set(voltage < PowerConstants.kCriticalVoltage);
 
     for (int ch = 0; ch < Math.min(conduit.getPDPChannelCount(), portAlerts.length); ch++) {
-      portAlerts[ch].set(conduit.getPDPChannelCurrent(ch) > PowerConstants.kMotorPortMaxCurrent);
+      portAlerts[ch].set(
+          conduit.getPDPChannelCurrent(ch) > PowerConstants.kMotorPortMaxCurrentAmps);
     }
 
     // --- Battery estimation ---
@@ -126,7 +127,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     Logger.recordOutput("Power/EnergyWh", totalEnergyJoules / 3600.0);
 
     // --- Brownout prediction ---
-    boolean brownoutImminent = voltage < PowerConstants.kVoltageLimiting;
+    boolean brownoutImminent = voltage < PowerConstants.kLimitingVoltage;
     Logger.recordOutput("Power/BrownoutImminent", brownoutImminent);
 
     // --- Optional hooks for current shedding ---

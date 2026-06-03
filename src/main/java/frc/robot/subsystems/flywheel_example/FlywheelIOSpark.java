@@ -55,7 +55,7 @@ public class FlywheelIOSpark implements FlywheelIO {
   public final int[] powerPorts = {
     FLYWHEEL_LEADER.getPowerPort(), FLYWHEEL_FOLLOWER.getPowerPort()
   };
-  private final SimpleMotorFeedforward ff = new SimpleMotorFeedforward(kSreal, kVreal, kAreal);
+  private final SimpleMotorFeedforward ff = new SimpleMotorFeedforward(kRealS, kRealV, kRealA);
 
   @Override
   public int[] powerPorts() {
@@ -68,47 +68,57 @@ public class FlywheelIOSpark implements FlywheelIO {
     var leaderConfig = new SparkFlexConfig();
     leaderConfig
         .idleMode(
-            switch (kFlywheelIdleMode) {
+            switch (kIdleMode) {
               case COAST -> IdleMode.kCoast;
               case BRAKE -> IdleMode.kBrake;
             })
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     leaderConfig.encoder.uvwMeasurementPeriod(10).uvwAverageDepth(2);
     leaderConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(kPreal, 0.0, kDreal)
+        .pid(kRealP, 0.0, kRealD)
         .feedForward
-        .kS(kSreal)
-        .kV(kVreal)
-        .kA(kAreal);
+        .kS(kRealS)
+        .kV(kRealV)
+        .kA(kRealA);
     leaderConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
         .primaryEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .primaryEncoderVelocityAlwaysOn(true)
-        .primaryEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+        .primaryEncoderVelocityPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.));
     leaderConfig
-        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
-        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriodSecs)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriodSecs);
     SparkUtil.tryUntilOk(
         leader,
         5,
         () ->
             leader.configure(
                 leaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+
+    var followerConfig = new SparkFlexConfig();
+    followerConfig.follow(leader);
+    SparkUtil.tryUntilOk(
+        follower,
+        5,
+        () ->
+            follower.configure(
+                followerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+
     SparkUtil.tryUntilOk(leader, 5, () -> encoder.setPosition(0.0));
   }
 
   @Override
   public void updateInputs(FlywheelIOInputs inputs) {
-    inputs.positionRad = Units.rotationsToRadians(encoder.getPosition() / kFlywheelGearRatio);
+    inputs.positionRad = Units.rotationsToRadians(encoder.getPosition() / kGearRatio);
     inputs.velocityRadPerSec =
-        Units.rotationsPerMinuteToRadiansPerSecond(encoder.getVelocity() / kFlywheelGearRatio);
+        Units.rotationsPerMinuteToRadiansPerSecond(encoder.getVelocity() / kGearRatio);
     inputs.appliedVolts = leader.getAppliedOutput() * leader.getBusVoltage();
     inputs.currentAmps = new double[] {leader.getOutputCurrent(), follower.getOutputCurrent()};
 
@@ -126,10 +136,15 @@ public class FlywheelIOSpark implements FlywheelIO {
   }
 
   @Override
+  public void setPercent(double percent) {
+    leader.set(percent);
+  }
+
+  @Override
   public void setVelocity(double velocityRadPerSec) {
     double ffVolts = ff.calculate(velocityRadPerSec);
     pid.setSetpoint(
-        Units.radiansPerSecondToRotationsPerMinute(velocityRadPerSec) * kFlywheelGearRatio,
+        Units.radiansPerSecondToRotationsPerMinute(velocityRadPerSec) * kGearRatio,
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
         ffVolts,

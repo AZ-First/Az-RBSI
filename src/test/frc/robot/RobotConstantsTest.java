@@ -2,6 +2,7 @@ package frc.robot;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import frc.robot.subsystems.drive.SwerveConstants;
 import org.junit.jupiter.api.Test;
@@ -41,5 +42,46 @@ class RobotConstantsTest {
         FieldConstants.defaultAprilTagType.getLayout().getTags().size(),
         FieldConstants.aprilTagCount);
     assertNotNull(FieldConstants.defaultAprilTagType.getLayoutString());
+  }
+
+  @Test
+  void constantsDoNotExposeLegacyAliasNames() {
+    assertMissing(Constants.class, "loopPeriodSecs");
+    assertMissing(Constants.class, "tuningMode");
+    assertMissing(Constants.class, "G_TO_MPS2");
+
+    assertMissing(Constants.RobotConstants.class, "kRobotMass");
+    assertMissing(Constants.RobotConstants.class, "kRobotMOI");
+    assertMissing(Constants.RobotConstants.class, "kWheelCOF");
+    assertMissing(Constants.RobotConstants.class, "kMaxWheelTorque");
+
+    assertMissing(Constants.PowerConstants.class, "kPDMType");
+    assertMissing(Constants.PowerConstants.class, "kPDMCANid");
+    assertMissing(Constants.PowerConstants.class, "kTotalMaxCurrent");
+    assertMissing(Constants.PowerConstants.class, "kMotorPortMaxCurrent");
+    assertMissing(Constants.PowerConstants.class, "kVoltageWarning");
+
+    assertMissing(Constants.DrivebaseConstants.class, "kMaxLinearSpeed");
+    assertMissing(Constants.DrivebaseConstants.class, "kPStrafe");
+    assertMissing(Constants.DrivebaseConstants.class, "kPSPin");
+    assertMissing(Constants.DrivebaseConstants.class, "kWheelLockTime");
+    assertMissing(Constants.DrivebaseConstants.class, "kHistorySize");
+
+    assertMissing(Constants.FlywheelConstants.class, "kFlywheelGearRatio");
+    assertMissing(Constants.FlywheelConstants.class, "kSreal");
+    assertMissing(Constants.FlywheelConstants.class, "kPsim");
+
+    assertMissing(Constants.VisionConstants.class, "maxAmbiguity");
+    assertMissing(Constants.VisionConstants.class, "linearStdDevBaseline");
+
+    assertMissing(Constants.DeployConstants.class, "yagslDir");
+
+    assertMissing(Constants.OperatorConstants.class, "kDeadband");
+    assertMissing(Constants.OperatorConstants.class, "kTurnConstant");
+    assertMissing(Constants.OperatorConstants.class, "kJoystickSlewLimit");
+  }
+
+  private static void assertMissing(Class<?> constantsClass, String fieldName) {
+    assertThrows(NoSuchFieldException.class, () -> constantsClass.getDeclaredField(fieldName));
   }
 }

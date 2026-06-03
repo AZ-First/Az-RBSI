@@ -206,19 +206,19 @@ public class ModuleIOBlended implements ModuleIO {
             .withKV(DrivebaseConstants.kDriveV)
             .withKA(DrivebaseConstants.kDriveA);
     driveConfig.Feedback.SensorToMechanismRatio = SwerveConstants.kDriveGearRatio;
-    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DrivebaseConstants.kSlipCurrent;
-    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DrivebaseConstants.kSlipCurrent;
+    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DrivebaseConstants.kSlipCurrentAmps;
+    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DrivebaseConstants.kSlipCurrentAmps;
     driveConfig.CurrentLimits.StatorCurrentLimit = SwerveConstants.kDriveCurrentLimit;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
     OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
-    openRamps.DutyCycleOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
-    openRamps.VoltageOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
-    openRamps.TorqueOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
+    openRamps.DutyCycleOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriodSecs;
+    openRamps.VoltageOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriodSecs;
+    openRamps.TorqueOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriodSecs;
     ClosedLoopRampsConfigs closedRamps = new ClosedLoopRampsConfigs();
-    closedRamps.DutyCycleClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
-    closedRamps.VoltageClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
-    closedRamps.TorqueClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
+    closedRamps.DutyCycleClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriodSecs;
+    closedRamps.VoltageClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriodSecs;
+    closedRamps.TorqueClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriodSecs;
     // Apply the open- and closed-loop ramp configuration for current smoothing
     driveConfig.withClosedLoopRamps(closedRamps).withOpenLoopRamps(openRamps);
     // Set motor inversions
@@ -232,7 +232,7 @@ public class ModuleIOBlended implements ModuleIO {
         .inverted(constants.SteerMotorInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(constants.EncoderInverted)
@@ -254,13 +254,13 @@ public class ModuleIOBlended implements ModuleIO {
         .absoluteEncoderPositionAlwaysOn(true)
         .absoluteEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
-        .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+        .absoluteEncoderVelocityPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.));
     turnConfig
-        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
-        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriodSecs)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriodSecs);
 
     // Configure CANCoder
     CANcoderConfiguration cancoderConfig = constants.EncoderInitialConfigs;
@@ -393,7 +393,7 @@ public class ModuleIOBlended implements ModuleIO {
   public void setDriveOpenLoop(double output) {
     // Scale by actual battery voltage to keep full output consistent
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
 
     driveTalon.setControl(voltageRequest.withOutput(scaledOutput));
 
@@ -410,7 +410,7 @@ public class ModuleIOBlended implements ModuleIO {
   @Override
   public void setTurnOpenLoop(double output) {
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
     turnSpark.setVoltage(scaledOutput);
 
     // Log output and battery
@@ -442,7 +442,7 @@ public class ModuleIOBlended implements ModuleIO {
         Math.signum(velocityRotPerSec) * DrivebaseConstants.kDriveS
             + DrivebaseConstants.kDriveV * velocityRotPerSec
             + DrivebaseConstants.kDriveA * accelerationRotPerSec2;
-    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
     // Set the drive motor control based on CTRE LICENSED status
     driveTalon.setControl(

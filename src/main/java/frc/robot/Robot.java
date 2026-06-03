@@ -53,7 +53,7 @@ public class Robot extends LoggedRobot {
   public Robot() {
     // Record metadata
     Logger.recordMetadata("Robot", Constants.getRobot().toString());
-    Logger.recordMetadata("TuningMode", Boolean.toString(Constants.tuningMode));
+    Logger.recordMetadata("TuningMode", Boolean.toString(Constants.kTuningMode));
     Logger.recordMetadata("RuntimeType", getRuntimeType().toString());
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
@@ -93,7 +93,7 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+    LoggedPowerDistribution.getInstance(PowerConstants.kPdmCanId, PowerConstants.kPdmType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -160,7 +160,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledPeriodic() {
     // After WHEEL_LOCK_TIME has elapsed, release the drive brakes
-    if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTime)) {
+    if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTimeSecs)) {
       m_robotContainer.getDrivebase().setMotorBrake(false);
       m_disabledTimer.stop();
     }

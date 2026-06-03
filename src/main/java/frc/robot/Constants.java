@@ -70,7 +70,7 @@ public final class Constants {
 
   // Define swerve, auto, and vision types being used
   // NOTE: Only PHOENIX6 swerve base has been tested at this point!!!
-  //       If you have a swerve base with non-CTRE compoments, use YAGSL
+  //       If you have a swerve base with non-CTRE components, use YAGSL
   //       under strict caveat emptor -- and submit any error and bugfixes
   //       via GitHub issues.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
@@ -105,29 +105,29 @@ public final class Constants {
   /* The remainder of this file contains physical and/or software constants for the various subsystems of the robot */
 
   /** General Constants **************************************************** */
-  public static final double loopPeriodSecs = 0.02;
+  public static final double kLoopPeriodSecs = 0.02;
 
-  public static final boolean tuningMode = false;
+  public static final boolean kTuningMode = false;
 
-  public static final double G_TO_MPS2 = 9.80665; // Gravitational acceleration in m/s/s
+  public static final double kGravityMetersPerSecSq = 9.80665;
 
   /************************************************************************* */
   /** Physical Constants for Robot Operation ******************************* */
   public static final class RobotConstants {
 
-    public static final Mass kRobotMass = Pounds.of(100.);
-    public static final Matter kChassis =
-        new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kRobotMass.in(Kilograms));
-    // Robot moment of intertial; this can be obtained from a CAD model of your drivetrain. Usually,
+    public static final Mass kMass = Pounds.of(100.);
+    public static final Matter kChassisMatter =
+        new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kMass.in(Kilograms));
+    // Robot moment of inertia; this can be obtained from a CAD model of your drivetrain. Usually,
     // this is between 3 and 8 kg*m^2.
-    public static final double kRobotMOI = 6.8;
+    public static final double kMomentOfInertiaKgMetersSq = 6.8;
 
     // Wheel coefficient of friction
-    public static final double kWheelCOF = 1.2;
+    public static final double kWheelCoefficientOfFriction = 1.2;
 
     // Maximum torque applied by wheel
     // Kraken X60 stall torque ~7.09 Nm; MK4i L3 gear ratio 6.12:1
-    public static final double kMaxWheelTorque = 43.4; // Nm
+    public static final double kMaxWheelTorqueNm = 43.4;
 
     // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
@@ -152,18 +152,18 @@ public final class Constants {
   public static final class PowerConstants {
 
     // Power Distribution Module Configuration
-    public static final PowerDistribution.ModuleType kPDMType = PowerDistribution.ModuleType.kRev;
-    public static final int kPDMCANid = 1;
+    public static final PowerDistribution.ModuleType kPdmType = PowerDistribution.ModuleType.kRev;
+    public static final int kPdmCanId = 1;
 
     // Current Limits
-    public static final double kTotalMaxCurrent = 120.;
-    public static final double kMotorPortMaxCurrent = 40.;
-    public static final double kSmallPortMaxCurrent = 20.;
+    public static final double kTotalMaxCurrentAmps = 120.;
+    public static final double kMotorPortMaxCurrentAmps = 40.;
+    public static final double kSmallPortMaxCurrentAmps = 20.;
 
     // Brownout voltage levels
-    public static final double kVoltageWarning = 7.5;
-    public static final double kVoltageLimiting = 7.0;
-    public static final double kVoltageCritical = 6.5;
+    public static final double kWarningVoltage = 7.5;
+    public static final double kLimitingVoltage = 7.0;
+    public static final double kCriticalVoltage = 6.5;
   }
 
   /************************************************************************* */
@@ -244,11 +244,11 @@ public final class Constants {
     public static final DriveStyle kDriveStyle = DriveStyle.TANK; // TANK, GAMER
 
     // Joystick Deadbands
-    public static final double kDeadband = 0.1;
-    public static final double kTurnConstant = 6;
+    public static final double kJoystickDeadband = 0.1;
+    public static final double kTurnSensitivity = 6;
 
     // Joystick slew rate limiters to smooth erratic joystick motions, measured in units per second
-    public static final double kJoystickSlewLimit = 0.5;
+    public static final double kJoystickSlewRateLimit = 0.5;
 
     // Override and Console Toggle Switches
     // Assumes this controller: https://www.amazon.com/gp/product/B00UUROWWK
@@ -274,46 +274,46 @@ public final class Constants {
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed
     // of YOUR ROBOT, and replace the estimate here with your measured value!
-    public static final double kMaxLinearSpeed = Feet.of(18).in(Meters);
+    public static final double kMaxLinearSpeedMetersPerSec = Feet.of(18).in(Meters);
 
     // Slip Current -- the current draw when the wheels start to slip
     // Measure this against a wall.  CHECK WITH THE CARPET AT AN ACTUAL EVENT!!!
-    public static final double kSlipCurrent = 20.0; // Amps
+    public static final double kSlipCurrentAmps = 20.0;
 
     // Characterized Wheel Radius (using the "Drive Wheel Radius Characterization" auto routine)
     public static final double kWheelRadiusMeters = Inches.of(2.000).in(Meters);
 
     // Maximum chassis accelerations desired for robot motion  -- metric / radians
     // TODO: Compute the maximum linear acceleration given the PHYSICS of the ROBOT!
-    public static final double kMaxLinearAccel = 4.0; // m/s/s
+    public static final double kMaxLinearAccelMetersPerSecSq = 4.0;
 
     // For Profiled PID Motion -- NEED TUNING!
     // Used in a variety of contexts, including PathPlanner and AutoPilot
     // Chassis (not module) across-the-field strafing motion
-    public static final double kPStrafe = 5.0;
-    public static final double kIStrafe = 0.0;
-    public static final double kDStrafe = 0.0;
+    public static final double kStrafeP = 5.0;
+    public static final double kStrafeI = 0.0;
+    public static final double kStrafeD = 0.0;
     // Chassis (not module) solid-body rotation
-    public static final double kPSPin = 5.0;
-    public static final double kISPin = 0.0;
-    public static final double kDSpin = 0.0;
+    public static final double kSpinP = 5.0;
+    public static final double kSpinI = 0.0;
+    public static final double kSpinD = 0.0;
 
     // Hold time on motor brakes when disabled
-    public static final double kWheelLockTime = 10; // seconds
+    public static final double kWheelLockTimeSecs = 10;
 
     // SysID characterization constants
-    public static final double kMaxV = 12.0; // Max volts
-    public static final double kDelay = 3.0; // seconds
-    public static final double kQuasiTimeout = 5.0; // seconds
-    public static final double kDynamicTimeout = 3.0; // seconds
+    public static final double kSysIdMaxVoltage = 12.0;
+    public static final double kSysIdDelaySecs = 3.0;
+    public static final double kSysIdQuasistaticTimeoutSecs = 5.0;
+    public static final double kSysIdDynamicTimeoutSecs = 3.0;
 
     // Drive motor open-loop and closed-loop ramp periods for current smoothing
     //   Time from from 0 -> full duty
-    public static final double kDriveClosedLoopRampPeriod = 0.15; // seconds
-    public static final double kDriveOpenLoopRampPeriod = 0.25; // seconds
+    public static final double kDriveClosedLoopRampPeriodSecs = 0.15;
+    public static final double kDriveOpenLoopRampPeriodSecs = 0.25;
 
-    public static final double kOptimalVoltage = 12.0; // Volts
-    public static final double kNominalFFVolts = 2.0; // Volts
+    public static final double kNominalVoltage = 12.0;
+    public static final double kNominalFeedforwardVolts = 2.0;
 
     // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
     // NOTE: Default values from 6328's 2025 Public Code
@@ -332,7 +332,7 @@ public final class Constants {
     public static final double kSteerS = 2.0;
 
     // Odometry-related constants ==================================
-    public static final double kHistorySize = 1.5; // seconds
+    public static final double kPoseBufferHistorySecs = 1.5;
     // How aggressively to pull pose toward vision while DISABLED.
     // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
     public static final double kDisabledVisionBlendAlpha = 0.15;
@@ -356,33 +356,38 @@ public final class Constants {
   public static final class FlywheelConstants {
 
     // Mechanism idle mode
-    public static final MotorIdleMode kFlywheelIdleMode = MotorIdleMode.COAST; // BRAKE, COAST
+    public static final MotorIdleMode kIdleMode = MotorIdleMode.COAST; // BRAKE, COAST
 
     // Mechanism motor gear ratio
-    public static final double kFlywheelGearRatio = 1.5;
+    public static final double kGearRatio = 1.5;
 
     // Flywheel motor open-loop and closed-loop ramp periods for current smoothing
     //   Time from from 0 -> full duty
-    public static final double kFlywheelClosedLoopRampPeriod = 0.15; // seconds
-    public static final double kFlywheelOpenLoopRampPeriod = 0.25; // seconds
+    public static final double kClosedLoopRampPeriodSecs = 0.15;
+    public static final double kOpenLoopRampPeriodSecs = 0.25;
+
+    // SysId characterization settings
+    public static final double kSysIdQuasistaticRampRateVoltsPerSec = 1.0;
+    public static final double kSysIdDynamicStepVoltageVolts = 7.0;
+    public static final double kSysIdTimeoutSecs = 10.0;
 
     // MODE == REAL / REPLAY
     // Feedforward constants
-    public static final double kSreal = 0.1;
-    public static final double kVreal = 0.05;
-    public static final double kAreal = 0.0;
+    public static final double kRealS = 0.1;
+    public static final double kRealV = 0.05;
+    public static final double kRealA = 0.0;
     // Feedback (PID) constants
-    public static final double kPreal = 1.0;
-    public static final double kDreal = 0.0;
+    public static final double kRealP = 1.0;
+    public static final double kRealD = 0.0;
 
     // MODE == SIM
     // Feedforward constants
-    public static final double kSsim = 0.0;
-    public static final double kVsim = 0.03;
-    public static final double kAsim = 0.0;
+    public static final double kSimS = 0.0;
+    public static final double kSimV = 0.03;
+    public static final double kSimA = 0.0;
     // Feedback (PID) constants
-    public static final double kPsim = 0.0;
-    public static final double kDsim = 0.0;
+    public static final double kSimP = 0.0;
+    public static final double kSimD = 0.0;
   }
 
   /************************************************************************* */
@@ -399,14 +404,14 @@ public final class Constants {
     // PathPlanner Config constants
     public static final RobotConfig kPathPlannerConfig =
         new RobotConfig(
-            RobotConstants.kRobotMass.in(Kilograms),
-            RobotConstants.kRobotMOI,
+            RobotConstants.kMass.in(Kilograms),
+            RobotConstants.kMomentOfInertiaKgMetersSq,
             new ModuleConfig(
                 DrivebaseConstants.kWheelRadiusMeters,
-                DrivebaseConstants.kMaxLinearSpeed,
-                RobotConstants.kWheelCOF,
+                DrivebaseConstants.kMaxLinearSpeedMetersPerSec,
+                RobotConstants.kWheelCoefficientOfFriction,
                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
-                DrivebaseConstants.kSlipCurrent,
+                DrivebaseConstants.kSlipCurrentAmps,
                 1),
             Drive.getModuleTranslations());
 
@@ -460,22 +465,22 @@ public final class Constants {
     public static final double kThetaStdDevCoefficient = 0.01;
 
     // Basic filtering thresholds
-    public static final double maxAmbiguity = 0.3;
-    public static final double maxZError = 0.75;
+    public static final double kMaxAmbiguity = 0.3;
+    public static final double kMaxZErrorMeters = 0.75;
 
     // Standard deviation baselines, for 1 meter distance and 1 tag
     // (Adjusted automatically based on distance and # of tags)
-    public static final double linearStdDevBaseline = 0.02; // Meters
-    public static final double angularStdDevBaseline = 0.06; // Radians
+    public static final double kLinearStdDevBaseline = 0.02; // Meters
+    public static final double kAngularStdDevBaseline = 0.06; // Radians
 
     // Multipliers to apply for MegaTag 2 observations
-    public static final double linearStdDevMegatag2Factor = 0.5; // More stable than full 3D solve
-    public static final double angularStdDevMegatag2Factor =
+    public static final double kLinearStdDevMegatag2Factor = 0.5; // More stable than full 3D solve
+    public static final double kAngularStdDevMegatag2Factor =
         Double.POSITIVE_INFINITY; // No rotation data available
   }
 
   /************************************************************************* */
-  /** Vision Camera Posses ************************************************* */
+  /** Vision Camera Poses ************************************************** */
   public static final class Cameras {
     public record CameraConfig(
         String name,
@@ -528,12 +533,12 @@ public final class Constants {
   }
 
   /************************************************************************* */
-  /** Deploy Directoy Location Constants *********************************** */
+  /** Deploy Directory Location Constants ********************************** */
   public static final class DeployConstants {
-    public static final String apriltagDir = "apriltags";
-    public static final String choreoDir = "choreo";
-    public static final String pathplannerDir = "pathplanner";
-    public static final String yagslDir = "swerve";
+    public static final String kAprilTagDir = "apriltags";
+    public static final String kChoreoDir = "choreo";
+    public static final String kPathPlannerDir = "pathplanner";
+    public static final String kYagslDir = "swerve";
   }
 
   /***************************************************************************/

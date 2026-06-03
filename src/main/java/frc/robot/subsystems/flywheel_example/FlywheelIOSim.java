@@ -17,6 +17,7 @@ import edu.wpi.first.math.system.LinearSystem;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 
 public class FlywheelIOSim implements FlywheelIO {
@@ -61,6 +62,11 @@ public class FlywheelIOSim implements FlywheelIO {
     closedLoop = false;
     appliedVolts = volts;
     sim.setInputVoltage(volts);
+  }
+
+  @Override
+  public void setPercent(double percent) {
+    setVoltage(percent * RobotController.getBatteryVoltage());
   }
 
   @Override
