@@ -168,6 +168,7 @@ public class Drive extends RBSISubsystem {
                   throw new RuntimeException(
                       "For an all-CTRE drive base, use Phoenix Tuner X Swerve Generator instead of YAGSL!");
                 }
+                break;
               case 0b00010000: // Blended Talon Drive / NEO Steer
                 modules[i] = new Module(new ModuleIOBlended(i), i);
                 break;
@@ -189,6 +190,7 @@ public class Drive extends RBSISubsystem {
 
       // Start odometry thread (for the real robot)
       PhoenixOdometryThread.getInstance().start();
+      SparkOdometryThread.getInstance().start();
 
     } else {
 
@@ -959,9 +961,8 @@ public class Drive extends RBSISubsystem {
   /** CHOREO SECTION (Ignore if AutoType == PATHPLANNER) ******************* */
 
   /** Choreo: Reset odometry */
-  public Command resetOdometry(Pose2d orElseGet) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'resetOdometry'");
+  public void resetOdometry(Pose2d pose) {
+    resetPose(pose);
   }
 
   /** Swerve request to apply during field-centric path following */
@@ -1004,9 +1005,9 @@ public class Drive extends RBSISubsystem {
     ChassisSpeeds speeds =
         new ChassisSpeeds(
             sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
-            sample.vy + m_pathXController.calculate(pose.getX(), sample.y),
+            sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
             sample.omega
-                + m_pathXController.calculate(pose.getRotation().getRadians(), sample.heading));
+                + m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading));
 
     // Apply the generated speeds
     runVelocity(speeds);

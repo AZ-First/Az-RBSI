@@ -7,7 +7,7 @@
 // license that can be found in the LICENSE file at
 // the root directory of this project.
 
-package org.littletonrobotics.frc2024;
+package frc.robot;
 
 import static org.junit.jupiter.api.Assertions.fail;
 

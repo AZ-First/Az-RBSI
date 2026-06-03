@@ -235,18 +235,25 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     turnVelocity = cancoder.getVelocity();
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = cancoder.getPosition();
+    BaseStatusSignal.setUpdateFrequencyForAll(SwerveConstants.kOdometryFrequency, turnPosition);
 
     // Create odometry queues
     timestampQueue = SparkOdometryThread.getInstance().makeTimestampQueue();
     drivePositionQueue =
         SparkOdometryThread.getInstance().registerSignal(driveSpark, driveEncoder::getPosition);
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(cancoder.getPosition());
+    turnPositionQueue =
+        SparkOdometryThread.getInstance()
+            .registerSignal(
+                () -> {
+                  turnPosition.refresh();
+                  return turnPosition.getValueAsDouble();
+                });
   }
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
     // Refresh CANcoder absolute
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition, turnPosition, turnVelocity);
     if (!encStatus.isOK()) {
       Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
     }
