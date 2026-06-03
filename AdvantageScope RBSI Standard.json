@@ -10,14 +10,10 @@
           "width": 300,
           "expanded": [
             "/RealOutputs",
-            "/RealOutputs/LoopSpike/Drive",
             "/RealOutputs/Drive/OdomThread",
             "/RealOutputs/CAN/DriveTrain",
             "/RealOutputs/CAN/Module0",
-            "/RealOutputs/LoopSpike",
             "/AdvantageKit",
-            "/RealOutputs/Loop/Drive",
-            "/RealOutputs/Loop/Mech",
             "/RealOutputs/Odometry/Yaw",
             "/RealOutputs/Vision/Camera0",
             "/RealOutputs/Vision/Camera0/TagPoses",
@@ -27,8 +23,15 @@
             "/RealOutputs/Power",
             "/RealOutputs/Power/Subsystems",
             "/NetworkInputs/SmartDashboard",
-            "/RealOutputs/Loop",
-            "/RealOutputs/Loop/Virtual"
+            "/RealOutputs/LogPeriodic",
+            "/RealOutputs/LogPeriodic/CodeLoop",
+            "/RealOutputs/LogPeriodic/Subsystem",
+            "/RealOutputs/LogPeriodic/VirtualSubsystem",
+            "/RealOutputs/CAN/rio",
+            "/RealOutputs/Odometry/Coast",
+            "/RealOutputs/Drive/SparkOdomThread",
+            "/RealOutputs/Vision/Debug",
+            "/RealOutputs/Swerve/Drive"
           ]
         },
         "tabs": {
@@ -116,6 +119,497 @@
               "controlsHeight": 200
             },
             {
+              "type": 1,
+              "title": "Vision Acceptance",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera0/ObsSeen",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera0/ObsAccepted",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera0/ObsRejected",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera1/ObsSeen",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera1/ObsAccepted",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera1/ObsRejected",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/TagCountThisLoop",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#858584",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera0/Dbg_avgDist",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera0/Dbg_linearStdDev",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera0/Dbg_angularStdDev",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera1/Dbg_avgDist",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera1/Dbg_linearStdDev",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Camera1/Dbg_angularStdDev",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Vision/HasAcceptedThisLoop",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Vision/HasFusedThisLoop",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#d993aa"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#5f4528"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  12
+                ],
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "rbsivisionacceptance000000000000",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 2,
+              "title": "2D Field - Replay",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "robot",
+                    "logKey": "/ReplayOutputs/Odometry/Robot",
+                    "logType": "Pose2d",
+                    "visible": true,
+                    "options": {
+                      "bumpers": "#ff0000"
+                    }
+                  },
+                  {
+                    "type": "arrow",
+                    "logKey": "/ReplayOutputs/Vision/Summary/TagPoses",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "position": "center"
+                    }
+                  },
+                  {
+                    "type": "ghost",
+                    "logKey": "/ReplayOutputs/Vision/Camera0/RobotPosesAccepted",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "color": "#00ff00"
+                    }
+                  }
+                ],
+                "field": "FRC:2026 Field",
+                "orientation": 2,
+                "size": "medium"
+              },
+              "controllerUUID": "fcrb44yozcn5a3e1219jjhk9phytbtwd",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 2,
+              "title": "Real vs Replay",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "robot",
+                    "logKey": "/RealOutputs/Odometry/Robot",
+                    "logType": "Pose2d",
+                    "visible": true,
+                    "options": {
+                      "bumpers": "#00ff00"
+                    }
+                  },
+                  {
+                    "type": "robot",
+                    "logKey": "/ReplayOutputs/Odometry/Robot",
+                    "logType": "Pose2d",
+                    "visible": true,
+                    "options": {
+                      "bumpers": "#ff8c00"
+                    }
+                  }
+                ],
+                "field": "FRC:2026 Field",
+                "orientation": 0,
+                "size": "medium"
+              },
+              "controllerUUID": "hu1n2uavzveg9lf1r5wtmeyuylvia62n",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Odometry Health",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Odometry/IMULatencySec",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Drive/PoseResetTimestamp",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Drive/OdomThread/DroppedSamples",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Drive/SparkOdomThread/DroppedSamples",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Drive/PoseResetEpoch",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  0.1
+                ],
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "rbsiodometryhealth00000000000000",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Disabled Pose Fusion",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Odometry/Coast/maxWheelDeltaM",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Odometry/Coast/yawRateRadPerSec",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Debug/dTransFromLastVision",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Debug/dRotFromLastVision",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Odometry/Coast/stationaryLoops",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/DisabledBlendAlphaUsed",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Vision/Debug/disabledCoastAge",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#858584",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Odometry/Coast/active",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Vision/DisabledReject",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Vision/DisabledInitSnap",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Vision/Debug/disabledCoast",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#d993aa"
+                    }
+                  }
+                ],
+                "leftLockedRange": null,
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "rbsidisabledposefusion0000000000",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
               "type": 9,
               "title": "Swerve",
               "controller": {
@@ -168,7 +662,123 @@
             },
             {
               "type": 1,
-              "title": "Power",
+              "title": "Drive Closed Loop",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/Drive/VelocityRadPerSec",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/Drive/ClosedLoopVelocityRadPerSec",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/Drive/AccelerationRotPerSec2",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/Drive/ClosedLoopAccelRadPerSec2",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/Drive/FeedForwardVolts",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/Drive/ClosedLoopFFVolts",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Swerve/BatteryVoltage",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#858584",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Robot/BatteryVoltage",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#d993aa"
+                    }
+                  }
+                ],
+                "leftLockedRange": null,
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "rbsidriveclosedloop0000000000000",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Power (V / A)",
               "controller": {
                 "leftSources": [
                   {
@@ -195,7 +805,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/Power/Subsystems/DriveCurrent",
+                    "logKey": "/RealOutputs/Power/Subsystems/Drive_Current",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -205,7 +815,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/Power/Subsystems/SteerCurrent",
+                    "logKey": "/RealOutputs/Power/Subsystems/Steer_Current",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -215,7 +825,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/Power/Subsystems/FlywheelCurrent",
+                    "logKey": "/RealOutputs/Power/Subsystems/Flywheel_Current",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -233,9 +843,122 @@
                     "options": {
                       "color": "#af2437"
                     }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a"
+                    }
                   }
                 ],
-                "leftLockedRange": null,
+                "leftLockedRange": [
+                  0,
+                  14
+                ],
+                "rightLockedRange": [
+                  0,
+                  160
+                ],
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "rbsipowervamps000000000000000000",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Battery Usage",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Power/BatteryPercentEstimate",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Power/AmpHoursUsed",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Power/TotalPower",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Power/EnergyWh",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/Power/EnergyJoules",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/RealOutputs/Power/BrownoutImminent",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487"
+                    }
+                  },
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  100
+                ],
                 "rightLockedRange": null,
                 "leftUnitConversion": {
                   "autoTarget": null,
@@ -248,18 +971,18 @@
                 "leftFilter": 0,
                 "rightFilter": 0
               },
-              "controllerUUID": "9vyygyem9we0y5917klbu25cz9hruszx",
+              "controllerUUID": "rbsibatteryusage0000000000000000",
               "renderer": null,
               "controlsHeight": 200
             },
             {
               "type": 1,
-              "title": "CAN Health",
+              "title": "CAN Health (utilization / counts)",
               "controller": {
                 "leftSources": [
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN//Utilization",
+                    "logKey": "/RealOutputs/CAN/rio/Utilization",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -281,7 +1004,7 @@
                 "rightSources": [
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/RxErrorCount",
+                    "logKey": "/RealOutputs/CAN/rio/RxErrorCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -291,7 +1014,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/TxErrorCount",
+                    "logKey": "/RealOutputs/CAN/rio/TxErrorCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -301,7 +1024,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN//RxErrorCount",
+                    "logKey": "/RealOutputs/CAN/rio/BusOffCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -311,17 +1034,50 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/TxFullCount",
+                    "logKey": "/RealOutputs/CAN/DriveTrain/RxErrorCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
                       "color": "#c0b487",
                       "size": "normal"
                     }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/DriveTrain/TxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#858584",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/DriveTrain/TxFullCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a",
+                      "size": "normal"
+                    }
                   }
                 ],
-                "discreteSources": [],
-                "leftLockedRange": null,
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#d993aa"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  1
+                ],
                 "rightLockedRange": null,
                 "leftUnitConversion": {
                   "autoTarget": null,
@@ -334,19 +1090,18 @@
                 "leftFilter": 0,
                 "rightFilter": 0
               },
-              "controllerUUID": "f15s8kcvuqce63dlc7cf4yunt6c0372w",
+              "controllerUUID": "rbsicanhealth0000000000000000000",
               "renderer": null,
               "controlsHeight": 200
             },
             {
               "type": 1,
-              "title": "Loop Time - Robot",
+              "title": "Loop Time - Robot (ms)",
               "controller": {
-                "leftSources": [],
-                "rightSources": [
+                "leftSources": [
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/LoggedRobot/FullCycleMS",
+                    "logKey": "/RealOutputs/LogPeriodic/CodeLoop/RobotPeriodicMS",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -356,7 +1111,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/LoggedRobot/GCTimeMS",
+                    "logKey": "/RealOutputs/LogPeriodic/CodeLoop/VirtualMS",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -366,7 +1121,19 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/LoggedRobot/LogPeriodicMS",
+                    "logKey": "/RealOutputs/LogPeriodic/CodeLoop/SchedulerMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LoggedRobot/FullCycleMS",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -380,14 +1147,50 @@
                     "logType": "Number",
                     "visible": true,
                     "options": {
-                      "color": "#af2437",
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LoggedRobot/LogPeriodicMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LoggedRobot/GCTimeMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#858584",
                       "size": "normal"
                     }
                   }
                 ],
-                "discreteSources": [],
-                "leftLockedRange": null,
-                "rightLockedRange": null,
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  25
+                ],
+                "rightLockedRange": [
+                  0,
+                  25
+                ],
                 "leftUnitConversion": {
                   "autoTarget": null,
                   "preset": null
@@ -399,18 +1202,18 @@
                 "leftFilter": 0,
                 "rightFilter": 0
               },
-              "controllerUUID": "yktsi99006yw1sq2h8mihr8kiy9h5xk9",
+              "controllerUUID": "rbsilooprobotms00000000000000000",
               "renderer": null,
               "controlsHeight": 200
             },
             {
               "type": 1,
-              "title": "Loop Time - Subsystems",
+              "title": "Loop Time - Mechanisms (ms)",
               "controller": {
                 "leftSources": [
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/Loop/Mech/Drive_ms",
+                    "logKey": "/RealOutputs/LogPeriodic/Subsystem/DriveMS",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -420,58 +1223,31 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/Loop/Mech/Flywheel_ms",
+                    "logKey": "/RealOutputs/LogPeriodic/Subsystem/FlywheelMS",
                     "logType": "Number",
                     "visible": true,
                     "options": {
                       "color": "#e5b31b",
                       "size": "normal"
                     }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Loop/Virtual/Accelerometer_ms",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#af2437",
-                      "size": "normal"
-                    }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Loop/Virtual/RBSICANHealth_ms",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#80588e",
-                      "size": "normal"
-                    }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Loop/Virtual/RBSIPowerMonitor_ms",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#e48b32",
-                      "size": "normal"
-                    }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Loop/Virtual/Vision_ms",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#c0b487",
-                      "size": "normal"
-                    }
                   }
                 ],
                 "rightSources": [],
-                "discreteSources": [],
-                "leftLockedRange": null,
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  25
+                ],
                 "rightLockedRange": null,
                 "leftUnitConversion": {
                   "autoTarget": null,
@@ -484,9 +1260,107 @@
                 "leftFilter": 0,
                 "rightFilter": 0
               },
-              "controllerUUID": "no6ewy1a2lc06qvs7einn5i430wwub9n",
+              "controllerUUID": "rbsiloopmechms000000000000000000",
               "renderer": null,
-              "controlsHeight": 195
+              "controlsHeight": 200
+            },
+            {
+              "type": 1,
+              "title": "Loop Time - Virtual (ms)",
+              "controller": {
+                "leftSources": [
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LogPeriodic/VirtualSubsystem/ImuMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LogPeriodic/VirtualSubsystem/DriveOdometryMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LogPeriodic/VirtualSubsystem/VisionMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#af2437",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LogPeriodic/VirtualSubsystem/AccelerometerMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LogPeriodic/VirtualSubsystem/RBSICANHealthMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e48b32",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/LogPeriodic/VirtualSubsystem/RBSIPowerMonitorMS",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#c0b487",
+                      "size": "normal"
+                    }
+                  }
+                ],
+                "rightSources": [],
+                "discreteSources": [
+                  {
+                    "type": "stripes",
+                    "logKey": "/DriverStation/Enabled",
+                    "logType": "Boolean",
+                    "visible": true,
+                    "options": {
+                      "color": "#858584"
+                    }
+                  }
+                ],
+                "leftLockedRange": [
+                  0,
+                  25
+                ],
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "rbsiloopvirtualms000000000000000",
+              "renderer": null,
+              "controlsHeight": 200
             },
             {
               "type": 3,
@@ -530,6 +1404,14 @@
                 ]
               },
               "controlsHeight": 200
+            },
+            {
+              "type": 7,
+              "title": "Video",
+              "controller": null,
+              "controllerUUID": "vnanjmnujfndic5ztjusxrarh2m76p4x",
+              "renderer": null,
+              "controlsHeight": 85
             }
           ]
         }
@@ -537,5 +1419,5 @@
     }
   ],
   "satellites": [],
-  "version": "26.0.0"
+  "version": "26.0.2"
 }

@@ -18,6 +18,27 @@ Supported values:
 Autopilot is used as a teleop drive-to-pose helper and can also inspire custom
 autonomous commands.
 
+## Match Execution Flow
+
+RBSI follows the normal WPILib command-based lifecycle:
+
+1. `Robot` starts AdvantageKit logging and constructs `RobotContainer`.
+2. `RobotContainer` constructs subsystems, configures PathPlanner or Choreo for
+   the selected `AutoType`, registers named commands, builds dashboard choosers,
+   and binds driver controls.
+3. Every `robotPeriodic()` loop runs virtual subsystems first, then
+   `CommandScheduler.getInstance().run()`. This lets IMU and odometry samples
+   reach pose estimation before commands and vision consumers need them.
+4. `autonomousInit()` cancels any commands left from disabled/practice, sets
+   drive brake mode, resets heading-controller state, opens the vision pose gate,
+   reads the selected autonomous command, and schedules it.
+5. `teleopInit()` cancels the stored autonomous command, restores brake mode,
+   resets heading-controller state, and lets the default drive command take over.
+
+This means autonomous commands should own only their intended subsystems. A
+command that requires `Drive` will interrupt the default drive command while it
+runs, and teleop will cancel the stored auto before the driver command resumes.
+
 ## Manual Autos
 
 `MANUAL` is the simplest mode. RBSI does not construct a PathPlanner chooser or
@@ -63,6 +84,23 @@ PathPlanner chooser entries also include drive and flywheel SysId routines.
 This is intentional: characterization commands are easiest to run from the
 same dashboard path used for autonomous selection.
 
+RBSI configures PathPlanner `AutoBuilder` in `Drive` with:
+
+- `this::getPose`
+- `this::resetPose`
+- `this::getChassisSpeeds`
+- `(speeds, feedforwards) -> runVelocity(speeds)`
+- `PPHolonomicDriveController`
+- `AutoConstants.kPathPlannerConfig`
+- alliance-aware path flipping
+- the `Drive` subsystem requirement
+
+PathPlannerLib's holonomic AutoBuilder expects robot-relative measured speeds
+and robot-relative output speeds. `Drive.getChassisSpeeds()` returns
+robot-relative speeds from the module states, and `Drive.runVelocity(...)`
+accepts robot-relative chassis speeds, so the callback pair is intentionally
+not field-relative.
+
 ## Choreo
 
 When `autoType` is `CHOREO`, RBSI constructs an `AutoFactory` and uses the
@@ -76,6 +114,24 @@ Important constants:
 Choreo should be tuned after the drivetrain already tracks pose accurately.
 If a Choreo path misses badly, do not start by changing PID constants. First
 verify odometry, wheel radius, gyro orientation, and pose reset behavior.
+
+RBSI constructs the Choreo `AutoFactory` in `RobotContainer` with:
+
+- `m_drivebase::getPose`
+- `m_drivebase::resetPose`
+- `m_drivebase::followTrajectory`
+- alliance flipping enabled
+- `m_drivebase` as the subsystem requirement
+
+Each routine should reset odometry once at the start of the first trajectory.
+The example routine does that with:
+
+```java
+routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
+```
+
+Do not also reset pose in a separate command at the same trigger unless you
+intend to override the path's starting pose.
 
 ## Autopilot
 
@@ -124,6 +180,8 @@ General rules:
 - For manual autos, explicitly reset pose only when the command owns the
   starting condition.
 - Avoid resetting pose from multiple commands at the same time.
+- Use `Drive.resetPose(...)` for autonomous resets so the pose reset epoch and
+  vision pose gate stay aligned.
 
 Unexpected pose resets are one of the fastest ways to make a correct path look
 wrong.
@@ -183,3 +241,12 @@ Robot follows path in mirror image:
 - Check alliance-aware flipping logic.
 - Check PathPlanner field coordinate assumptions.
 - Check robot heading at auto start.
+
+## Related Pages
+
+- [RBSI-Drive.md](RBSI-Drive.md): odometry, robot-relative speed conventions,
+  and drive characterization.
+- [RBSI-Vision.md](RBSI-Vision.md): vision filtering before autonomous pose
+  fusion.
+- [RBSI-Constants.md](RBSI-Constants.md): `AutoConstants` and drive constants
+  used by autonomous frameworks.

@@ -358,3 +358,11 @@ Autonomous gets worse with vision enabled:
 - Verify field layout.
 - Verify all camera transforms.
 - Confirm odometry is already stable without vision.
+
+## Related Pages
+
+- [RBSI-Drive.md](RBSI-Drive.md): odometry bring-up before vision fusion.
+- [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md): latency compensation and
+  time-aligned measurement design.
+- [RBSI-Autonomous.md](RBSI-Autonomous.md): autonomous pose reset and match-flow
+  rules.

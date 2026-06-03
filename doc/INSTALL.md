@@ -108,29 +108,55 @@ steps you need to complete:
    ```
 
 2. If you have an all-CTRE swerve base (*i.e.*, 8x TalonFX-controlled motors,
-   4x CANCoders, and 1x Pigeon2), use Phoenix Tuner X to create a swerve
-   project.  Follow the instructions in the Phoenix documentation for the
+   4x CANcoders, and 1x Pigeon2), use Phoenix Tuner X to create a swerve
+   project. Follow the instructions in CTRE's
    [Tuner X Swerve Project Generator](
    https://v6.docs.ctr-electronics.com/en/latest/docs/tuner/tuner-swerve/index.html).
-   This will generate the correct offsets and inversions for your drive train.
+   This generates the measured module offsets, module locations, device IDs,
+   inversions, gear ratios, and base Phoenix 6 swerve constants for your drive
+   train.
 
-3. On the final screen in Tuner X, choose "Generate only TunerConstants" and
-   overwrite the file located at `src/main/java/frc/robot/generated/TunerConstants.java`.
+3. On the final screen in Tuner X, choose the option that generates only
+   `TunerConstants.java`.
 
-4. In `TunerConstants.java`, comment out the [last import](
-   https://github.com/CrossTheRoadElec/Phoenix6-Examples/blob/1db713d75b08a4315c9273cebf5b5e6a130ed3f7/java/SwerveWithPathPlanner/src/main/java/frc/robot/generated/TunerConstants.java#L18)
-   and [last method](
-   https://github.com/CrossTheRoadElec/Phoenix6-Examples/blob/1db713d75b08a4315c9273cebf5b5e6a130ed3f7/java/SwerveWithPathPlanner/src/main/java/frc/robot/generated/TunerConstants.java#L171-L175).
-   Before removing them, both lines will be marked as errors in VSCode.
+4. Copy that generated file into `src/main/java/frc/robot/generated/`, then
+   rename it for the RBSI robot selected in `Constants.java`:
 
-5. In `TunerConstants.java`, change `kSlipCurrent` to `60` amps.  This will
-   keep your robot from tearing holes in the carpet at competition!
+   - `COMPBOTTunerConstants.java` for `Constants.RobotType.COMPBOT`
+   - `DEVBOT1TunerConstants.java` for `Constants.RobotType.DEVBOT1`
+   - `DEVBOT2TunerConstants.java` for `Constants.RobotType.DEVBOT2`
 
-6. In `TunerConstants.java`, change `kSteerInertia` to `0.004` and
-   `kDriveInertia` to `0.025` to allow the AdvantageKit simulation code to
-   operate as expected.
+   Also update the class name inside the file. For example, if you copied the
+   file to `COMPBOTTunerConstants.java`, the declaration must be:
 
-7. Open [RBSI-Constants.md](RBSI-Constants.md) and work through the sections
+   ```java
+   public class COMPBOTTunerConstants {
+   ```
+
+5. In the copied `*TunerConstants.java` file, comment out the generated import
+   for `CommandSwerveDrivetrain`. RBSI does not use CTRE's generated command
+   drivetrain class.
+
+6. In the same file, comment out the generated `createDrivetrain()` function.
+   RBSI constructs the drivebase through `frc.robot.subsystems.drive.Drive`,
+   then reads the generated `DrivetrainConstants`, `FrontLeft`, `FrontRight`,
+   `BackLeft`, and `BackRight` constants through the RBSI view classes.
+
+7. Make sure the matching `*TunerView.java` file still points at the generated
+   constants file you copied. For example, `COMPBOTTunerView` should return
+   `COMPBOTTunerConstants.kCANBus`, `COMPBOTTunerConstants.DrivetrainConstants`,
+   and the four public module constants. `TunerFactory` selects the right view
+   from `Constants.getRobot()`, so normal drive code does not import a
+   per-robot TunerConstants class directly.
+
+8. In the copied `*TunerConstants.java`, review `kSlipCurrent`. A conservative
+   starting point is `60` amps; tune it on the real robot and event carpet.
+
+9. In the copied `*TunerConstants.java`, review `kSteerInertia` and
+   `kDriveInertia`. The generic RBSI simulation expects values close to
+   `0.004` and `0.025`, respectively, unless you have better measured values.
+
+10. Open [RBSI-Constants.md](RBSI-Constants.md) and work through the sections
    that match your robot. At minimum, verify `RobotDevices`,
    `DrivebaseConstants`, `OperatorConstants`, `AutoConstants`, and
    `VisionConstants` before your first serious drive test.

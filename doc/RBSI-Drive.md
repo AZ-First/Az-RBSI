@@ -30,6 +30,37 @@ The all-CTRE path is the reference path for this template. YAGSL support exists
 for teams with mixed hardware, but teams should validate it carefully on their
 own robot.
 
+## Phoenix Tuner X Constants
+
+For `PHOENIX6`, RBSI expects Phoenix Tuner X output in
+`src/main/java/frc/robot/generated/`.
+
+Phoenix Tuner X generates a file named `TunerConstants.java`. RBSI keeps one
+renamed copy per robot instead:
+
+- `COMPBOTTunerConstants.java`
+- `DEVBOT1TunerConstants.java`
+- `DEVBOT2TunerConstants.java`
+
+After generating a real robot file, copy it into `src/main/java/frc/robot/generated/`,
+rename it to the matching robot type, and update the Java class name. Then
+comment out the generated `CommandSwerveDrivetrain` import and the generated
+`createDrivetrain()` function. RBSI does not use CTRE's generated command
+drivetrain; it uses its own `Drive`, `ModuleIOTalonFX`, odometry, logging, and
+pose-estimation stack.
+
+The `generated` package uses a small View layer:
+
+- `TunerView` defines the constants RBSI needs.
+- Each `*TunerView` adapts one per-robot generated constants file.
+- `TunerFactory` selects the correct view from `Constants.getRobot()`.
+- `SwerveConstants`, `ModuleIOTalonFX`, and `PhoenixOdometryThread` consume
+  `TunerFactory.INSTANCE`.
+
+This keeps the rest of the robot code independent of a specific generated
+filename. More detailed copy steps are in `src/main/java/frc/robot/generated/README`
+and [INSTALL.md](INSTALL.md).
+
 ## Hardware Configuration
 
 Drivetrain CAN IDs come from generated or parsed swerve constants. Power
@@ -196,3 +227,11 @@ Autonomous path is mirrored or offset:
 - Check initial pose reset behavior.
 - Check field layout selection.
 - Check PathPlanner starting pose and AutoBuilder configuration.
+
+## Related Pages
+
+- [INSTALL.md](INSTALL.md): Phoenix Tuner X copy/rename setup steps.
+- [RBSI-Constants.md](RBSI-Constants.md): drivetrain and robot-wide constants.
+- [RBSI-Autonomous.md](RBSI-Autonomous.md): PathPlanner and Choreo callback
+  behavior during a match.
+- [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md): odometry/vision timing details.
