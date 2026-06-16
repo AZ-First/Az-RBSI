@@ -9,8 +9,6 @@
 
 package frc.robot.subsystems.drive;
 
-import static edu.wpi.first.units.Units.RotationsPerSecond;
-
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
@@ -19,7 +17,6 @@ import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
@@ -54,6 +51,7 @@ import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.RBSICANBusRegistry;
+import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.SparkUtil;
 import java.util.Arrays;
 import java.util.Queue;
@@ -80,11 +78,8 @@ public class ModuleIOBlended implements ModuleIO {
   private final TalonFX driveTalon;
   private final SparkBase turnSpark;
   private final CANcoder cancoder;
-  private final ClosedLoopOutputType m_DriveMotorClosedLoopOutput =
-      switch (Constants.getPhoenixPro()) {
-        case LICENSED -> ClosedLoopOutputType.TorqueCurrentFOC;
-        case UNLICENSED -> ClosedLoopOutputType.Voltage;
-      };
+  private final boolean enableVoltageFOC = Constants.getPhoenixPro() == CTREPro.LICENSED;
+  private final ClosedLoopOutputType m_DriveMotorClosedLoopOutput = ClosedLoopOutputType.Voltage;
 
   // Closed loop controllers
   private final SparkClosedLoopController turnController;
@@ -92,10 +87,6 @@ public class ModuleIOBlended implements ModuleIO {
   // Voltage control requests
   private final VoltageOut voltageRequest = new VoltageOut(0);
   private final VelocityVoltage velocityVoltageRequest = new VelocityVoltage(0.0);
-
-  // Torque-current control requests
-  private final VelocityTorqueCurrentFOC velocityTorqueCurrentRequest =
-      new VelocityTorqueCurrentFOC(0.0);
 
   // Timestamp inputs from Phoenix thread
   private final Queue<Double> timestampQueue;
@@ -270,12 +261,7 @@ public class ModuleIOBlended implements ModuleIO {
             ? SensorDirectionValue.Clockwise_Positive
             : SensorDirectionValue.CounterClockwise_Positive;
 
-    // Set motor Closed Loop Output type based on Phoenix Pro status
-    constants.DriveMotorClosedLoopOutput =
-        switch (Constants.getPhoenixPro()) {
-          case LICENSED -> ClosedLoopOutputType.TorqueCurrentFOC;
-          case UNLICENSED -> ClosedLoopOutputType.Voltage;
-        };
+    constants.DriveMotorClosedLoopOutput = ClosedLoopOutputType.Voltage;
 
     // Finally, apply the configs to the motor controllers
     PhoenixUtil.tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
@@ -395,7 +381,7 @@ public class ModuleIOBlended implements ModuleIO {
     double busVoltage = RobotController.getBatteryVoltage();
     double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
 
-    driveTalon.setControl(voltageRequest.withOutput(scaledOutput));
+    driveTalon.setControl(voltageRequest.withOutput(scaledOutput).withEnableFOC(enableVoltageFOC));
 
     // Log output and battery
     Logger.recordOutput("Swerve/Drive/OpenLoopOutput", scaledOutput);
@@ -437,29 +423,23 @@ public class ModuleIOBlended implements ModuleIO {
     // Update last values for next loop
     lastVelocityRotPerSec = velocityRotPerSec;
     lastTimestampNano = currentTimeNano;
-    // Compute feedforward voltage: kS + kV*v + kA*a
-    double nominalFFVolts =
+    // Estimate the slot feedforward for logging. The TalonFX applies kS/kV/kA from Slot0.
+    double estimatedSlotFFVolts =
         Math.signum(velocityRotPerSec) * DrivebaseConstants.kDriveS
             + DrivebaseConstants.kDriveV * velocityRotPerSec
             + DrivebaseConstants.kDriveA * accelerationRotPerSec2;
-    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
-    // Set the drive motor control based on CTRE LICENSED status
     driveTalon.setControl(
-        switch (m_DriveMotorClosedLoopOutput) {
-          case Voltage ->
-              velocityVoltageRequest.withVelocity(velocityRotPerSec).withFeedForward(scaledFFVolts);
-          case TorqueCurrentFOC ->
-              velocityTorqueCurrentRequest.withVelocity(RotationsPerSecond.of(velocityRotPerSec));
-        });
+        velocityVoltageRequest.withVelocity(velocityRotPerSec).withEnableFOC(enableVoltageFOC));
 
     // AdvantageKit logging
     Logger.recordOutput("Swerve/Drive/VelocityRadPerSec", velocityRadPerSec);
     Logger.recordOutput("Swerve/Drive/VelocityRotPerSec", velocityRotPerSec);
     Logger.recordOutput("Swerve/Drive/AccelerationRotPerSec2", accelerationRotPerSec2);
-    Logger.recordOutput("Swerve/Drive/FeedForwardVolts", scaledFFVolts);
+    Logger.recordOutput("Swerve/Drive/EstimatedSlotFeedForwardVolts", estimatedSlotFFVolts);
     Logger.recordOutput("Robot/BatteryVoltage", busVoltage);
     Logger.recordOutput("Swerve/Drive/ClosedLoopMode", m_DriveMotorClosedLoopOutput);
+    Logger.recordOutput("Swerve/Drive/VoltageFOCEnabled", enableVoltageFOC);
   }
 
   /**

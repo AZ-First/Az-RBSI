@@ -256,7 +256,7 @@ public final class Constants {
     public static final double kTurnSensitivity = 6;
 
     // Joystick slew rate limiters to smooth erratic joystick motions, measured in units per second
-    public static final double kJoystickSlewRateLimit = 0.5;
+    public static final double kJoystickSlewRateLimit = 3.0;
 
     // Fixed robot-relative nudge speed used by the driver POV bindings.
     public static final double kRobotRelativeNudgeSpeedMetersPerSec = Inches.of(11.0).in(Meters);
@@ -292,7 +292,7 @@ public final class Constants {
 
     // Slip Current -- the current draw when the wheels start to slip
     // Measure this against a wall.  CHECK WITH THE CARPET AT AN ACTUAL EVENT!!!
-    public static final double kSlipCurrentAmps = 20.0;
+    public static final double kSlipCurrentAmps = 40.0;
 
     // Characterized Wheel Radius (using the "Drive Wheel Radius Characterization" auto routine)
     public static final double kWheelRadiusMeters = Inches.of(2.000).in(Meters);
@@ -333,23 +333,21 @@ public final class Constants {
     public static final double kDriveOpenLoopRampPeriodSecs = 0.25;
 
     public static final double kNominalVoltage = 12.0;
-    public static final double kNominalFeedforwardVolts = 2.0;
 
     // Default TalonFX Gains (Replaces what's in Phoenix X's Tuner Constants)
-    // NOTE: Default values from 6328's 2025 Public Code
-    //
-    // IMPORTANT:: These values are valid only for CTRE LICENSED operation!!
-    //             Adjust these downward until your modules behave correctly
-    public static final double kDriveP = 40.0;
-    public static final double kDriveD = 0.03;
+    // These are voltage-mode starting points for this custom IO layer, which configures TalonFX
+    // drive feedback in mechanism rotations. The drive P/V values are CTRE Tuner's motor-side
+    // defaults scaled by the drive reduction; characterize the robot before treating them as final.
+    public static final double kDriveP = 0.70;
+    public static final double kDriveD = 0.0;
     public static final double kDriveV = 0.83;
     public static final double kDriveA = 0.0;
-    public static final double kDriveS = 2.00;
+    public static final double kDriveS = 0.20;
     public static final double kDriveT =
         SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
-    public static final double kSteerP = 400.0;
-    public static final double kSteerD = 20.0;
-    public static final double kSteerS = 2.0;
+    public static final double kSteerP = 100.0;
+    public static final double kSteerD = 0.5;
+    public static final double kSteerS = 0.1;
 
     // Odometry-related constants ==================================
     public static final double kPoseBufferHistorySecs = 1.5;
