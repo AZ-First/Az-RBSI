@@ -33,7 +33,6 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.Cameras;
@@ -64,6 +63,7 @@ import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSICANHealth;
+import frc.robot.util.RBSIController;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.DriveStyle;
 import frc.robot.util.RBSIEnum.Mode;
@@ -80,10 +80,11 @@ import org.photonvision.simulation.VisionSystemSim;
 public class RobotContainer {
 
   /** Define the Driver and, optionally, the Operator/Co-Driver Controllers */
-  // Replace with ``CommandPS4Controller`` or ``CommandJoystick`` if needed
-  final CommandXboxController driverController = new CommandXboxController(0); // Main Driver
+  final RBSIController driverController = RBSIController.createDriverController(0); // Main Driver
 
-  final CommandXboxController operatorController = new CommandXboxController(1); // Second Operator
+  final RBSIController operatorController =
+      RBSIController.createDriverController(1); // Second Operator
+
   final OverrideSwitches overrides = new OverrideSwitches(2); // Console toggle switches
 
   // These two are needed for the Sweep evaluator for camera FOV simulation
@@ -300,9 +301,9 @@ public class RobotContainer {
             m_drivebase, () -> -getDriveStickY(), () -> -getDriveStickX(), () -> -getTurnStickX()));
 
     // ** Example Commands -- Remap, remove, or change as desired **
-    // Press B button while driving --> ROBOT-CENTRIC
+    // Press B / Circle button while driving --> ROBOT-CENTRIC
     driverController
-        .b()
+        .robotRelative()
         .whileTrue(
             DriveCommands.robotRelativeDrive(
                 m_drivebase,
@@ -310,27 +311,27 @@ public class RobotContainer {
                 () -> -getDriveStickX(),
                 () -> -getTurnStickX()));
 
-    // Press A button -> BRAKE
-    driverController.a().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
+    // Press A / Cross button -> BRAKE
+    driverController.brake().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
 
-    // Press X button --> Stop with wheels in X-Lock position
-    driverController.x().whileTrue(DriveCommands.stopWithX(m_drivebase));
+    // Press X / Square button --> Stop with wheels in X-Lock position
+    driverController.xLock().whileTrue(DriveCommands.stopWithX(m_drivebase));
 
-    // Press Y button --> Manually Re-Zero the Gyro
-    driverController.y().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
+    // Press Y / Triangle button --> Manually Re-Zero the Gyro
+    driverController.zeroGyro().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
-    // Press RIGHT BUMPER --> Run the example flywheel
+    // Press RIGHT BUMPER / R1 --> Run the example flywheel
     driverController
-        .rightBumper()
+        .runFlywheel()
         .whileTrue(
             Commands.startEnd(
                 () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
                 m_flywheel::stop,
                 m_flywheel));
 
-    // Press LEFT BUMPER --> Drive to a demo pose offset defined in OperatorConstants
+    // Press LEFT BUMPER / L1 --> Drive to a demo pose offset defined in OperatorConstants
     driverController
-        .leftBumper()
+        .autopilotDemo()
         .whileTrue(
             Commands.defer(
                 () -> {
