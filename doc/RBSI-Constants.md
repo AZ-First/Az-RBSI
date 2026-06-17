@@ -133,7 +133,10 @@ logging need and have verified that the extra sampling work is worth it.
 
 ## OperatorConstants
 
-`OperatorConstants` configures driver controls:
+`OperatorConstants` configures driver feel and command-level control preferences. The physical
+driver controller type is selected separately by `frc.robot.util.RBSIController`, which detects an
+Xbox, PS4, or PS5 controller on the driver port at robot startup and exposes the same semantic
+actions to `RobotContainer`.
 
 - `kDriveStyle`
 - `kJoystickDeadband`
@@ -146,6 +149,8 @@ logging need and have verified that the extra sampling work is worth it.
 
 Tune this section with drivers:
 
+- Use either an Xbox, PS4, or PS5 controller on driver port 0. RBSI maps Xbox `A/B/X/Y` to
+  PlayStation `Cross/Circle/Square/Triangle`, and Xbox bumpers to PlayStation `L1/R1`.
 - Set `kDriveStyle` to the preferred boot/default drive style. `TANK` uses the left stick for
   translation and the right stick for turning; `GAMER` uses the right stick for translation and the
   left stick for turning. RBSI also exposes this choice as the `Drive Style` dashboard chooser, so
@@ -156,6 +161,78 @@ Tune this section with drivers:
 - Adjust or remove `kAutopilotDemoXOffsetMeters` when replacing the example bumper drive-to-pose
   binding with a game-specific target.
 - Verify all console switches against the actual HID device.
+
+## ControllerButtonConstants
+
+`ControllerButtonConstants` maps robot actions to controller-agnostic physical inputs from
+`RBSIController`. Teams should usually remap controls here instead of editing `RobotContainer` or
+`RBSIController`.
+
+Physical button names are based on where the control sits on the gamepad:
+
+| RBSI name | Xbox | PS4/5 |
+| --- | --- | --- |
+| `SOUTH_FACE` | `A` | `Cross` |
+| `EAST_FACE` | `B` | `Circle` |
+| `WEST_FACE` | `X` | `Square` |
+| `NORTH_FACE` | `Y` | `Triangle` |
+| `LEFT_BUMPER` | Left bumper | `L1` |
+| `RIGHT_BUMPER` | Right bumper | `R1` |
+| `LEFT_STICK` | Left stick press | `L3` |
+| `RIGHT_STICK` | Right stick press | `R3` |
+| `POV_LEFT` | D-pad left | D-pad left |
+| `POV_RIGHT` | D-pad right | D-pad right |
+| `POV_UP` | D-pad up | D-pad up |
+| `POV_DOWN` | D-pad down | D-pad down |
+
+Trigger axes are also named by position:
+
+| RBSI axis | Xbox | PS4/5 |
+| --- | --- | --- |
+| `LEFT_TRIGGER` | Left trigger axis | `L2` axis |
+| `RIGHT_TRIGGER` | Right trigger axis | `R2` axis |
+
+Default robot-action mappings:
+
+| Robot action constant | Default physical input |
+| --- | --- |
+| `BRAKE` | `SOUTH_FACE` |
+| `ROBOT_RELATIVE` | `EAST_FACE` |
+| `X_LOCK` | `WEST_FACE` |
+| `ZERO_GYRO` | `NORTH_FACE` |
+| `AUTOPILOT_DEMO` | `LEFT_BUMPER` |
+| `RUN_FLYWHEEL` | `RIGHT_BUMPER` |
+| `NUDGE_LEFT` | `POV_LEFT` |
+| `NUDGE_RIGHT` | `POV_RIGHT` |
+| `NUDGE_FORWARD` | `POV_UP` |
+| `NUDGE_BACK` | `POV_DOWN` |
+
+Operator controls use the same pattern. Add action-focused names to
+`ControllerButtonConstants`, assign each action to a physical input, and bind those names to the
+operator controller in `RobotContainer`. The action name should describe what the robot does, not
+which controller button is pressed.
+
+For example:
+
+```java
+public static final Button INTAKE_GAME_PIECE = Button.SOUTH_FACE;
+public static final Button SCORE_GAME_PIECE = Button.EAST_FACE;
+public static final Button REVERSE_INTAKE = Button.WEST_FACE;
+public static final Button STOW_MECHANISM = Button.NORTH_FACE;
+public static final Axis MANUAL_ARM_DOWN = Axis.LEFT_TRIGGER;
+public static final Axis MANUAL_ARM_UP = Axis.RIGHT_TRIGGER;
+```
+
+Then bind those names in `RobotContainer`:
+
+```java
+operatorController.button(INTAKE_GAME_PIECE).whileTrue(intake.runIntakeCommand());
+operatorController.button(SCORE_GAME_PIECE).whileTrue(superstructure.scoreCommand());
+operatorController.axisTrigger(MANUAL_ARM_UP).whileTrue(arm.manualUpCommand());
+```
+
+This keeps `RBSIController` responsible only for translating physical controller layouts and keeps
+team-specific control names in one readable constants section.
 
 ## DrivebaseConstants
 

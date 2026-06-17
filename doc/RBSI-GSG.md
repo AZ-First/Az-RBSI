@@ -14,9 +14,25 @@ All of the code you will be writing for your robot's subsystems and
 modifications to extant RBSI code will be done to files within the
 `src/main/java/frc/robot` directory (and its subdirectories).
 
-1. **Controller Type**: The Az-RBSI expects an Xbox-style controller -- if you
-   have a PS4 or other, substitute the proper command-based controller class
-   for `CommandXboxController` near the top of the `RobotContainer.java` file.
+1. **Driver Controller**: The Az-RBSI supports Xbox, PS4, and PS5-style driver
+   controllers through `frc.robot.util.RBSIController`. `RobotContainer`
+   creates the driver controller with `RBSIController.createDriverController(0)`
+   and detects the connected controller once at robot startup, so teams should
+   not need to edit `RobotContainer` just to switch between Xbox and
+   PlayStation controllers.
+
+   The default semantic mapping is:
+
+   - Xbox `A/B/X/Y` maps to PlayStation `Cross/Circle/Square/Triangle`
+   - Xbox left/right bumpers map to PlayStation `L1/R1`
+   - Stick axes and POV/D-pad nudges use the same driver-facing actions
+
+   If you want different controls, remap the action constants in
+   `Constants.ControllerButtonConstants` rather than replacing controller
+   classes in `RobotContainer`. See [RBSI-Constants.md](RBSI-Constants.md) for
+   the full Xbox/PS4/5 physical-input mapping and examples for naming
+   co-driver/operator actions such as intake, scoring, and mechanism stow
+   commands.
 
 2. **Robot Project Constants**: All of the configurable values for your robot
    will be in the `Constants.java` file. This file contains the outer

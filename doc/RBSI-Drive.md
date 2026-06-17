@@ -159,6 +159,17 @@ Recommended order:
 
 ## Tuning Driver Feel
 
+RBSI supports Xbox, PS4, and PS5-style driver controllers through
+`frc.robot.util.RBSIController`. The controller is detected once at robot startup from the Driver
+Station HID on driver port 0. `RobotContainer` binds to semantic actions such as brake,
+robot-relative drive, gyro zero, and autopilot demo, so teams do not need to replace
+`CommandXboxController` with a PlayStation-specific class when switching hardware.
+
+The default face-button mapping is Xbox `A/B/X/Y` to PlayStation
+`Cross/Circle/Square/Triangle`; Xbox bumpers map to PlayStation `L1/R1`. For the full physical
+input table and default robot-action mappings, see `ControllerButtonConstants` in
+[RBSI-Constants.md](RBSI-Constants.md).
+
 Driver feel is shaped by:
 
 - `OperatorConstants.kDriveStyle`

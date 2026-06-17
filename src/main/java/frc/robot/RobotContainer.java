@@ -19,6 +19,8 @@
 
 package frc.robot;
 
+import static frc.robot.Constants.ControllerButtonConstants.*;
+
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
@@ -303,7 +305,7 @@ public class RobotContainer {
     // ** Example Commands -- Remap, remove, or change as desired **
     // Press B / Circle button while driving --> ROBOT-CENTRIC
     driverController
-        .robotRelative()
+        .button(ROBOT_RELATIVE)
         .whileTrue(
             DriveCommands.robotRelativeDrive(
                 m_drivebase,
@@ -312,17 +314,17 @@ public class RobotContainer {
                 () -> -getTurnStickX()));
 
     // Press A / Cross button -> BRAKE
-    driverController.brake().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
+    driverController.button(BRAKE).onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
 
     // Press X / Square button --> Stop with wheels in X-Lock position
-    driverController.xLock().whileTrue(DriveCommands.stopWithX(m_drivebase));
+    driverController.button(X_LOCK).whileTrue(DriveCommands.stopWithX(m_drivebase));
 
     // Press Y / Triangle button --> Manually Re-Zero the Gyro
-    driverController.zeroGyro().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
+    driverController.button(ZERO_GYRO).onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
     // Press RIGHT BUMPER / R1 --> Run the example flywheel
     driverController
-        .runFlywheel()
+        .button(RUN_FLYWHEEL)
         .whileTrue(
             Commands.startEnd(
                 () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
@@ -331,7 +333,7 @@ public class RobotContainer {
 
     // Press LEFT BUMPER / L1 --> Drive to a demo pose offset defined in OperatorConstants
     driverController
-        .autopilotDemo()
+        .button(AUTOPILOT_DEMO)
         .whileTrue(
             Commands.defer(
                 () -> {
@@ -357,22 +359,22 @@ public class RobotContainer {
 
     // Press POV LEFT to nudge the robot left
     driverController
-        .povLeft()
+        .button(NUDGE_LEFT)
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
     driverController
-        .povRight()
+        .button(NUDGE_RIGHT)
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
     driverController
-        .povUp()
+        .button(NUDGE_FORWARD)
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
     driverController
-        .povDown()
+        .button(NUDGE_BACK)
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
