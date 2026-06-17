@@ -15,17 +15,27 @@ package frc.robot.util;
 
 import org.littletonrobotics.junction.Logger;
 
+/**
+ * Virtual subsystem to monitor CAN health
+ *
+ * <p>Instantiate one of these subsystems for each CAN bus on the robot in the RobotContainer.
+ */
 public class RBSICANHealth extends VirtualSubsystem {
   private long loops = 0;
   private final RBSICANBusRegistry.CANBusLike bus;
 
+  /** Constructur */
   public RBSICANHealth(String busName) {
     bus = RBSICANBusRegistry.getLike(busName);
   }
 
+  /** Periodic function */
   @Override
   protected void rbsiPeriodic() {
+    // Only log CAN health every 5 loops
     if ((loops++ % 5) != 0) return;
+
+    // Get status and log
     var status = bus.getStatus();
     Logger.recordOutput("CAN/" + bus.getName() + "/Utilization", status.BusUtilization);
     Logger.recordOutput("CAN/" + bus.getName() + "/TxFullCount", status.TxFullCount);

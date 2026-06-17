@@ -56,6 +56,7 @@ import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.SparkUtil;
+import java.util.Arrays;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
 
@@ -72,6 +73,9 @@ public class ModuleIOBlended implements ModuleIO {
   private final SwerveModuleConstants<
           TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>
       constants;
+
+  // This module number (for logging)
+  private final int module;
 
   // Hardware Objects
   private final TalonFX driveTalon;
@@ -134,6 +138,8 @@ public class ModuleIOBlended implements ModuleIO {
    * added in appropriately.
    */
   public ModuleIOBlended(int module) {
+    // Record the module number for logging purposes
+    this.module = module;
 
     constants =
         switch (module) {
@@ -243,7 +249,8 @@ public class ModuleIOBlended implements ModuleIO {
             SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
         .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
         .feedForward
-        .kV(0.0);
+        .kV(0.0)
+        .kS(DrivebaseConstants.kSteerS);
     turnConfig
         .signals
         .absoluteEncoderPositionAlwaysOn(true)
@@ -311,21 +318,28 @@ public class ModuleIOBlended implements ModuleIO {
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
-    // Refresh all signals
+    // Refresh signals
     var driveStatus =
         BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var turnEncoderStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
 
-    // Update drive inputs
+    if (!driveStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+    }
+    if (!encStatus.isOK()) {
+      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    }
+
+    // Drive inputs
     inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
     inputs.drivePositionRad = Units.rotationsToRadians(drivePosition.getValueAsDouble());
     inputs.driveVelocityRadPerSec = Units.rotationsToRadians(driveVelocity.getValueAsDouble());
     inputs.driveAppliedVolts = driveAppliedVolts.getValueAsDouble();
     inputs.driveCurrentAmps = driveCurrent.getValueAsDouble();
 
-    // Update turn inputs
+    // Turn inputs (Spark for turn motor, CANcoder for absolute)
     SparkUtil.sparkStickyFault = false;
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(turnEncoderStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());
@@ -333,20 +347,43 @@ public class ModuleIOBlended implements ModuleIO {
         turnSpark, turnSpark::getOutputCurrent, (value) -> inputs.turnCurrentAmps = value);
     inputs.turnConnected = turnConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
-    // Update odometry inputs
-    inputs.odometryTimestamps =
-        timestampQueue.stream().mapToDouble((Double value) -> value).toArray();
-    inputs.odometryDrivePositionsRad =
-        drivePositionQueue.stream()
-            .mapToDouble((Double value) -> Units.rotationsToRadians(value))
-            .toArray();
-    inputs.odometryTurnPositions =
-        turnPositionQueue.stream()
-            .map((Double value) -> Rotation2d.fromRotations(value))
-            .toArray(Rotation2d[]::new);
-    timestampQueue.clear();
-    drivePositionQueue.clear();
-    turnPositionQueue.clear();
+    // Odometry queue drain (common prefix only)
+    final int tsCount = timestampQueue.size();
+    final int driveCount = drivePositionQueue.size();
+    final int turnCount = turnPositionQueue.size();
+    final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
+
+    if (sampleCount <= 0) {
+      inputs.odometryTimestamps = new double[0];
+      inputs.odometryDrivePositionsRad = new double[0];
+      inputs.odometryTurnPositions = new Rotation2d[0];
+      return;
+    }
+
+    final double[] outTs = new double[sampleCount];
+    final double[] outDriveRad = new double[sampleCount];
+    final Rotation2d[] outTurn = new Rotation2d[sampleCount];
+
+    for (int i = 0; i < sampleCount; i++) {
+      final Double t = timestampQueue.poll();
+      final Double driveRot = drivePositionQueue.poll();
+      final Double turnRot = turnPositionQueue.poll();
+
+      if (t == null || driveRot == null || turnRot == null) {
+        inputs.odometryTimestamps = Arrays.copyOf(outTs, i);
+        inputs.odometryDrivePositionsRad = Arrays.copyOf(outDriveRad, i);
+        inputs.odometryTurnPositions = Arrays.copyOf(outTurn, i);
+        return;
+      }
+
+      outTs[i] = t.doubleValue();
+      outDriveRad[i] = Units.rotationsToRadians(driveRot.doubleValue());
+      outTurn[i] = Rotation2d.fromRotations(turnRot.doubleValue());
+    }
+
+    inputs.odometryTimestamps = outTs;
+    inputs.odometryDrivePositionsRad = outDriveRad;
+    inputs.odometryTurnPositions = outTurn;
   }
 
   /**
