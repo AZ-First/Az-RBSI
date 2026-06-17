@@ -24,7 +24,6 @@ import static edu.wpi.first.units.Units.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.wpilibj.Filesystem;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -50,13 +49,12 @@ public class FieldConstants {
   public static final int aprilTagCount = fieldType.getLayout().getTags().size();
   public static final AprilTagLayoutType defaultAprilTagType = fieldType;
 
-  public static final AprilTagFieldLayout aprilTagLayout =
-      AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+  public static final AprilTagFieldLayout aprilTagLayout = fieldType.getLayout();
 
   @Getter
   public enum AprilTagLayoutType {
     REBUILT_WELDED("2026-rebuilt-welded"),
-    REBUILT_ANDYMARK("2026-rebuilt-welded"),
+    REBUILT_ANDYMARK("2026-rebuilt-andymark"),
     REEFSCAPE_WELDED("2025-reefscape-welded"),
     REEFSCAPE_ANDYMARK("2025-reefscape-andymark"),
     CRESCENDO("2024-crescendo"),

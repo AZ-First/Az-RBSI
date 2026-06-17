@@ -187,6 +187,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       // ----------------------------------------------------------------------
       final double[] lastDist = new double[4];
       boolean haveLastDist = false;
+      final boolean logDebug = Constants.isTuningMode();
 
       for (int i = 0; i < n; i++) {
         final double t = ts[i];
@@ -224,26 +225,31 @@ public final class DriveOdometry extends VirtualSubsystem {
             imuInputs.yawRateRadPerSec,
             odomPositions);
 
-        // Debugging
-        Logger.recordOutput("Odometry/Debug/timestamp", t);
-        Logger.recordOutput("Odometry/Debug/now", TimeUtil.now());
-        if (i > 0) {
-          Logger.recordOutput("Odometry/Debug/timeNowDiff", t - ts[i - 1]);
+        if (logDebug && i == n - 1) {
+          Logger.recordOutput("Odometry/Debug/timestamp", t);
+          Logger.recordOutput("Odometry/Debug/now", TimeUtil.now());
+          if (i > 0) {
+            Logger.recordOutput("Odometry/Debug/timeNowDiff", t - ts[i - 1]);
+          }
+          Logger.recordOutput("Odometry/Debug/replay_t", t);
+          Logger.recordOutput("Odometry/Debug/replay_yawRad", yawRad);
         }
-        Logger.recordOutput("Odometry/Debug/replay_t", t);
-        Logger.recordOutput("Odometry/Debug/replay_yawRad", yawRad);
 
         // Module distance deltas (valid within batch)
         for (int m = 0; m < 4; m++) {
           final SwerveModulePosition pos = odomPositions[m];
           final double dist = pos.distanceMeters;
 
-          Logger.recordOutput("Odometry/Debug/mod" + m + "_distanceMeters", dist);
-          Logger.recordOutput("Odometry/Debug/mod" + m + "_angleRad", pos.angle.getRadians());
+          if (logDebug && i == n - 1) {
+            Logger.recordOutput("Odometry/Debug/mod" + m + "_distanceMeters", dist);
+            Logger.recordOutput("Odometry/Debug/mod" + m + "_angleRad", pos.angle.getRadians());
+          }
 
           if (haveLastDist) {
             final double delta = dist - lastDist[m];
-            Logger.recordOutput("Odometry/Debug/mod" + m + "_deltaMeters", delta);
+            if (logDebug && i == n - 1) {
+              Logger.recordOutput("Odometry/Debug/mod" + m + "_deltaMeters", delta);
+            }
           }
 
           lastDist[m] = dist;

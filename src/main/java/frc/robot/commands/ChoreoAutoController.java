@@ -9,27 +9,43 @@
 
 package frc.robot.commands;
 
-import static frc.robot.Constants.AutoConstants.*;
-
 import choreo.trajectory.SwerveSample;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.drive.Drive;
 import java.util.function.Consumer;
 
-public class ChoreoAutoController implements Consumer<SwerveSample> {
+public final class ChoreoAutoController implements Consumer<SwerveSample> {
   private final Drive drive; // drive subsystem
   private final PIDController xController =
-      new PIDController(kChoreoDrivePID.kP, kChoreoDrivePID.kI, kChoreoDrivePID.kD);
+      new PIDController(
+          AutoConstants.kChoreoDrivePID.kP,
+          AutoConstants.kChoreoDrivePID.kI,
+          AutoConstants.kChoreoDrivePID.kD);
   private final PIDController yController =
-      new PIDController(kChoreoDrivePID.kP, kChoreoDrivePID.kI, kChoreoDrivePID.kD);
+      new PIDController(
+          AutoConstants.kChoreoDrivePID.kP,
+          AutoConstants.kChoreoDrivePID.kI,
+          AutoConstants.kChoreoDrivePID.kD);
   private final PIDController headingController =
-      new PIDController(kChoreoSteerPID.kP, kChoreoSteerPID.kI, kChoreoSteerPID.kD);
+      new PIDController(
+          AutoConstants.kChoreoSteerPID.kP,
+          AutoConstants.kChoreoSteerPID.kI,
+          AutoConstants.kChoreoSteerPID.kD);
 
   public ChoreoAutoController(Drive drive) {
     this.drive = drive;
     headingController.enableContinuousInput(-Math.PI, Math.PI);
+  }
+
+  public void reset() {
+    Pose2d pose = drive.getPose();
+    xController.reset();
+    yController.reset();
+    headingController.reset();
+    headingController.setSetpoint(pose.getRotation().getRadians());
   }
 
   @Override

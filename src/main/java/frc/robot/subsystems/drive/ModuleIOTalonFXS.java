@@ -176,17 +176,18 @@
 //     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 //     driveConfig.Slot0 = constants.DriveMotorGains;
 //     driveConfig.ExternalFeedback.SensorToMechanismRatio = constants.DriveMotorGearRatio;
-//     driveConfig.CurrentLimits.StatorCurrentLimit = DrivebaseConstants.kSlipCurrent;
+//     driveConfig.CurrentLimits.StatorCurrentLimit = DrivebaseConstants.kSlipCurrentAmps;
 //     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
 //     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
 //     OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
-//     openRamps.DutyCycleOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
-//     openRamps.VoltageOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
-//     openRamps.TorqueOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriod;
+//     openRamps.DutyCycleOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriodSecs;
+//     openRamps.VoltageOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriodSecs;
+//     openRamps.TorqueOpenLoopRampPeriod = DrivebaseConstants.kDriveOpenLoopRampPeriodSecs;
 //     ClosedLoopRampsConfigs closedRamps = new ClosedLoopRampsConfigs();
-//     closedRamps.DutyCycleClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
-//     closedRamps.VoltageClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
-//     closedRamps.TorqueClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriod;
+//     closedRamps.DutyCycleClosedLoopRampPeriod =
+// DrivebaseConstants.kDriveClosedLoopRampPeriodSecs;
+//     closedRamps.VoltageClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriodSecs;
+//     closedRamps.TorqueClosedLoopRampPeriod = DrivebaseConstants.kDriveClosedLoopRampPeriodSecs;
 //     // Apply the open- and closed-loop ramp configuration for current smoothing
 //     driveConfig.withClosedLoopRamps(closedRamps).withOpenLoopRamps(openRamps);
 //     // Set motor inversions
@@ -388,7 +389,7 @@
 //   public void setDriveOpenLoop(double output) {
 //     // Scale by actual battery voltage to keep full output consistent
 //     double busVoltage = RobotController.getBatteryVoltage();
-//     double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+//     double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
 
 //     driveTalon.setControl(
 //         switch (m_DriveMotorClosedLoopOutput) {
@@ -409,7 +410,7 @@
 //   @Override
 //   public void setTurnOpenLoop(double output) {
 //     double busVoltage = RobotController.getBatteryVoltage();
-//     double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+//     double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
 
 //     turnTalon.setControl(
 //         switch (m_SteerMotorClosedLoopOutput) {
@@ -446,7 +447,7 @@
 //         Math.signum(velocityRotPerSec) * DrivebaseConstants.kDriveS
 //             + DrivebaseConstants.kDriveV * velocityRotPerSec
 //             + DrivebaseConstants.kDriveA * accelerationRotPerSec2;
-//     double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+//     double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
 //     // Set the drive motor control based on CTRE LICENSED status
 //     driveTalon.setControl(
@@ -478,8 +479,8 @@
 //     double busVoltage = RobotController.getBatteryVoltage();
 
 //     // Scale feedforward voltage by battery voltage
-//     double nominalFFVolts = DrivebaseConstants.kNominalFFVolts;
-//     double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+//     double nominalFFVolts = DrivebaseConstants.kNominalFeedforwardVolts;
+//     double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
 //     turnTalon.setControl(
 //         switch (m_SteerMotorClosedLoopOutput) {

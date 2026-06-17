@@ -17,10 +17,11 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
 import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.Follower;
-import com.ctre.phoenix6.controls.MotionMagicDutyCycle;
 import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -46,6 +47,11 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     FLYWHEEL_LEADER.getPowerPort(), FLYWHEEL_FOLLOWER.getPowerPort()
   };
 
+  @Override
+  public int[] powerPorts() {
+    return powerPorts;
+  }
+
   private final StatusSignal<Angle> leaderPosition = leader.getPosition();
   private final StatusSignal<AngularVelocity> leaderVelocity = leader.getVelocity();
   private final StatusSignal<Voltage> leaderAppliedVolts = leader.getMotorVoltage();
@@ -54,31 +60,36 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   private final TalonFXConfiguration config = new TalonFXConfiguration();
   private final boolean isCTREPro = Constants.getPhoenixPro() == CTREPro.LICENSED;
+  private final VoltageOut voltageRequest = new VoltageOut(0);
+  private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
+  private final VelocityVoltage velocityVoltageRequest = new VelocityVoltage(0);
+  private final MotionMagicVelocityVoltage motionMagicVelocityRequest =
+      new MotionMagicVelocityVoltage(0);
 
   public FlywheelIOTalonFX() {
-    config.CurrentLimits.SupplyCurrentLimit = PowerConstants.kMotorPortMaxCurrent;
+    config.CurrentLimits.SupplyCurrentLimit = PowerConstants.kMotorPortMaxCurrentAmps;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.MotorOutput.NeutralMode =
-        switch (kFlywheelIdleMode) {
+        switch (kIdleMode) {
           case COAST -> NeutralModeValue.Coast;
           case BRAKE -> NeutralModeValue.Brake;
         };
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
     OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
-    openRamps.DutyCycleOpenLoopRampPeriod = kFlywheelOpenLoopRampPeriod;
-    openRamps.VoltageOpenLoopRampPeriod = kFlywheelOpenLoopRampPeriod;
-    openRamps.TorqueOpenLoopRampPeriod = kFlywheelOpenLoopRampPeriod;
+    openRamps.DutyCycleOpenLoopRampPeriod = kOpenLoopRampPeriodSecs;
+    openRamps.VoltageOpenLoopRampPeriod = kOpenLoopRampPeriodSecs;
+    openRamps.TorqueOpenLoopRampPeriod = kOpenLoopRampPeriodSecs;
     ClosedLoopRampsConfigs closedRamps = new ClosedLoopRampsConfigs();
-    closedRamps.DutyCycleClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
-    closedRamps.VoltageClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
-    closedRamps.TorqueClosedLoopRampPeriod = kFlywheelClosedLoopRampPeriod;
+    closedRamps.DutyCycleClosedLoopRampPeriod = kClosedLoopRampPeriodSecs;
+    closedRamps.VoltageClosedLoopRampPeriod = kClosedLoopRampPeriodSecs;
+    closedRamps.TorqueClosedLoopRampPeriod = kClosedLoopRampPeriodSecs;
     // Apply the open- and closed-loop ramp configuration for current smoothing
     config.withClosedLoopRamps(closedRamps).withOpenLoopRamps(openRamps);
     // set Motion Magic Velocity settings
     var motionMagicConfigs = config.MotionMagic;
     motionMagicConfigs.MotionMagicAcceleration =
-        400; // Target acceleration of 400 rps/s (0.25 seconds to max)
-    motionMagicConfigs.MotionMagicJerk = 4000; // Target jerk of 4000 rps/s/s (0.1 seconds)
+        kMotionMagicAccelerationRotPerSecSq; // Target acceleration in rotations/s/s
+    motionMagicConfigs.MotionMagicJerk = kMotionMagicJerkRotPerSecCubed; // rotations/s/s/s
 
     // Apply the configurations to the flywheel motors
     PhoenixUtil.tryUntilOk(5, () -> leader.getConfigurator().apply(config, 0.25));
@@ -96,10 +107,9 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   public void updateInputs(FlywheelIOInputs inputs) {
     BaseStatusSignal.refreshAll(
         leaderPosition, leaderVelocity, leaderAppliedVolts, leaderCurrent, followerCurrent);
-    inputs.positionRad =
-        Units.rotationsToRadians(leaderPosition.getValueAsDouble()) / kFlywheelGearRatio;
+    inputs.positionRad = Units.rotationsToRadians(leaderPosition.getValueAsDouble()) / kGearRatio;
     inputs.velocityRadPerSec =
-        Units.rotationsToRadians(leaderVelocity.getValueAsDouble()) / kFlywheelGearRatio;
+        Units.rotationsToRadians(leaderVelocity.getValueAsDouble()) / kGearRatio;
     inputs.appliedVolts = leaderAppliedVolts.getValueAsDouble();
     inputs.currentAmps =
         new double[] {leaderCurrent.getValueAsDouble(), followerCurrent.getValueAsDouble()};
@@ -107,25 +117,28 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   @Override
   public void setVoltage(double volts) {
-    final MotionMagicVoltage m_request = new MotionMagicVoltage(volts);
-    m_request.withEnableFOC(isCTREPro);
-    leader.setControl(m_request);
+    leader.setControl(voltageRequest.withOutput(volts).withEnableFOC(isCTREPro));
   }
 
   @Override
   public void setVelocity(double velocityRadPerSec) {
-    // create a Motion Magic Velocity request, voltage output
-    final MotionMagicVelocityVoltage m_request = new MotionMagicVelocityVoltage(0);
-    m_request.withEnableFOC(isCTREPro);
-    leader.setControl(m_request.withVelocity(Units.radiansToRotations(velocityRadPerSec)));
+    leader.setControl(
+        velocityVoltageRequest
+            .withVelocity(Units.radiansToRotations(velocityRadPerSec) * kGearRatio)
+            .withEnableFOC(isCTREPro));
+  }
+
+  @Override
+  public void setVelocityProfiled(double velocityRadPerSec) {
+    leader.setControl(
+        motionMagicVelocityRequest
+            .withVelocity(Units.radiansToRotations(velocityRadPerSec) * kGearRatio)
+            .withEnableFOC(isCTREPro));
   }
 
   @Override
   public void setPercent(double percent) {
-    // create a Motion Magic DutyCycle request, voltage output
-    final MotionMagicDutyCycle m_request = new MotionMagicDutyCycle(percent);
-    m_request.withEnableFOC(isCTREPro);
-    leader.setControl(m_request);
+    leader.setControl(dutyCycleRequest.withOutput(percent).withEnableFOC(isCTREPro));
   }
 
   @Override

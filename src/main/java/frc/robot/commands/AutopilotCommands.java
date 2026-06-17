@@ -17,7 +17,7 @@
 
 package frc.robot.commands;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
 
 import com.therekrab.autopilot.APTarget;
 import com.therekrab.autopilot.Autopilot.APResult;
@@ -31,7 +31,8 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.drive.Drive;
 import org.littletonrobotics.junction.Logger;
 
-public class AutopilotCommands {
+public final class AutopilotCommands {
+  private AutopilotCommands() {}
 
   /**
    * AutoPilot Command Factory -- just reference pose
@@ -179,6 +180,7 @@ public class AutopilotCommands {
             () -> {
               ChassisSpeeds robotRelativeSpeeds = drive.getChassisSpeeds();
               Pose2d pose = drive.getPose();
+              boolean atTarget = AutoConstants.kAutopilot.atTarget(pose, target);
 
               Logger.recordOutput("Autopilot/CurrentPose", pose);
               Logger.recordOutput("Autopilot/FinalPose", target.getReference());
@@ -192,8 +194,7 @@ public class AutopilotCommands {
               Logger.recordOutput("Autopilot/outputVx", output.vx());
               Logger.recordOutput("Autopilot/outputVy", output.vy());
               Logger.recordOutput("Autopilot/targetAngle", output.targetAngle());
-              Logger.recordOutput(
-                  "Autopilot/atTarget", AutoConstants.kAutopilot.atTarget(drive.getPose(), target));
+              Logger.recordOutput("Autopilot/atTarget", atTarget);
 
               // Output is field relative
               ChassisSpeeds speeds =
@@ -214,6 +215,10 @@ public class AutopilotCommands {
         // Reset PID controller when command starts & ends; run until we're at target
         .beforeStarting(() -> drive.resetHeadingController())
         .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target))
-        .finallyDo(() -> drive.resetHeadingController());
+        .finallyDo(
+            () -> {
+              drive.stop();
+              drive.resetHeadingController();
+            });
   }
 }

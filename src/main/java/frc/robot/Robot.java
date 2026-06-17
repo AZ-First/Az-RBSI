@@ -34,9 +34,6 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
-import org.photonvision.PhotonCamera;
-import org.photonvision.simulation.PhotonCameraSim;
-import org.photonvision.simulation.VisionSystemSim;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -45,12 +42,12 @@ import org.photonvision.simulation.VisionSystemSim;
  * project.
  */
 public class Robot extends LoggedRobot {
-  private Command m_autoCommandPathPlanner;
+  private static final int TIMING_LOG_PERIOD_LOOPS = 5;
+
+  private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
-
-  // Define simulation fields here
-  private VisionSystemSim visionSim;
+  private int timingLogLoops = 0;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -59,7 +56,7 @@ public class Robot extends LoggedRobot {
   public Robot() {
     // Record metadata
     Logger.recordMetadata("Robot", Constants.getRobot().toString());
-    Logger.recordMetadata("TuningMode", Boolean.toString(Constants.tuningMode));
+    Logger.recordMetadata("TuningMode", Boolean.toString(Constants.isTuningMode()));
     Logger.recordMetadata("RuntimeType", getRuntimeType().toString());
     Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
     Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
@@ -99,7 +96,7 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    LoggedPowerDistribution.getInstance(PowerConstants.kPDMCANid, PowerConstants.kPDMType);
+    LoggedPowerDistribution.getInstance(PowerConstants.kPdmCanId, PowerConstants.kPdmType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -147,9 +144,12 @@ public class Robot extends LoggedRobot {
     }
     final long t4 = System.nanoTime();
 
-    Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
-    Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
-    Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
+    if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
+      timingLogLoops = 0;
+      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
+    }
   }
 
   /** This function is called once when the robot is disabled. */
@@ -166,7 +166,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void disabledPeriodic() {
     // After WHEEL_LOCK_TIME has elapsed, release the drive brakes
-    if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTime)) {
+    if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTimeSecs)) {
       m_robotContainer.getDrivebase().setMotorBrake(false);
       m_disabledTimer.stop();
     }
@@ -182,26 +182,20 @@ public class Robot extends LoggedRobot {
     m_robotContainer.getDrivebase().resetHeadingController();
     m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
-    // TODO: Make sure Gyro inits here with whatever is in the path planning thingie
-    switch (Constants.getAutoType()) {
-      case MANUAL:
-        CommandScheduler.getInstance().schedule(m_robotContainer.getManualAuto());
-        break;
+    // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
+    // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
+    m_autonomousCommand =
+        switch (Constants.getAutoType()) {
+          case MANUAL -> m_robotContainer.getManualAuto();
+          case PATHPLANNER -> m_robotContainer.getAutonomousCommandPathPlanner();
+          case CHOREO -> m_robotContainer.getAutonomousCommandChoreo();
+          default ->
+              throw new RuntimeException(
+                  "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+        };
 
-      case PATHPLANNER:
-        m_autoCommandPathPlanner = m_robotContainer.getAutonomousCommandPathPlanner();
-        // schedule the autonomous command
-        if (m_autoCommandPathPlanner != null) {
-          CommandScheduler.getInstance().schedule(m_autoCommandPathPlanner);
-        }
-        break;
-
-      case CHOREO:
-        m_robotContainer.getAutonomousCommandChoreo();
-        break;
-      default:
-        throw new RuntimeException(
-            "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+    if (m_autonomousCommand != null) {
+      CommandScheduler.getInstance().schedule(m_autonomousCommand);
     }
   }
 
@@ -216,10 +210,9 @@ public class Robot extends LoggedRobot {
     // teleop starts running. If you want the autonomous to
     // continue until interrupted by another command, remove
     // this line or comment it out.
-    if (m_autoCommandPathPlanner != null) {
-      m_autoCommandPathPlanner.cancel();
-    } else {
-      CommandScheduler.getInstance().cancelAll();
+    if (m_autonomousCommand != null) {
+      m_autonomousCommand.cancel();
+      m_autonomousCommand = null;
     }
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
@@ -272,42 +265,4 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
-
-  /** This function is called once when the robot is first started up. */
-  @Override
-  public void simulationInit() {
-    // ---------------- SIM-ONLY: vision simulation world + camera sims ----------------
-    // 1) Create the vision simulation world
-    visionSim = new VisionSystemSim("CameraSweepWorld");
-
-    // 2) Add AprilTags (field layout)
-    visionSim.addAprilTags(FieldConstants.aprilTagLayout);
-
-    // 3) Build PhotonCameraSim objects from Constants camera configs
-    final Constants.Cameras.CameraConfig[] camConfigs = Constants.Cameras.ALL;
-
-    PhotonCameraSim[] simCams = new PhotonCameraSim[camConfigs.length];
-
-    for (int i = 0; i < camConfigs.length; i++) {
-      final var cfg = camConfigs[i];
-
-      // Name must match the VisionIOPhotonVisionSim name
-      PhotonCamera photonCam = new PhotonCamera(cfg.name());
-
-      // 2026 API: wrap camera with sim properties from Constants
-      PhotonCameraSim camSim = new PhotonCameraSim(photonCam, cfg.simProps());
-
-      // Register camera with the sim using the robot-to-camera transform
-      visionSim.addCamera(camSim, cfg.robotToCamera());
-
-      simCams[i] = camSim;
-    }
-  }
-
-  /** This function is called periodically whilst in simulation. */
-  @Override
-  public void simulationPeriodic() {
-    // Update sim each sim tick
-    visionSim.update(m_robotContainer.getDrivebase().getPose());
-  }
 }

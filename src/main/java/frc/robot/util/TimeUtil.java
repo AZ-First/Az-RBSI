@@ -21,13 +21,6 @@ public final class TimeUtil {
 
   /** Always seconds, regardless of real/sim/replay timebase quirks. */
   public static double now() {
-    double t = Logger.getTimestamp();
-
-    // Empirical: in some environments, Logger timestamp is microseconds.
-    // If it looks like µs, convert to seconds.
-    if (t > 1.0e6) {
-      t *= 1.0e-6;
-    }
-    return t;
+    return Logger.getTimestamp() * 1.0e-6;
   }
 }

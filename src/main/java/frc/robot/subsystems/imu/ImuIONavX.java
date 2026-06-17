@@ -88,9 +88,9 @@ public class ImuIONavX implements ImuIO {
     // World linear accel (NavX returns "g" typically); convert to m/s/s
     inputs.linearAccel =
         new Translation3d(
-            navx.getWorldLinearAccelX() * Constants.G_TO_MPS2,
-            navx.getWorldLinearAccelY() * Constants.G_TO_MPS2,
-            navx.getWorldLinearAccelZ() * Constants.G_TO_MPS2);
+            navx.getWorldLinearAccelX() * Constants.kGravityMetersPerSecSq,
+            navx.getWorldLinearAccelY() * Constants.kGravityMetersPerSecSq,
+            navx.getWorldLinearAccelZ() * Constants.kGravityMetersPerSecSq);
 
     // Jerk computed as (delta accel) / dt
     if (prevTimestampNs != 0L) {
@@ -116,8 +116,8 @@ public class ImuIONavX implements ImuIO {
       inputs.odometryYawPositionsRad = yawOut;
     } else {
       // ...otherwise return empty arrays
-      inputs.odometryYawTimestamps = new double[] {};
-      inputs.odometryYawPositionsRad = new double[] {};
+      inputs.odometryYawTimestamps = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryYawPositionsRad = EMPTY_DOUBLE_ARRAY;
     }
 
     // Compute how long this took in seconds
