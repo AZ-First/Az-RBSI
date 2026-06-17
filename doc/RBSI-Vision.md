@@ -1,160 +1,368 @@
 # Az-RBSI Vision Integration
 
-This page includes detailed steps for integrating robot vision for your
-2026 REBUILT robot.
+This page describes how vision is wired into Az-RBSI for the 2026 REBUILT
+robot template. It covers PhotonVision, Limelight, camera constants,
+AdvantageKit logging, simulation, and the tuning steps that usually matter on a
+real robot.
 
---------
+Vision in RBSI is not just a camera reader. It is part of the pose-estimation
+pipeline:
 
-### PhotonVision
+1. `Imu` refreshes gyro and acceleration inputs.
+2. `DriveOdometry` drains timestamped module odometry and updates the pose
+   buffers.
+3. `Vision` reads camera observations, filters them, time-aligns accepted
+   poses, and passes measurements to `Drive.addVisionMeasurement(...)`.
 
-The preferred method for adding vision to your robot is with [PhotonVision](
-https://photonvision.org/).  This community-developed open-source package
-combines coprocessor-based camera control and analysis with a Java library
-for consuming the processed targeting information in the robot code.
+That order matters. Vision observations are delayed by exposure time, pipeline
+time, and network transport, so RBSI uses the drive pose buffer instead of
+trying to correct the current robot pose with a stale camera pose.
 
-#### Recommended Setup with Az-RBSI
+## Selecting A Vision Backend
 
-We recommend using Arducam [OV9281](https://www.amazon.com/dp/B096M5DKY6)
-(black & white) and/or [OV9782](https://www.amazon.com/dp/B0CLXZ29F9) (color)
-cameras for robot vision due to their Global Shutter, Low Distortion, and USB
-connection.  In addition to the lens delivered with the camera, supplementary
-lenses may be purchased to vary the FOV available to the detector for various
-robot applications, such as [Low-Distortion](
-https://www.amazon.com/dp/B07NW8VR71) or [General Purpose](
-https://www.amazon.com/dp/B096V2NP2T).
+Choose the active vision backend in `Constants.java`:
 
-For the coprocessor that controls the cameras and analyzes the images for
-AprilTag and gamepiece detection, we recommend using one or two Orange Pi 5
-single-board computers -- although PhotonVision does support a number of
-[different coprocessor options](
-https://docs.photonvision.org/en/latest/docs/quick-start/quick-install.html).
-As decribed in the [Getting Started Guide](RBSI-GSG.md), we include a 3D print
-for a case that can hold one or two of these computers.
+```java
+private static VisionType visionType = VisionType.PHOTON;
+```
 
-#### Setting up PhotonVision on the Coprocessor
+Supported values:
 
-Download the appropriate [disk image](
-https://github.com/PhotonVision/photonvision/releases/tag/v2026.2.1) for your
-coprocessor and burn it to an SD card using the [Raspberry Pi Imager](
-https://www.raspberrypi.com/software).  Connect the powered-on coprocessor
-to the Vivivid radio (port 2 or 3) via ethernet, or connect to a network switch connected to the radio via ethernet, and connect to the PhotonVision software
-at the address ``http://photonvision.local:5800``.
+- `PHOTON`: use PhotonVision cameras described by `Constants.Cameras`.
+- `LIMELIGHT`: use Limelight cameras with transforms configured in Limelight.
+- `NONE`: construct no cameras, useful for bring-up or robots without vision.
 
-Before you connect the coprocessor to your robot, be sure to set your team
-number, set the IP address to "Static" and give it the number ``10.TE.AM.11``,
-where "TE.AM" is the approprate parsing of your team number into IP address,
-as used by your robot radio and RoboRIO.  If desired, you can also give your
-coprocessor a hostname.
+Real and simulation modes build camera IO differently:
 
-![PhotonVision Network Settings](PV_Network.png)
+- Real PhotonVision: `VisionIOPhotonVision`
+- Sim PhotonVision: `VisionIOPhotonVisionSim`
+- Real Limelight: `VisionIOLimelight`
+- Replay/no-camera shim: empty or no-op `VisionIO`
 
-We suggest you give your first coprocessor the static IP address
-``10.TE.AM.11``, and your second coprocessor (if desired) ``10.TE.AM.12``.
-The static address allows for more stable operation, and the these particular
-addresses do not conflict with other devices on your robot network.
+Use one backend at a time unless you intentionally extend the factories in
+`RobotContainer`.
 
-Plug in cameras (two or three per coprocessor) and navigate to the Camera
-Configs page (see below).  Activate the cameras.
+## Recommended PhotonVision Hardware
 
-![PhotonVision Camera Configs](PV_Cameras.png)
+The preferred method for adding vision to your robot is with
+[PhotonVision](https://photonvision.org/). PhotonVision combines
+coprocessor-based camera control and analysis with PhotonLib for consuming
+processed targeting information in robot code.
 
-#### Configuring and Calibrating your Cameras
+Recommended cameras:
 
-This is the most important part!
+- Arducam [OV9281](https://www.amazon.com/dp/B096M5DKY6), black and white,
+  global shutter.
+- Arducam [OV9782](https://www.amazon.com/dp/B0CLXZ29F9), color, global
+  shutter.
 
-Instructions are in the [PhotonVision Documentation](
-https://docs.photonvision.org/en/latest/docs/calibration/calibration.html).
+Useful lens options:
 
-You should consider calibrating your cameras early and often, including daily
-during a competition to ensure that the cameras are reporting as accurate a
-pose as possible for your odometry.  Also, double-check your calibration by
-using a measuring tape to compare the reported vision-derived distance from
-each camera to one or more AprilTags with reality.
+- [Low-Distortion lens](https://www.amazon.com/dp/B07NW8VR71)
+- [General Purpose lens](https://www.amazon.com/dp/B096V2NP2T)
 
+Recommended coprocessor:
 
-#### Using PhotonVision for Vision Simulation
+- One or two Orange Pi 5 single-board computers.
+- Two or three cameras per coprocessor is a reasonable starting point.
+- Use stable power. Do not put coprocessors on switched power ports.
 
-This is an advanced topic, and is therefore in the Restricted Section.  (More
-information about vision simulation to come in a future release.)
+PhotonVision supports other coprocessors; see the PhotonVision quick install
+documentation for platform-specific images.
 
-![Restricted Section](restricted_section.jpg)
-# Az-RBSI Vision Integration
+## PhotonVision Network Setup
 
-This page includes detailed steps for integrating robot vision for your
-2026 REBUILT robot.
+Download the appropriate PhotonVision disk image for your coprocessor and burn
+it to an SD card using Raspberry Pi Imager or a similar imaging tool. Connect
+the powered-on coprocessor to the Vivid Hosting radio, or to a network switch
+connected to the radio.
 
---------
+Open PhotonVision at:
 
-### PhotonVision
+```text
+http://photonvision.local:5800
+```
 
-The preferred method for adding vision to your robot is with [PhotonVision](
-https://photonvision.org/).  This community-developed open-source package
-combines coprocessor-based camera control and analysis with a Java library
-for consuming the processed targeting information in the robot code.
+Before the coprocessor is permanently installed:
 
-#### Recommended Setup with Az-RBSI
+1. Set the team number.
+2. Set the IP mode to static.
+3. Use `10.TE.AM.11` for the first coprocessor.
+4. Use `10.TE.AM.12` for the second coprocessor.
+5. Give each coprocessor a clear hostname if desired.
 
-We recommend using Arducam [OV9281](https://www.amazon.com/dp/B096M5DKY6)
-(black & white) and/or [OV9782](https://www.amazon.com/dp/B0CLXZ29F9) (color)
-cameras for robot vision due to their Global Shutter, Low Distortion, and USB
-connection.  In addition to the lens delivered with the camera, supplementary
-lenses may be purchased to vary the FOV available to the detector for various
-robot applications, such as [Low-Distortion](
-https://www.amazon.com/dp/B07NW8VR71) or [General Purpose](
-https://www.amazon.com/dp/B096V2NP2T).
-
-For the coprocessor that controls the cameras and analyzes the images for
-AprilTag and gamepiece detection, we recommend using one or two Orange Pi 5
-single-board computers -- although PhotonVision does support a number of
-[different coprocessor options](
-https://docs.photonvision.org/en/latest/docs/quick-start/quick-install.html).
-As decribed in the [Getting Started Guide](RBSI-GSG.md), we include a 3D print
-for a case that can hold one or two of these computers.
-
-#### Setting up PhotonVision on the Coprocessor
-
-Download the appropriate [disk image](
-https://github.com/PhotonVision/photonvision/releases/tag/v2026.2.1) for your
-coprocessor and burn it to an SD card using the [Raspberry Pi Imager](
-https://www.raspberrypi.com/software).  Connect the powered-on coprocessor
-to the Vivivid radio (port 2 or 3) via ethernet, or connect to a network switch connected to the radio via ethernet, and connect to the PhotonVision software
-at the address ``http://photonvision.local:5800``.
-
-Before you connect the coprocessor to your robot, be sure to set your team
-number, set the IP address to "Static" and give it the number ``10.TE.AM.11``,
-where "TE.AM" is the approprate parsing of your team number into IP address,
-as used by your robot radio and RoboRIO.  If desired, you can also give your
-coprocessor a hostname.
+These addresses avoid common robot-network conflicts and make camera bring-up
+less mysterious during events.
 
 ![PhotonVision Network Settings](PV_Network.png)
 
-We suggest you give your first coprocessor the static IP address
-``10.TE.AM.11``, and your second coprocessor (if desired) ``10.TE.AM.12``.
-The static address allows for more stable operation, and the these particular
-addresses do not conflict with other devices on your robot network.
+## PhotonVision Camera Setup
 
-Plug in cameras (two or three per coprocessor) and navigate to the Camera
-Configs page (see below).  Activate the cameras.
+Plug in cameras and open the Camera Configs page.
 
 ![PhotonVision Camera Configs](PV_Cameras.png)
 
-#### Configuring and Calibrating your Cameras
+For each camera:
 
-This is the most important part!
+1. Activate the camera.
+2. Set the camera name to exactly match `Constants.Cameras`.
+3. Select the intended AprilTag pipeline.
+4. Tune exposure and gain for the field lighting.
+5. Confirm tags are detected at realistic match distances.
+6. Calibrate the camera.
 
-Instructions are in the [PhotonVision Documentation](
-https://docs.photonvision.org/en/latest/docs/calibration/calibration.html).
+Camera names are string keys. If PhotonVision calls a camera `Photon_BW7`, the
+matching RBSI `CameraConfig` must also be named `Photon_BW7`.
 
-You should consider calibrating your cameras early and often, including daily
-during a competition to ensure that the cameras are reporting as accurate a
-pose as possible for your odometry.  Also, double-check your calibration by
-using a measuring tape to compare the reported vision-derived distance from
-each camera to one or more AprilTags with reality.
+## Camera Calibration
 
+Camera calibration is the most important part of vision bring-up.
 
-#### Using PhotonVision for vision simulation
+Use the PhotonVision calibration documentation:
 
-This is an advanced topic, and is therefore in the Restricted Section.  (More
-information about vision simulation to come in a future release.)
+https://docs.photonvision.org/en/latest/docs/calibration/calibration.html
 
-![Restricted Section](restricted_section.jpg)
+Practical rules:
+
+- Calibrate each physical camera.
+- Recalibrate after changing a lens, focus, resolution, or mount.
+- Validate calibration with a tape measure.
+- Recheck calibration at events when lighting or camera exposure changes.
+- Keep calibration files with the coprocessor image or team deployment notes.
+
+To sanity-check calibration, place the robot at known distances from several
+AprilTags and compare PhotonVision’s reported camera-to-target distance against
+real measurements.
+
+## Camera Mounting Constants
+
+PhotonVision camera transforms live in `Constants.Cameras`:
+
+```java
+new CameraConfig(
+    "Photon_BW7",
+    new Transform3d(
+        Inches.of(-13.0),
+        Inches.of(13.0),
+        Inches.of(12.0),
+        new Rotation3d(0.0, 0.0, Math.PI / 2)),
+    1.0,
+    new SimCameraProperties() { ... })
+```
+
+Each camera has:
+
+- `name`: must match the PhotonVision camera name.
+- `robotToCamera`: camera pose relative to robot center.
+- `stdDevFactor`: per-camera trust multiplier.
+- `simProps`: simulation calibration and latency model.
+
+The transform is from robot coordinates to camera coordinates:
+
+- X: forward positive.
+- Y: left positive.
+- Z: up positive.
+- Rotation values are radians.
+
+Measure camera position from the robot center, not from the bumper edge.
+Document the measurement convention in your team CAD or electrical notes.
+
+## Limelight Setup
+
+RBSI also supports Limelight through `VisionIOLimelight`.
+
+For Limelight:
+
+1. Set `visionType` to `VisionType.LIMELIGHT`.
+2. Configure camera name and network identity in Limelight.
+3. Configure robot-to-camera transform in the Limelight web UI.
+4. Confirm MegaTag outputs are available in NetworkTables.
+5. Confirm the Limelight clock and latency values are reasonable.
+
+RBSI consumes both MegaTag 1 and MegaTag 2 style observations when available.
+MegaTag 2 observations receive special standard-deviation handling because
+they generally do not provide useful robot rotation data in the same way as a
+full 3D solve.
+
+## VisionConstants
+
+Vision filtering and trust are tuned in `Constants.VisionConstants`.
+
+Important constants:
+
+- `kTrustedTags`: tag IDs treated as more reliable.
+- `kTrustedTagStdDevScale`: lower values make trusted tags more influential.
+- `kUntrustedTagStdDevScale`: higher values make untrusted tags less
+  influential.
+- `kRequireTrustedTag`: rejects observations that contain no trusted tags.
+- `kMaxAmbiguity`: rejects ambiguous single-tag solves.
+- `kFieldBorderMargin`: rejects poses outside the field plus margin.
+- `kZMargin` and `kMaxZErrorMeters`: reject physically unreasonable heights.
+- `kLinearStdDevBaseline`: base translation uncertainty.
+- `kAngularStdDevBaseline`: base rotation uncertainty.
+- `kLinearStdDevMegatag2Factor`: translation scaling for MegaTag 2.
+- `kAngularStdDevMegatag2Factor`: rotation scaling for MegaTag 2.
+
+Start conservative. A pose estimate that is slightly slow to converge is much
+easier to diagnose than a robot pose that jumps across the field because bad
+vision was trusted too much.
+
+## Observation Filtering
+
+The `Vision` subsystem applies several gates before accepting an observation:
+
+- Timestamp must be newer than the last accepted observation for that camera.
+- Timestamp must not be older than the last drive pose reset.
+- Observation must contain at least one tag.
+- Single-tag ambiguity must be below `kMaxAmbiguity`.
+- Estimated Z must be sane.
+- Estimated X/Y must be inside field bounds plus margin.
+- Single-tag observations are rejected while yaw rate is too high.
+
+Accepted observations are scored and converted into `TimedPose` objects with
+measurement standard deviations. RBSI chooses one best observation per camera,
+then fuses accepted camera observations for the loop.
+
+## Time Alignment And Fusion
+
+RBSI does not simply average camera poses.
+
+Each accepted camera observation has its own timestamp. The `Vision` subsystem:
+
+1. Picks a fusion time, usually the newest accepted timestamp.
+2. Uses the drive pose buffer to compute how the robot moved between each
+   camera timestamp and the fusion timestamp.
+3. Transforms older camera poses forward to the fusion time.
+4. Smooths/fuses the aligned estimates.
+5. Sends a `TimedPose` to `Drive.addVisionMeasurement(...)`.
+
+This is why `DriveOdometry` must run before `Vision`. Vision needs a current,
+coherent pose history before it can safely align delayed measurements.
+
+See [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md) for the deeper estimator design.
+
+## Enabled Vs Disabled Behavior
+
+When enabled, RBSI uses normal WPILib pose-estimator vision fusion. The
+measurement standard deviations decide how strongly the estimator trusts the
+vision measurement compared with odometry.
+
+When disabled, RBSI uses a controlled blending path instead of repeated Kalman
+updates. This prevents the estimator from behaving badly while the robot is
+stationary and covariance is collapsing. The robot pose will gently walk toward
+accepted vision rather than snapping violently.
+
+Relevant disabled-vision constants are in `DrivebaseConstants`:
+
+- `kDisabledVisionBlendAlpha`
+- `kDisabledVisionMaxJumpM`
+- `kDisabledVisionMaxJumpRad`
+- `kDisabledVisionStale`
+- `kDisabledVisionIgnoreAfterDisableSec`
+
+## AdvantageKit Logging
+
+Useful logged outputs:
+
+- `Vision/RobotToCamera*`
+- `Vision/Camera*/ObsSeen`
+- `Vision/Camera*/ObsAccepted`
+- `Vision/Camera*/ObsRejected`
+- `Vision/Camera*/RejectReason`
+- `Vision/Debug/totalObsThisLoop`
+- `Vision/PoseGateResetFromDrive`
+- `Vision/TagIDs`
+- camera inputs under `Vision/Camera*`
+
+If vision appears broken, open AdvantageScope and inspect:
+
+1. Are camera inputs updating?
+2. Are tags being seen?
+3. Are observations rejected?
+4. What reject reason dominates?
+5. Are timestamps plausible?
+6. Does the camera transform look correct?
+
+## Simulation
+
+PhotonVision simulation uses:
+
+- `VisionSystemSim`
+- `PhotonCameraSim`
+- `VisionIOPhotonVisionSim`
+- `SimCameraProperties` from `Constants.Cameras`
+
+Simulation is useful for verifying:
+
+- camera names,
+- camera transforms,
+- approximate field of view,
+- pose fusion plumbing,
+- AdvantageKit logging paths.
+
+It is not a substitute for real calibration. Simulated cameras do not capture
+all real-world effects: glare, motion blur, focus, exposure, network jitter,
+dirty lenses, and event lighting.
+
+## Bring-Up Checklist
+
+1. Select `visionType`.
+2. Configure camera names and transforms.
+3. Install and image coprocessors.
+4. Set static coprocessor IP addresses.
+5. Calibrate every camera.
+6. Confirm PhotonVision or Limelight sees tags.
+7. Deploy robot code.
+8. Confirm AdvantageKit camera inputs update.
+9. Check observation reject reasons.
+10. Tune trust and standard-deviation constants.
+11. Test disabled pose convergence.
+12. Test enabled driving while vision is active.
+13. Test autonomous path tracking with vision enabled.
+
+## Troubleshooting
+
+Camera never connects:
+
+- Check camera name.
+- Check coprocessor IP address.
+- Check robot radio/switch wiring.
+- Check USB cable and camera enumeration.
+
+Tags are seen but all poses are rejected:
+
+- Check `RejectReason`.
+- Check tag ambiguity.
+- Check field layout selection.
+- Check camera calibration.
+- Check robot-to-camera transform.
+
+Pose jumps sideways or rotates incorrectly:
+
+- Re-measure `robotToCamera`.
+- Check radians vs degrees.
+- Check camera coordinate orientation.
+- Check IMU orientation constants.
+
+Vision works disabled but gets rejected while driving:
+
+- Check yaw-rate gating.
+- Check timestamp latency.
+- Check pose buffer history length.
+- Check camera exposure and blur.
+
+Autonomous gets worse with vision enabled:
+
+- Reduce trust by increasing standard deviations.
+- Require trusted tags.
+- Verify field layout.
+- Verify all camera transforms.
+- Confirm odometry is already stable without vision.
+
+## Related Pages
+
+- [RBSI-Drive.md](RBSI-Drive.md): odometry bring-up before vision fusion.
+- [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md): latency compensation and
+  time-aligned measurement design.
+- [RBSI-Autonomous.md](RBSI-Autonomous.md): autonomous pose reset and match-flow
+  rules.

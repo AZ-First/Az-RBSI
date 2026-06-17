@@ -12,6 +12,7 @@
 // the WPILib BSD license file in the root directory of this project.
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
@@ -74,8 +75,8 @@ public class FusedCANcoderTests {
 
     System.out.println("Talon Pos vs expected: " + talonPos + " vs " + TALON_POSITION);
     System.out.println("CANcoder Pos vs expected: " + cancoderPos + " vs " + CANCODER_POSITION);
-    assertEquals(talonPos.getValue(), TALON_POSITION, SET_DELTA);
-    assertEquals(cancoderPos.getValue(), CANCODER_POSITION, SET_DELTA);
+    assertEquals(talonPos.getValueAsDouble(), TALON_POSITION, SET_DELTA);
+    assertEquals(cancoderPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
   }
 
   @Test
@@ -119,8 +120,8 @@ public class FusedCANcoderTests {
     /* Make sure Talon matches CANcoder, since it should be using CANcoder's position */
     System.out.println("Talon Pos vs expected: " + talonPos + " vs " + CANCODER_POSITION);
     System.out.println("CANcoder Pos vs expected: " + cancoderPos + " vs " + CANCODER_POSITION);
-    assertEquals(talonPos.getValue(), CANCODER_POSITION, SET_DELTA);
-    assertEquals(cancoderPos.getValue(), CANCODER_POSITION, SET_DELTA);
+    assertEquals(talonPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
+    assertEquals(cancoderPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
   }
 
   @Test
@@ -164,8 +165,8 @@ public class FusedCANcoderTests {
     /* Make sure Talon matches CANcoder, since it should be using CANcoder's position */
     System.out.println("Talon Pos vs expected: " + talonPos + " vs " + CANCODER_POSITION);
     System.out.println("CANcoder Pos vs expected: " + cancoderPos + " vs " + CANCODER_POSITION);
-    assertEquals(talonPos.getValue(), CANCODER_POSITION, SET_DELTA);
-    assertEquals(cancoderPos.getValue(), CANCODER_POSITION, SET_DELTA);
+    assertEquals(talonPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
+    assertEquals(cancoderPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
   }
 
   private void retryConfigApply(Supplier<StatusCode> toApply) {
@@ -174,6 +175,6 @@ public class FusedCANcoderTests {
     do {
       finalCode = toApply.get();
     } while (!finalCode.isOK() && --triesLeftOver > 0);
-    assert (finalCode.isOK());
+    assertTrue(finalCode.isOK(), "Config apply failed: " + finalCode);
   }
 }

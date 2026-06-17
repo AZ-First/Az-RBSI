@@ -28,6 +28,11 @@ public interface FlywheelIO extends RBSIIO {
   /** Run closed loop at the specified velocity. */
   public default void setVelocity(double velocityRadPerSec) {}
 
+  /** Run closed loop at the specified velocity using a profiled/smoothed velocity request. */
+  public default void setVelocityProfiled(double velocityRadPerSec) {
+    setVelocity(velocityRadPerSec);
+  }
+
   /** Set gain constants */
   public default void configureGains(double kP, double kI, double kD, double kS, double kV) {}
 

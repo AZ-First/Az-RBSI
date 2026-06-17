@@ -19,6 +19,7 @@ import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.wpilibj.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -67,21 +68,20 @@ public class LatencyCompensationTests {
     assertTrue(status.isOK());
 
     /* Wait a bit longer for the latency to actually do some work */
-    try {
-      Thread.sleep(10);
-    } catch (Exception ex) {
-    }
+    Timer.delay(0.010);
     /* Calculate how much latency we'd expect */
     double talonLatency = talonPos.getTimestamp().getLatency();
-    double compensatedTalonPos = position + (velocity * talonLatency);
+    double compensatedTalonPos =
+        talonPos.getValueAsDouble() + (talonVel.getValueAsDouble() * talonLatency);
     double cancoderLatency = cancoderPos.getTimestamp().getLatency();
-    double compensatedCANcoderPos = position + (velocity * cancoderLatency);
+    double compensatedCANcoderPos =
+        cancoderPos.getValueAsDouble() + (cancoderVel.getValueAsDouble() * cancoderLatency);
 
     /* Calculate compensated values before the assert to avoid timing issue related to it */
     double functionCompensatedTalon =
-        BaseStatusSignal.getLatencyCompensatedValue(talonPos, talonVel);
+        BaseStatusSignal.getLatencyCompensatedValueAsDouble(talonPos, talonVel);
     double functionCompensatedCANcoder =
-        BaseStatusSignal.getLatencyCompensatedValue(cancoderPos, cancoderVel);
+        BaseStatusSignal.getLatencyCompensatedValueAsDouble(cancoderPos, cancoderVel);
 
     /* Assert the two methods match */
     System.out.println("Talon Pos: " + compensatedTalonPos + " - " + functionCompensatedTalon);

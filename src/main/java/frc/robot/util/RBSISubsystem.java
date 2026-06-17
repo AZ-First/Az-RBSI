@@ -22,7 +22,11 @@ import org.littletonrobotics.junction.Logger;
  * added functionality.
  */
 public abstract class RBSISubsystem extends SubsystemBase {
+  private static final int TIMING_LOG_PERIOD_LOOPS = 5;
+  private static final int[] NO_POWER_PORTS = {};
+
   private final String name = getClass().getSimpleName();
+  private int timingLogLoops = 0;
 
   /**
    * Guaranteed timing wrapper (cannot be bypassed by subclasses).
@@ -38,8 +42,11 @@ public abstract class RBSISubsystem extends SubsystemBase {
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
-    // Log the timing for this subsystem
-    Logger.recordOutput("LogPeriodic/Subsystem/" + name + "MS", (System.nanoTime() - start) / 1e6);
+    if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
+      timingLogLoops = 0;
+      Logger.recordOutput(
+          "LogPeriodic/Subsystem/" + name + "MS", (System.nanoTime() - start) / 1e6);
+    }
   }
 
   /** Subclasses must implement this instead of periodic(). */
@@ -51,7 +58,6 @@ public abstract class RBSISubsystem extends SubsystemBase {
    * @return Array of power distribution module ports
    */
   public int[] getPowerPorts() {
-    int[] retval = {};
-    return retval;
+    return NO_POWER_PORTS;
   }
 }

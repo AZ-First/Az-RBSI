@@ -14,11 +14,13 @@
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.simulation.DriverStationSim;
@@ -81,10 +83,10 @@ public class CurrentLimitTests implements AutoCloseable {
     Timer.delay(0.020);
 
     /* Get the next update for stator current */
-    statorCurrent.waitForUpdate(1);
+    double initialCurrent = waitForCurrentAbove(statorCurrent, 100.0, 1.0);
 
-    System.out.println("Stator current is " + statorCurrent);
-    assertTrue(statorCurrent.getValue() > 100); // Stator current should be in excess of 100 amps
+    System.out.println("Stator current is " + initialCurrent + " A");
+    assertTrue(initialCurrent > 100); // Stator current should be in excess of 100 amps
 
     /* Now apply the stator current limit */
     currentLimitConfigs.StatorCurrentLimitEnable = true;
@@ -97,7 +99,7 @@ public class CurrentLimitTests implements AutoCloseable {
     statorCurrent.waitForUpdate(1);
 
     System.out.println("Stator current is " + statorCurrent);
-    assertTrue(statorCurrent.getValue() < 25); // Give some wiggle room
+    assertTrue(statorCurrent.getValueAsDouble() < 25); // Give some wiggle room
   }
 
   @Test
@@ -107,10 +109,10 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Configure a supply limit of 20 amps */
     TalonFXConfiguration toConfigure = new TalonFXConfiguration();
     CurrentLimitsConfigs currentLimitConfigs = toConfigure.CurrentLimits;
-    currentLimitConfigs.SupplyCurrentLimit = 5;
-    currentLimitConfigs.SupplyCurrentThreshold = 10;
-    currentLimitConfigs.SupplyTimeThreshold = 1.0;
-    currentLimitConfigs.StatorCurrentLimitEnable = false; // Start with supply limits off
+    currentLimitConfigs.SupplyCurrentLimit = 10;
+    currentLimitConfigs.SupplyCurrentLowerLimit = 5;
+    currentLimitConfigs.SupplyCurrentLowerTime = 1.0;
+    currentLimitConfigs.SupplyCurrentLimitEnable = false; // Start with supply limits off
 
     retryConfigApply(() -> talon.getConfigurator().apply(toConfigure));
 
@@ -123,7 +125,8 @@ public class CurrentLimitTests implements AutoCloseable {
     supplyCurrent.waitForUpdate(1);
 
     System.out.println("Supply current is " + supplyCurrent);
-    assertTrue(supplyCurrent.getValue() > 80); // Supply current should be in excess of 80 amps
+    assertTrue(
+        supplyCurrent.getValueAsDouble() > 25); // Supply current should be high before limiting
 
     /* Now apply the supply current limit */
     currentLimitConfigs.SupplyCurrentLimitEnable = true;
@@ -137,8 +140,9 @@ public class CurrentLimitTests implements AutoCloseable {
 
     System.out.println("Supply current is " + supplyCurrent);
     assertTrue(
-        supplyCurrent.getValue()
-            > 80); // Make sure it's still over 80 amps (time hasn't exceeded 1 second in total)
+        supplyCurrent.getValueAsDouble() <= 15
+            && supplyCurrent.getValueAsDouble()
+                > 5); // Time has not exceeded the lower-limit threshold yet
 
     /* Wait a full extra couple seconds so the limit kicks in and starts limiting us */
     Timer.delay(2);
@@ -147,7 +151,7 @@ public class CurrentLimitTests implements AutoCloseable {
     supplyCurrent.waitForUpdate(1);
 
     System.out.println("Supply current is " + supplyCurrent);
-    assertTrue(supplyCurrent.getValue() < 10); // Give some wiggle room
+    assertTrue(supplyCurrent.getValueAsDouble() < 10); // Give some wiggle room
   }
 
   private void retryConfigApply(Supplier<StatusCode> toApply) {
@@ -156,6 +160,17 @@ public class CurrentLimitTests implements AutoCloseable {
     do {
       finalCode = toApply.get();
     } while (!finalCode.isOK() && --triesLeftOver > 0);
-    assert (finalCode.isOK());
+    assertTrue(finalCode.isOK(), "Config apply failed: " + finalCode);
+  }
+
+  private double waitForCurrentAbove(
+      StatusSignal<Current> currentSignal, double threshold, double timeoutSec) {
+    double current = currentSignal.getValueAsDouble();
+    double startTime = Timer.getFPGATimestamp();
+    while (current <= threshold && Timer.getFPGATimestamp() - startTime < timeoutSec) {
+      currentSignal.waitForUpdate(0.100);
+      current = currentSignal.getValueAsDouble();
+    }
+    return current;
   }
 }

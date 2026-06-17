@@ -54,6 +54,10 @@ public class Imu extends VirtualSubsystem {
     io.updateInputs(inputs);
   }
 
+  public boolean isConnected() {
+    return inputs.connected;
+  }
+
   /**
    * Get the inputs objects
    *

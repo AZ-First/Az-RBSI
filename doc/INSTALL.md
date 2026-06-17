@@ -1,28 +1,31 @@
 # Az-RBSI Installation Instructions
 
-### Pre install
-Before you even think about Az-RBSI,  you need these _minimum_ versions of the
+### Pre-Install
+Before you even think about Az-RBSI, you need these _minimum_ versions of the
 following components on your laptop and devices.
 
-* WPILib ` v2026.2.1`
+* WPILib `v2026.2.1`
 * RoboRIO image `FRC_roboRIO_2026_v1.2` (comes with the FRC Game Tools from
   National Instruments)
 * Driver Station `Version 26.0` (comes with the FRC Game Tools from National
   Instruments)
-* CTRE Tunner X `26.2.4.0`, with all devices running firmware  `26.0` or newer.
-  This includes all motors, CANivore, Pigeon 2.0, and all CANcoders!
-* Rev Hardware Client `2.0`, with the PDH and all SparkMax's, and other devices
+* CTRE Tuner X `26.2.4.0`, with all devices running firmware `26.0` or newer.
+  This includes all motors, CANivore, Pigeon 2.0, and all CANcoders.
+* REV Hardware Client `2.0`, with the PDH, all SPARK MAXs, and other devices
   running firmware `26.1` or newer.
 * Vivid Hosting Radio firmware `2.0.1` or newer is required for competition this
   year.
 * Photon Vision ([Orange Pi or other device](https://docs.photonvision.org/en/latest/docs/quick-start/quick-install.html))
-  **running `26.1` or newer** (make sure you are **not** acidentially running
-  `25.3`).  We HIGHLY recomend downloading the image and re-imaging the SD Card
-  in your co-processor instead of trying to upgrade it.
+  **running `26.1` or newer** (make sure you are **not** accidentally running
+  `25.3`). We strongly recommend downloading the image and re-imaging the SD
+  card in your co-processor instead of trying to upgrade it.
 
-It is highly recommmended to update all you devices, and label what can id's or ip adresses and firmware versions they are running. This helps your team, and the FRC field staff quickly identify issues.
+Update all of your devices and label each device with its CAN ID or IP address
+and firmware version. This helps your team and FRC field staff identify issues
+quickly.
 
-If you are running a RoboRIO 1.0 (no sd card) you also neeed to disable the web server ([Instructions Here](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/roborio-team-number-setter/index.html))
+If you are running a RoboRIO 1.0 (no SD card), you also need to disable the web
+server ([instructions here](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/roborio-team-number-setter/index.html)).
 
 --------
 
@@ -40,12 +43,13 @@ already have a GitHub account where you will store your 2026 FRC robot code.
 
 ### Creating a 2026 FRC project from the Az-RBSI Template
 
-From the [Az-RBSI GiuHub page](https://github.com/AZ-First/Az-RBSI/), click the
+From the [Az-RBSI GitHub page](https://github.com/AZ-First/Az-RBSI/), click the
 "Use this template" button in the upper right corner of the page.
 
 In the page that opens, select the Owner (most likely your team's account) and
 Repository name (*e.g.*, "FRC-2026" or "REBUILT Robot Code" or whatever your
-team's naming convention is) into which the create the new robot project.
+team's naming convention is) into which GitHub will create the new robot
+project.
 Optionally, include a description of the repository for your reference.  Select
 "public" or "private" repository based on the usual practices of your team.
 
@@ -56,7 +60,8 @@ If you want to keep caught up on dependencies, you will need to ENABLE the
 Dependency Graph selection under the "Advanced Security" tab of the repository
 Settings.
 
-* If you are struggling with this step, you may need the mentor or teacher that owns your github org to to it.
+* If you are struggling with this step, you may need the mentor or teacher who
+  owns your GitHub organization to do it.
 
 <img src="dependency_enable.png" alt="Enable Dependency Graph" width="50%" />
 
@@ -73,8 +78,6 @@ https://www.ni.com/en/support/downloads/drivers/download.frc-game-tools.html)
 https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html).  Take a
 moment to update all software and firmware to the latest versions before
 attempting to load your new robot project.
-
-
 
 --------
 
@@ -105,27 +108,58 @@ steps you need to complete:
    ```
 
 2. If you have an all-CTRE swerve base (*i.e.*, 8x TalonFX-controlled motors,
-   4x CANCoders, and 1x Pigeon2), use Phoenix Tuner X to create a swerve
-   project.  Follow the instructions in the Phoenix documentation for the
+   4x CANcoders, and 1x Pigeon2), use Phoenix Tuner X to create a swerve
+   project. Follow the instructions in CTRE's
    [Tuner X Swerve Project Generator](
    https://v6.docs.ctr-electronics.com/en/latest/docs/tuner/tuner-swerve/index.html).
-   This will generate the correct offsets and inversions for your drive train.
+   This generates the measured module offsets, module locations, device IDs,
+   inversions, gear ratios, and base Phoenix 6 swerve constants for your drive
+   train.
 
-3. On the final screen in Tuner X, choose "Generate only TunerConstants" and
-   overwrite the file located at `src/main/java/frc/robot/generated/TunerConstants.java`.
+3. On the final screen in Tuner X, choose the option that generates only
+   `TunerConstants.java`.
 
-4. In `TunerConstants.java`, comment out the [last import](
-   https://github.com/CrossTheRoadElec/Phoenix6-Examples/blob/1db713d75b08a4315c9273cebf5b5e6a130ed3f7/java/SwerveWithPathPlanner/src/main/java/frc/robot/generated/TunerConstants.java#L18)
-   and [last method](
-   https://github.com/CrossTheRoadElec/Phoenix6-Examples/blob/1db713d75b08a4315c9273cebf5b5e6a130ed3f7/java/SwerveWithPathPlanner/src/main/java/frc/robot/generated/TunerConstants.java#L171-L175).
-   Before removing them, both lines will be marked as errors in VSCode.
+4. Copy that generated file into `src/main/java/frc/robot/generated/`, then
+   rename it for the RBSI robot selected in `Constants.java`:
 
-5. In `TunerConstants.java`, change `kSlipCurrent` to `60` amps.  This will
-   keep your robot from tearing holes in the carpet at competition!
+   - `COMPBOTTunerConstants.java` for `Constants.RobotType.COMPBOT`
+   - `DEVBOT1TunerConstants.java` for `Constants.RobotType.DEVBOT1`
+   - `DEVBOT2TunerConstants.java` for `Constants.RobotType.DEVBOT2`
 
-6. In `TunerConstants.java`, change `kSteerInertia` to `0.004` and
-   `kDriveInertia` to `0.025` to allow the AdvantageKit simulation code to
-   operate as expected.
+   Also update the class name inside the file. For example, if you copied the
+   file to `COMPBOTTunerConstants.java`, the declaration must be:
+
+   ```java
+   public class COMPBOTTunerConstants {
+   ```
+
+5. In the copied `*TunerConstants.java` file, comment out the generated import
+   for `CommandSwerveDrivetrain`. RBSI does not use CTRE's generated command
+   drivetrain class.
+
+6. In the same file, comment out the generated `createDrivetrain()` function.
+   RBSI constructs the drivebase through `frc.robot.subsystems.drive.Drive`,
+   then reads the generated `DrivetrainConstants`, `FrontLeft`, `FrontRight`,
+   `BackLeft`, and `BackRight` constants through the RBSI view classes.
+
+7. Make sure the matching `*TunerView.java` file still points at the generated
+   constants file you copied. For example, `COMPBOTTunerView` should return
+   `COMPBOTTunerConstants.kCANBus`, `COMPBOTTunerConstants.DrivetrainConstants`,
+   and the four public module constants. `TunerFactory` selects the right view
+   from `Constants.getRobot()`, so normal drive code does not import a
+   per-robot TunerConstants class directly.
+
+8. In the copied `*TunerConstants.java`, review `kSlipCurrent`. A conservative
+   starting point is `60` amps; tune it on the real robot and event carpet.
+
+9. In the copied `*TunerConstants.java`, review `kSteerInertia` and
+   `kDriveInertia`. The generic RBSI simulation expects values close to
+   `0.004` and `0.025`, respectively, unless you have better measured values.
+
+10. Open [RBSI-Constants.md](RBSI-Constants.md) and work through the sections
+   that match your robot. At minimum, verify `RobotDevices`,
+   `DrivebaseConstants`, `OperatorConstants`, `AutoConstants`, and
+   `VisionConstants` before your first serious drive test.
 
 
 **NOTE:** If you have any other combination of hardware (including REV NEOs,
@@ -139,9 +173,11 @@ repository](https://github.com/AZ-First/Az-RBSI).
 
 --------
 
-### Getting Started with your Robot Code
+### Getting Started with Your Robot Code
 
-See the Az-RBSI [Getting Started Guide](RBSI-GSG.md) for next steps.
+See the Az-RBSI [Getting Started Guide](RBSI-GSG.md) for next steps. The
+[documentation index](README.md) also links the drivetrain, vision, autonomous,
+constants, pose-buffer, and SysId guides.
 
 --------
 

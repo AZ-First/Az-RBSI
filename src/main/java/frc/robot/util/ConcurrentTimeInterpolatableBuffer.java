@@ -22,7 +22,9 @@ package frc.robot.util;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.interpolation.Interpolatable;
 import edu.wpi.first.math.interpolation.Interpolator;
+import java.util.Collections;
 import java.util.Map.Entry;
+import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -150,8 +152,8 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
         m_interpolatingFunc.interpolate(bottomBound.getValue(), topBound.getValue(), ratio));
   }
 
-  public Entry<Double, T> getLatest() {
-    return m_pastSnapshots.lastEntry();
+  public Optional<Entry<Double, T>> getLatest() {
+    return Optional.ofNullable(m_pastSnapshots.lastEntry());
   }
 
   /**
@@ -160,6 +162,25 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    *
    * @return The internal sample buffer.
    */
+  public NavigableMap<Double, T> getSamplesInRange(
+      double startTimeSeconds,
+      boolean startInclusive,
+      double endTimeSeconds,
+      boolean endInclusive) {
+    if (endTimeSeconds < startTimeSeconds) {
+      return Collections.emptyNavigableMap();
+    }
+    return Collections.unmodifiableNavigableMap(
+        m_pastSnapshots.subMap(startTimeSeconds, startInclusive, endTimeSeconds, endInclusive));
+  }
+
+  /**
+   * Grant access to the internal sample buffer. Prefer {@link #getSamplesInRange} for read-only
+   * access.
+   *
+   * @return The internal sample buffer.
+   */
+  @Deprecated(forRemoval = false)
   public ConcurrentNavigableMap<Double, T> getInternalBuffer() {
     return m_pastSnapshots;
   }

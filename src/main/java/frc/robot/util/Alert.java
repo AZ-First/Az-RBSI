@@ -22,7 +22,7 @@ import java.util.function.Predicate;
 
 /** Class for managing persistent alerts to be sent over NetworkTables. */
 public class Alert {
-  private static Map<String, SendableAlerts> groups = new HashMap<String, SendableAlerts>();
+  private static final Map<String, SendableAlerts> groups = new HashMap<>();
 
   private final AlertType type;
   private boolean active = false;
@@ -105,7 +105,7 @@ public class Alert {
     public String[] getStrings(AlertType type) {
       Predicate<Alert> activeFilter = (Alert x) -> x.type == type && x.active;
       Comparator<Alert> timeSorter =
-          (Alert a1, Alert a2) -> (int) (a2.activeStartTime - a1.activeStartTime);
+          (Alert a1, Alert a2) -> Double.compare(a2.activeStartTime, a1.activeStartTime);
       return alerts.stream()
           .filter(activeFilter)
           .sorted(timeSorter)

@@ -29,7 +29,7 @@ import com.revrobotics.spark.SparkClosedLoopController.ArbFFUnits;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import com.revrobotics.spark.config.SparkFlexConfig;
+import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
@@ -55,55 +55,70 @@ public class FlywheelIOSpark implements FlywheelIO {
   public final int[] powerPorts = {
     FLYWHEEL_LEADER.getPowerPort(), FLYWHEEL_FOLLOWER.getPowerPort()
   };
-  private final SimpleMotorFeedforward ff = new SimpleMotorFeedforward(kSreal, kVreal, kAreal);
+  private final SparkMaxConfig leaderConfig = new SparkMaxConfig();
+  private SimpleMotorFeedforward ff = new SimpleMotorFeedforward(kRealS, kRealV, kRealA);
+
+  @Override
+  public int[] powerPorts() {
+    return powerPorts;
+  }
 
   public FlywheelIOSpark() {
 
     // Configure leader motor
-    var leaderConfig = new SparkFlexConfig();
     leaderConfig
         .idleMode(
-            switch (kFlywheelIdleMode) {
+            switch (kIdleMode) {
               case COAST -> IdleMode.kCoast;
               case BRAKE -> IdleMode.kBrake;
             })
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     leaderConfig.encoder.uvwMeasurementPeriod(10).uvwAverageDepth(2);
     leaderConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(kPreal, 0.0, kDreal)
+        .pid(kRealP, 0.0, kRealD)
         .feedForward
-        .kS(kSreal)
-        .kV(kVreal)
-        .kA(kAreal);
+        .kS(kRealS)
+        .kV(kRealV)
+        .kA(kRealA);
     leaderConfig
         .signals
         .primaryEncoderPositionAlwaysOn(true)
         .primaryEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .primaryEncoderVelocityAlwaysOn(true)
-        .primaryEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+        .primaryEncoderVelocityPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.));
     leaderConfig
-        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
-        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriodSecs)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriodSecs);
     SparkUtil.tryUntilOk(
         leader,
         5,
         () ->
             leader.configure(
                 leaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+
+    var followerConfig = new SparkMaxConfig();
+    followerConfig.follow(leader);
+    SparkUtil.tryUntilOk(
+        follower,
+        5,
+        () ->
+            follower.configure(
+                followerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+
     SparkUtil.tryUntilOk(leader, 5, () -> encoder.setPosition(0.0));
   }
 
   @Override
   public void updateInputs(FlywheelIOInputs inputs) {
-    inputs.positionRad = Units.rotationsToRadians(encoder.getPosition() / kFlywheelGearRatio);
+    inputs.positionRad = Units.rotationsToRadians(encoder.getPosition() / kGearRatio);
     inputs.velocityRadPerSec =
-        Units.rotationsPerMinuteToRadiansPerSecond(encoder.getVelocity() / kFlywheelGearRatio);
+        Units.rotationsPerMinuteToRadiansPerSecond(encoder.getVelocity() / kGearRatio);
     inputs.appliedVolts = leader.getAppliedOutput() * leader.getBusVoltage();
     inputs.currentAmps = new double[] {leader.getOutputCurrent(), follower.getOutputCurrent()};
 
@@ -121,10 +136,15 @@ public class FlywheelIOSpark implements FlywheelIO {
   }
 
   @Override
+  public void setPercent(double percent) {
+    leader.set(percent);
+  }
+
+  @Override
   public void setVelocity(double velocityRadPerSec) {
     double ffVolts = ff.calculate(velocityRadPerSec);
     pid.setSetpoint(
-        Units.radiansPerSecondToRotationsPerMinute(velocityRadPerSec) * kFlywheelGearRatio,
+        Units.radiansPerSecondToRotationsPerMinute(velocityRadPerSec) * kGearRatio,
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
         ffVolts,
@@ -139,23 +159,23 @@ public class FlywheelIOSpark implements FlywheelIO {
   /**
    * Configure the closed-loop control gains
    *
-   * <p>TODO: This functionality is no longer supported by the REVLib SparkClosedLoopController
-   * class. In order to keep control of the flywheel's underlying funtionality, shift everything to
-   * SmartMotion control.
+   * <p>REVLib 2026 applies closed-loop gains through the Spark configuration object rather than
+   * direct setters on {@link SparkClosedLoopController}.
    */
   @Override
   public void configureGains(double kP, double kI, double kD, double kS, double kV) {
-    // pid.setP(kP, 0);
-    // pid.setI(kI, 0);
-    // pid.setD(kD, 0);
-    // pid.setFF(0, 0);
+    configureGains(kP, kI, kD, kS, kV, 0.0);
   }
 
   @Override
   public void configureGains(double kP, double kI, double kD, double kS, double kV, double kA) {
-    // pid.setP(kP, 0);
-    // pid.setI(kI, 0);
-    // pid.setD(kD, 0);
-    // pid.setFF(0, 0);
+    ff = new SimpleMotorFeedforward(kS, kV, kA);
+    leaderConfig.closedLoop.pid(kP, kI, kD).feedForward.kS(kS).kV(kV).kA(kA);
+    SparkUtil.tryUntilOk(
+        leader,
+        5,
+        () ->
+            leader.configure(
+                leaderConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters));
   }
 }

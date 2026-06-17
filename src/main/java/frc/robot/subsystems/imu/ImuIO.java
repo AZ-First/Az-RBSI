@@ -26,6 +26,7 @@ import org.littletonrobotics.junction.AutoLog;
  * odometry samples.
  */
 public interface ImuIO extends RBSIIO {
+  double[] EMPTY_DOUBLE_ARRAY = new double[0];
 
   @AutoLog
   class ImuIOInputs {
@@ -44,9 +45,9 @@ public interface ImuIO extends RBSIIO {
     // Time spent in the IO update call (seconds)
     public double latencySeconds = 0.0;
     // Odometry samples (timestamps in seconds)
-    public double[] odometryYawTimestamps = new double[] {};
+    public double[] odometryYawTimestamps = EMPTY_DOUBLE_ARRAY;
     // Odometry samples (yaw positions in radians)
-    public double[] odometryYawPositionsRad = new double[] {};
+    public double[] odometryYawPositionsRad = EMPTY_DOUBLE_ARRAY;
   }
 
   /** Update the current IMU readings into `inputs` */

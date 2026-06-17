@@ -11,6 +11,7 @@ package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.FieldConstants;
 import java.util.function.Supplier;
 import org.photonvision.simulation.PhotonCameraSim;
@@ -20,11 +21,10 @@ import org.photonvision.simulation.VisionSystemSim;
 /** IO implementation for physics sim using PhotonVision simulator. */
 public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   private static VisionSystemSim visionSim;
+  private static long lastUpdateUs = Long.MIN_VALUE;
+  private static final long MIN_UPDATE_PERIOD_US = 1_000;
 
   private final Supplier<Pose2d> poseSupplier;
-
-  @SuppressWarnings("unused")
-  private final PhotonCameraSim cameraSim;
 
   /**
    * Creates a new VisionIOPhotonVisionSim.
@@ -35,6 +35,22 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
    */
   public VisionIOPhotonVisionSim(
       String name, Transform3d robotToCamera, Supplier<Pose2d> poseSupplier) {
+    this(name, robotToCamera, new SimCameraProperties(), poseSupplier);
+  }
+
+  /**
+   * Creates a new VisionIOPhotonVisionSim.
+   *
+   * @param name The name of the camera (PhotonVision camera name).
+   * @param robotToCamera Camera pose relative to robot frame.
+   * @param cameraProperties Camera simulation calibration, latency, noise, and FPS.
+   * @param poseSupplier Supplier for the robot pose (field->robot) to use in simulation.
+   */
+  public VisionIOPhotonVisionSim(
+      String name,
+      Transform3d robotToCamera,
+      SimCameraProperties cameraProperties,
+      Supplier<Pose2d> poseSupplier) {
     super(name, robotToCamera);
     this.poseSupplier = poseSupplier;
 
@@ -44,28 +60,23 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
       visionSim.addAprilTags(FieldConstants.aprilTagLayout);
     }
 
-    // Camera properties:
-    // - If you have per-camera SimCameraProperties in Constants, pass them here instead.
-    // - Otherwise keep the default and tune later.
-    var cameraProperties = new SimCameraProperties();
-
-    // Recommended defaults (feel free to tune)
-    // cameraProperties.setCalibration(1280, 800, Rotation2d.fromDegrees(100));
-    // cameraProperties.setFPS(20);
-    // cameraProperties.setAvgLatencyMs(35);
-    // cameraProperties.setLatencyStdDevMs(5);
-
-    cameraSim = new PhotonCameraSim(camera, cameraProperties);
+    PhotonCameraSim cameraSim = new PhotonCameraSim(camera, cameraProperties);
     visionSim.addCamera(cameraSim, robotToCamera);
   }
 
   @Override
   public void updateInputs(VisionIOInputs inputs) {
-    // NOTE: This updates the sim world every time a sim camera is polled.
-    // That's fine (fast enough), but if you want "update once per loop," see note below.
-    visionSim.update(poseSupplier.get());
+    updateVisionSimOncePerLoop();
 
     // Then pull results like normal (and emit PoseObservation + usedTagIds sets)
     super.updateInputs(inputs);
+  }
+
+  private void updateVisionSimOncePerLoop() {
+    long nowUs = RobotController.getFPGATime();
+    if (nowUs - lastUpdateUs < MIN_UPDATE_PERIOD_US) return;
+
+    visionSim.update(poseSupplier.get());
+    lastUpdateUs = nowUs;
   }
 }
