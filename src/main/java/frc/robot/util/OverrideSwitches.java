@@ -40,7 +40,7 @@ public class OverrideSwitches {
   /** Gets the state of a driver-side switch (0-2 from left to right). */
   public boolean getDriverSwitch(int index) {
     if (index < 0 || index > 2) {
-      throw new RuntimeException(
+      throw new IllegalArgumentException(
           "Invalid driver override index " + Integer.toString(index) + ". Must be 0-2.");
     }
     return consoleSwitches.getRawButton(index + 1);
@@ -49,7 +49,7 @@ public class OverrideSwitches {
   /** Gets the state of an operator-side switch (0-4 from left to right). */
   public boolean getOperatorSwitch(int index) {
     if (index < 0 || index > 4) {
-      throw new RuntimeException(
+      throw new IllegalArgumentException(
           "Invalid operator override index " + Integer.toString(index) + ". Must be 0-4.");
     }
     return consoleSwitches.getRawButton(index + 8);

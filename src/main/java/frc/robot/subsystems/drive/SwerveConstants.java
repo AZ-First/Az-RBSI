@@ -17,7 +17,7 @@ import com.ctre.phoenix6.CANBus;
 import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
 import frc.robot.Constants.CANBuses;
-import frc.robot.generated.TunerConstants;
+import frc.robot.generated.TunerFactory;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIONavX;
 import frc.robot.subsystems.imu.ImuIOPigeon2;
@@ -108,86 +108,86 @@ public class SwerveConstants {
 
   // Fill in the values from the proper source
   static {
+    var tuner = TunerFactory.INSTANCE;
+
     switch (Constants.getSwerveType()) {
       case PHOENIX6:
         kImuType = "pigeon2";
-        kCoupleRatio = TunerConstants.FrontLeft.CouplingGearRatio;
-        kDriveGearRatio = TunerConstants.FrontLeft.DriveMotorGearRatio;
-        kSteerGearRatio = TunerConstants.FrontLeft.SteerMotorGearRatio;
+        kCoupleRatio = tuner.frontLeft().CouplingGearRatio;
+        kDriveGearRatio = tuner.frontLeft().DriveMotorGearRatio;
+        kSteerGearRatio = tuner.frontLeft().SteerMotorGearRatio;
         kCANbusName = CANBuses.DRIVE;
-        kPigeonId = TunerConstants.DrivetrainConstants.Pigeon2Id;
-        kSteerInertia = TunerConstants.FrontLeft.SteerInertia;
-        kDriveInertia = TunerConstants.FrontLeft.DriveInertia;
+        kPigeonId = tuner.drivetrain().Pigeon2Id;
+        kSteerInertia = tuner.frontLeft().SteerInertia;
+        kDriveInertia = tuner.frontLeft().DriveInertia;
         kSteerFrictionVoltage = 0.0;
         kDriveFrictionVoltage = 0.1;
         kSteerCurrentLimit = 40.0; // Example from CTRE documentation
         kDriveCurrentLimit = 120.0; // Example from CTRE documentation
         // Front Left
-        kFLDriveMotorId = TunerConstants.FrontLeft.DriveMotorId;
-        kFLSteerMotorId = TunerConstants.FrontLeft.SteerMotorId;
-        kFLEncoderId = TunerConstants.FrontLeft.EncoderId;
+        kFLDriveMotorId = tuner.frontLeft().DriveMotorId;
+        kFLSteerMotorId = tuner.frontLeft().SteerMotorId;
+        kFLEncoderId = tuner.frontLeft().EncoderId;
         kFLDriveCanbus = kCANbusName;
         kFLSteerCanbus = kCANbusName;
         kFLEncoderCanbus = kCANbusName;
         kFLDriveType = "kraken";
         kFLSteerType = "kraken";
         kFLEncoderType = "cancoder";
-        kFLEncoderOffset =
-            -Units.rotationsToRadians(TunerConstants.FrontLeft.EncoderOffset) + Math.PI;
-        kFLDriveInvert = TunerConstants.FrontLeft.DriveMotorInverted;
-        kFLSteerInvert = TunerConstants.FrontLeft.SteerMotorInverted;
-        kFLEncoderInvert = TunerConstants.FrontLeft.EncoderInverted;
-        kFLXPosMeters = TunerConstants.FrontLeft.LocationX;
-        kFLYPosMeters = TunerConstants.FrontLeft.LocationY;
+        kFLEncoderOffset = -Units.rotationsToRadians(tuner.frontLeft().EncoderOffset) + Math.PI;
+        kFLDriveInvert = tuner.frontLeft().DriveMotorInverted;
+        kFLSteerInvert = tuner.frontLeft().SteerMotorInverted;
+        kFLEncoderInvert = tuner.frontLeft().EncoderInverted;
+        kFLXPosMeters = tuner.frontLeft().LocationX;
+        kFLYPosMeters = tuner.frontLeft().LocationY;
         // Front Right
-        kFRDriveMotorId = TunerConstants.FrontRight.DriveMotorId;
-        kFRSteerMotorId = TunerConstants.FrontRight.SteerMotorId;
-        kFREncoderId = TunerConstants.FrontRight.EncoderId;
+        kFRDriveMotorId = tuner.frontRight().DriveMotorId;
+        kFRSteerMotorId = tuner.frontRight().SteerMotorId;
+        kFREncoderId = tuner.frontRight().EncoderId;
         kFRDriveCanbus = kCANbusName;
         kFRSteerCanbus = kCANbusName;
         kFREncoderCanbus = kCANbusName;
         kFRDriveType = "kraken";
         kFRSteerType = "kraken";
         kFREncoderType = "cancoder";
-        kFREncoderOffset = -Units.rotationsToRadians(TunerConstants.FrontRight.EncoderOffset);
-        kFRDriveInvert = TunerConstants.FrontRight.DriveMotorInverted;
-        kFRSteerInvert = TunerConstants.FrontRight.SteerMotorInverted;
-        kFREncoderInvert = TunerConstants.FrontRight.EncoderInverted;
-        kFRXPosMeters = TunerConstants.FrontRight.LocationX;
-        kFRYPosMeters = TunerConstants.FrontRight.LocationY;
+        kFREncoderOffset = -Units.rotationsToRadians(tuner.frontRight().EncoderOffset);
+        kFRDriveInvert = tuner.frontRight().DriveMotorInverted;
+        kFRSteerInvert = tuner.frontRight().SteerMotorInverted;
+        kFREncoderInvert = tuner.frontRight().EncoderInverted;
+        kFRXPosMeters = tuner.frontRight().LocationX;
+        kFRYPosMeters = tuner.frontRight().LocationY;
         // Back Left
-        kBLDriveMotorId = TunerConstants.BackLeft.DriveMotorId;
-        kBLSteerMotorId = TunerConstants.BackLeft.SteerMotorId;
-        kBLEncoderId = TunerConstants.BackLeft.EncoderId;
+        kBLDriveMotorId = tuner.backLeft().DriveMotorId;
+        kBLSteerMotorId = tuner.backLeft().SteerMotorId;
+        kBLEncoderId = tuner.backLeft().EncoderId;
         kBLDriveCanbus = kCANbusName;
         kBLSteerCanbus = kCANbusName;
         kBLEncoderCanbus = kCANbusName;
         kBLDriveType = "kraken";
         kBLSteerType = "kraken";
         kBLEncoderType = "cancoder";
-        kBLEncoderOffset =
-            -Units.rotationsToRadians(TunerConstants.BackLeft.EncoderOffset) + Math.PI;
-        kBLDriveInvert = TunerConstants.BackLeft.DriveMotorInverted;
-        kBLSteerInvert = TunerConstants.BackLeft.SteerMotorInverted;
-        kBLEncoderInvert = TunerConstants.BackLeft.EncoderInverted;
-        kBLXPosMeters = TunerConstants.BackLeft.LocationX;
-        kBLYPosMeters = TunerConstants.BackLeft.LocationY;
+        kBLEncoderOffset = -Units.rotationsToRadians(tuner.backLeft().EncoderOffset) + Math.PI;
+        kBLDriveInvert = tuner.backLeft().DriveMotorInverted;
+        kBLSteerInvert = tuner.backLeft().SteerMotorInverted;
+        kBLEncoderInvert = tuner.backLeft().EncoderInverted;
+        kBLXPosMeters = tuner.backLeft().LocationX;
+        kBLYPosMeters = tuner.backLeft().LocationY;
         // Back Right
-        kBRDriveMotorId = TunerConstants.BackRight.DriveMotorId;
-        kBRSteerMotorId = TunerConstants.BackRight.SteerMotorId;
-        kBREncoderId = TunerConstants.BackRight.EncoderId;
+        kBRDriveMotorId = tuner.backRight().DriveMotorId;
+        kBRSteerMotorId = tuner.backRight().SteerMotorId;
+        kBREncoderId = tuner.backRight().EncoderId;
         kBRDriveCanbus = kCANbusName;
         kBRSteerCanbus = kCANbusName;
         kBREncoderCanbus = kCANbusName;
         kBRDriveType = "kraken";
         kBRSteerType = "kraken";
         kBREncoderType = "cancoder";
-        kBREncoderOffset = -Units.rotationsToRadians(TunerConstants.BackRight.EncoderOffset);
-        kBRDriveInvert = TunerConstants.BackRight.DriveMotorInverted;
-        kBRSteerInvert = TunerConstants.BackRight.SteerMotorInverted;
-        kBREncoderInvert = TunerConstants.BackRight.EncoderInverted;
-        kBRXPosMeters = TunerConstants.BackRight.LocationX;
-        kBRYPosMeters = TunerConstants.BackRight.LocationY;
+        kBREncoderOffset = -Units.rotationsToRadians(tuner.backRight().EncoderOffset);
+        kBRDriveInvert = tuner.backRight().DriveMotorInverted;
+        kBRSteerInvert = tuner.backRight().SteerMotorInverted;
+        kBREncoderInvert = tuner.backRight().EncoderInverted;
+        kBRXPosMeters = tuner.backRight().LocationX;
+        kBRYPosMeters = tuner.backRight().LocationY;
         break;
 
       case YAGSL:

@@ -21,7 +21,6 @@ import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 
 import choreo.trajectory.SwerveSample;
-import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
@@ -30,6 +29,7 @@ import com.pathplanner.lib.util.PathPlannerLogging;
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
@@ -45,6 +45,8 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
@@ -81,11 +83,13 @@ public class Drive extends RBSISubsystem {
 
   // Pose Buffer Declarations
   private final ConcurrentTimeInterpolatableBuffer<Pose2d> poseBuffer =
-      ConcurrentTimeInterpolatableBuffer.createBuffer(DrivebaseConstants.kHistorySize);
+      ConcurrentTimeInterpolatableBuffer.createBuffer(DrivebaseConstants.kPoseBufferHistorySecs);
   private final ConcurrentTimeInterpolatableBuffer<Double> yawBuffer =
-      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(DrivebaseConstants.kHistorySize);
+      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(
+          DrivebaseConstants.kPoseBufferHistorySecs);
   private final ConcurrentTimeInterpolatableBuffer<Double> yawRateBuffer =
-      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(DrivebaseConstants.kHistorySize);
+      ConcurrentTimeInterpolatableBuffer.createDoubleBuffer(
+          DrivebaseConstants.kPoseBufferHistorySecs);
 
   // Declare an alert
   private final Alert gyroDisconnectedAlert =
@@ -109,6 +113,7 @@ public class Drive extends RBSISubsystem {
   // Declare PID controller and siumulation physics
   private ProfiledPIDController angleController;
   private DriveSimPhysics simPhysics;
+  private final Field2d field = new Field2d();
 
   // Pose reset gate (vision + anything latency-sensitive)
   private volatile long poseResetEpoch = 0; // monotonic counter
@@ -134,12 +139,13 @@ public class Drive extends RBSISubsystem {
     // Define the Angle Controller
     angleController =
         new ProfiledPIDController(
-            DrivebaseConstants.kPSPin,
-            DrivebaseConstants.kISPin,
-            DrivebaseConstants.kDSpin,
+            DrivebaseConstants.kSpinP,
+            DrivebaseConstants.kSpinI,
+            DrivebaseConstants.kSpinD,
             new TrapezoidProfile.Constraints(
-                getMaxAngularSpeedRadPerSec(), getMaxLinearAccelMetersPerSecPerSec()));
+                getMaxAngularSpeedRadPerSec(), getMaxAngularAccelRadPerSecPerSec()));
     angleController.enableContinuousInput(-Math.PI, Math.PI);
+    m_pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
 
     // If REAL (i.e., NOT simulation), parse out the module types
     if (Constants.getMode() == Mode.REAL) {
@@ -165,6 +171,7 @@ public class Drive extends RBSISubsystem {
                   throw new RuntimeException(
                       "For an all-CTRE drive base, use Phoenix Tuner X Swerve Generator instead of YAGSL!");
                 }
+                break;
               case 0b00010000: // Blended Talon Drive / NEO Steer
                 modules[i] = new Module(new ModuleIOBlended(i), i);
                 break;
@@ -186,6 +193,7 @@ public class Drive extends RBSISubsystem {
 
       // Start odometry thread (for the real robot)
       PhoenixOdometryThread.getInstance().start();
+      SparkOdometryThread.getInstance().start();
 
     } else {
 
@@ -198,8 +206,8 @@ public class Drive extends RBSISubsystem {
       simPhysics =
           new DriveSimPhysics(
               kinematics,
-              RobotConstants.kRobotMOI, // kg m^2
-              RobotConstants.kMaxWheelTorque); // Nm
+              RobotConstants.kMomentOfInertiaKgMetersSq, // kg m^2
+              RobotConstants.kMaxWheelTorqueNm); // Nm
     }
 
     // Usage reporting for swerve template
@@ -217,13 +225,13 @@ public class Drive extends RBSISubsystem {
               (speeds, feedforwards) -> runVelocity(speeds),
               new PPHolonomicDriveController(
                   new PIDConstants(
-                      DrivebaseConstants.kPStrafe,
-                      DrivebaseConstants.kIStrafe,
-                      DrivebaseConstants.kDStrafe),
+                      DrivebaseConstants.kStrafeP,
+                      DrivebaseConstants.kStrafeI,
+                      DrivebaseConstants.kStrafeD),
                   new PIDConstants(
-                      DrivebaseConstants.kPSPin,
-                      DrivebaseConstants.kISPin,
-                      DrivebaseConstants.kDSpin)),
+                      DrivebaseConstants.kSpinP,
+                      DrivebaseConstants.kSpinI,
+                      DrivebaseConstants.kSpinD)),
               AutoConstants.kPathPlannerConfig,
               () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
               this);
@@ -243,7 +251,7 @@ public class Drive extends RBSISubsystem {
         break;
 
       case CHOREO:
-        // TODO: If your team is using Choreo, you'll know what to do here...
+        // Choreo autos are configured in RobotContainer through AutoFactory.
         break;
 
       case MANUAL:
@@ -262,6 +270,8 @@ public class Drive extends RBSISubsystem {
                 (state) -> Logger.recordOutput("Drive/SysIdState", state.toString())),
             new SysIdRoutine.Mechanism(
                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
+
+    SmartDashboard.putData("Field", field);
   }
 
   /************************************************************************* */
@@ -276,6 +286,8 @@ public class Drive extends RBSISubsystem {
       Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
       Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
     }
+
+    field.setRobotPose(m_PoseEstimator.getEstimatedPosition());
   }
 
   /**
@@ -291,7 +303,7 @@ public class Drive extends RBSISubsystem {
     // IMPORTANT: do not run sim physics during REPLAY
     if (Constants.getMode() != Mode.SIM) return;
 
-    final double dt = Constants.loopPeriodSecs;
+    final double dt = Constants.kLoopPeriodSecs;
 
     // Advance module wheel physics
     for (int i = 0; i < modules.length; i++) {
@@ -366,7 +378,7 @@ public class Drive extends RBSISubsystem {
    */
   public void runVelocity(ChassisSpeeds speeds) {
     // Calculate module setpoints
-    ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, Constants.loopPeriodSecs);
+    ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, Constants.kLoopPeriodSecs);
     SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(discreteSpeeds);
     SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, getMaxLinearSpeedMetersPerSec());
 
@@ -425,8 +437,8 @@ public class Drive extends RBSISubsystem {
       SwerveModulePosition[] odomPositions) {
 
     // Don’t end coast “instantly” right after disable edge
-    final double minCoastTime = 0.25; // seconds -- maybe put into Constants???
-    final boolean pastMin = (now - disabledCoastStartTs) >= minCoastTime;
+    final boolean pastMin =
+        (now - disabledCoastStartTs) >= DrivebaseConstants.kDisabledCoastMinSeconds;
 
     // Detect ENABLED -> DISABLED edge -- set `disabledCoastUntilTs` when COAST-phase ends
     if (lastEnabled && !enabledNow) {
@@ -455,8 +467,10 @@ public class Drive extends RBSISubsystem {
       return;
     }
 
-    // Compute max wheel delta this loop
+    // Compute max wheel delta this loop. The first sample after a reset only establishes the
+    // baseline and should not count as stationary.
     double maxDelta = 0.0;
+    boolean hadLastWheelDist = haveLastWheelDist;
     if (haveLastWheelDist) {
       for (int i = 0; i < 4; i++) {
         double dist = odomPositions[i].distanceMeters;
@@ -472,7 +486,7 @@ public class Drive extends RBSISubsystem {
     haveLastWheelDist = true;
 
     // Stationary test (must have baseline)
-    if (haveLastWheelDist
+    if (hadLastWheelDist
         && maxDelta <= DrivebaseConstants.kStationaryMaxWheelDeltaM
         && Math.abs(yawRateRadPerSec) <= DrivebaseConstants.kStationaryMaxYawRateRadPerSec) {
       stationaryLoops++;
@@ -499,13 +513,15 @@ public class Drive extends RBSISubsystem {
   /** Returns a command to run a quasistatic test in the specified direction. */
   public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
     return run(() -> runCharacterization(0.0))
-        .withTimeout(1.0)
+        .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
         .andThen(sysId.quasistatic(direction));
   }
 
   /** Returns a command to run a dynamic test in the specified direction. */
   public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    return run(() -> runCharacterization(0.0)).withTimeout(1.0).andThen(sysId.dynamic(direction));
+    return run(() -> runCharacterization(0.0))
+        .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
+        .andThen(sysId.dynamic(direction));
   }
 
   /************************************************************************* */
@@ -600,12 +616,12 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the oldest timetamp in the current pose buffer */
   public double getPoseBufferOldestTime() {
-    return poseBuffer.getOldestTimestamp().getAsDouble();
+    return poseBuffer.getOldestTimestamp().orElse(Double.NaN);
   }
 
   /** Returns the newest timetamp in the current pose buffer */
   public double getPoseBufferNewestTime() {
-    return poseBuffer.getNewestTimestamp().getAsDouble();
+    return poseBuffer.getNewestTimestamp().orElse(Double.NaN);
   }
 
   /**
@@ -620,7 +636,7 @@ public class Drive extends RBSISubsystem {
     if (t1 < t0) return OptionalDouble.empty();
 
     // Get the subset of entries from the buffer
-    var sub = yawRateBuffer.getInternalBuffer().subMap(t0, true, t1, true);
+    var sub = yawRateBuffer.getSamplesInRange(t0, true, t1, true);
     if (sub.isEmpty()) return OptionalDouble.empty();
 
     double maxAbs = 0.0;
@@ -646,7 +662,7 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the maximum linear speed in meters per sec. */
   public double getMaxLinearSpeedMetersPerSec() {
-    return DrivebaseConstants.kMaxLinearSpeed;
+    return DrivebaseConstants.kMaxLinearSpeedMetersPerSec;
   }
 
   /** Returns the maximum angular speed in radians per sec. */
@@ -656,7 +672,7 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the maximum linear acceleration in meters per sec per sec. */
   public double getMaxLinearAccelMetersPerSecPerSec() {
-    return DrivebaseConstants.kMaxLinearAccel;
+    return DrivebaseConstants.kMaxLinearAccelMetersPerSecSq;
   }
 
   /** Returns the maximum angular acceleration in radians per sec per sec */
@@ -778,7 +794,9 @@ public class Drive extends RBSISubsystem {
       // If we're coasting, avoid snapping Pose to Vision; lean gentler than stationary.
       final double alpha =
           coast
-              ? Math.min(DrivebaseConstants.kDisabledVisionBlendAlpha, 0.05)
+              ? Math.min(
+                  DrivebaseConstants.kDisabledVisionBlendAlpha,
+                  DrivebaseConstants.kDisabledVisionCoastBlendAlpha)
               : DrivebaseConstants.kDisabledVisionBlendAlpha;
 
       // "Current" for blending target (estimator pose)
@@ -912,7 +930,7 @@ public class Drive extends RBSISubsystem {
       if (k > 0) {
         double dt = yawTs[k] - yawTs[k - 1];
         if (dt > 1e-6) {
-          yawRateBuffer.addSample(yawTs[k], (yawPosRad[k] - yawPosRad[k - 1]) / dt);
+          yawRateBuffer.addSample(yawTs[k], yawRateRadPerSec(yawPosRad[k - 1], yawPosRad[k], dt));
         }
       }
     }
@@ -924,9 +942,14 @@ public class Drive extends RBSISubsystem {
     if (i > 0) {
       double dt = yawTs[i] - yawTs[i - 1];
       if (dt > 1e-6) {
-        yawRateBuffer.addSample(t, (yawPos[i] - yawPos[i - 1]) / dt);
+        yawRateBuffer.addSample(t, yawRateRadPerSec(yawPos[i - 1], yawPos[i], dt));
       }
     }
+  }
+
+  static double yawRateRadPerSec(double previousYawRad, double currentYawRad, double dtSec) {
+    if (dtSec <= 1e-6) return 0.0;
+    return MathUtil.angleModulus(currentYawRad - previousYawRad) / dtSec;
   }
 
   /** Set the gyroDisconnectedAlert */
@@ -952,20 +975,26 @@ public class Drive extends RBSISubsystem {
   /** CHOREO SECTION (Ignore if AutoType == PATHPLANNER) ******************* */
 
   /** Choreo: Reset odometry */
-  public Command resetOdometry(Pose2d orElseGet) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'resetOdometry'");
+  public void resetOdometry(Pose2d pose) {
+    resetPose(pose);
   }
 
-  /** Swerve request to apply during field-centric path following */
-  @SuppressWarnings("unused")
-  private final SwerveRequest.ApplyFieldSpeeds m_pathApplyFieldSpeeds =
-      new SwerveRequest.ApplyFieldSpeeds();
-
   // Choreo Controller Values
-  private final PIDController m_pathXController = new PIDController(10, 0, 0);
-  private final PIDController m_pathYController = new PIDController(10, 0, 0);
-  private final PIDController m_pathThetaController = new PIDController(7, 0, 0);
+  private final PIDController m_pathXController =
+      new PIDController(
+          AutoConstants.kChoreoDrivePID.kP,
+          AutoConstants.kChoreoDrivePID.kI,
+          AutoConstants.kChoreoDrivePID.kD);
+  private final PIDController m_pathYController =
+      new PIDController(
+          AutoConstants.kChoreoDrivePID.kP,
+          AutoConstants.kChoreoDrivePID.kI,
+          AutoConstants.kChoreoDrivePID.kD);
+  private final PIDController m_pathThetaController =
+      new PIDController(
+          AutoConstants.kChoreoSteerPID.kP,
+          AutoConstants.kChoreoSteerPID.kI,
+          AutoConstants.kChoreoSteerPID.kD);
 
   /**
    * Follows the given field-centric path sample with PID for Choreo
@@ -974,34 +1003,28 @@ public class Drive extends RBSISubsystem {
    * @param sample Sample along the path to follow
    */
   public void choreoController(Pose2d pose, SwerveSample sample) {
-    m_pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
-
     var targetSpeeds = sample.getChassisSpeeds();
     targetSpeeds.vxMetersPerSecond += m_pathXController.calculate(pose.getX(), sample.x);
     targetSpeeds.vyMetersPerSecond += m_pathYController.calculate(pose.getY(), sample.y);
     targetSpeeds.omegaRadiansPerSecond +=
         m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading);
 
-    // setControl(
-    //     m_pathApplyFieldSpeeds
-    //         .withSpeeds(targetSpeeds)
-    //         .withWheelForceFeedforwardsX(sample.moduleForcesX())
-    //         .withWheelForceFeedforwardsY(sample.moduleForcesY()));
+    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds, getHeading()));
   }
 
   public void followTrajectory(SwerveSample sample) {
     // Get the current pose of the robot
     Pose2d pose = getPose();
 
-    // Generate the next speeds for the robot
-    ChassisSpeeds speeds =
+    // Choreo samples are field-relative; convert to robot-relative before sending to modules.
+    ChassisSpeeds fieldRelativeSpeeds =
         new ChassisSpeeds(
             sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
-            sample.vy + m_pathXController.calculate(pose.getX(), sample.y),
+            sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
             sample.omega
-                + m_pathXController.calculate(pose.getRotation().getRadians(), sample.heading));
+                + m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading));
 
     // Apply the generated speeds
-    runVelocity(speeds);
+    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, pose.getRotation()));
   }
 }

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.DoubleSupplier;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -35,6 +36,8 @@ public class SparkOdometryThread {
 
   private static SparkOdometryThread instance = null;
   private Notifier notifier = new Notifier(this::run);
+  private long droppedSamples = 0;
+  private long loopCount = 0;
 
   public static SparkOdometryThread getInstance() {
     if (instance == null) {
@@ -112,17 +115,21 @@ public class SparkOdometryThread {
       // If valid, add values to queues
       if (isValid) {
         for (int i = 0; i < sparkSignals.size(); i++) {
-          sparkQueues.get(i).offer(sparkValues[i]);
+          if (!sparkQueues.get(i).offer(sparkValues[i])) droppedSamples++;
         }
         for (int i = 0; i < genericSignals.size(); i++) {
-          genericQueues.get(i).offer(genericSignals.get(i).getAsDouble());
+          if (!genericQueues.get(i).offer(genericSignals.get(i).getAsDouble())) droppedSamples++;
         }
         for (int i = 0; i < timestampQueues.size(); i++) {
-          timestampQueues.get(i).offer(timestamp);
+          if (!timestampQueues.get(i).offer(timestamp)) droppedSamples++;
         }
       }
     } finally {
       Drive.odometryLock.unlock();
+    }
+
+    if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
+      Logger.recordOutput("Drive/SparkOdomThread/DroppedSamples", droppedSamples);
     }
   }
 }

@@ -27,9 +27,9 @@ public class RBSIParsing {
    */
   public static Byte parseModuleType() {
     // NOTE: This assumes all 4 modules have the same arrangement!
-    Byte b_drive; // [x,x,-,-,-,-,-,-]
-    Byte b_steer; // [-,-,x,x,-,-,-,-]
-    Byte b_encoder; // [-,-,-,-,x,x,-,-]
+    byte b_drive; // [x,x,-,-,-,-,-,-]
+    byte b_steer; // [-,-,x,x,-,-,-,-]
+    byte b_encoder; // [-,-,-,-,x,x,-,-]
     switch (kFLDriveType) {
       case "falcon":
       case "kraken":
@@ -43,7 +43,7 @@ public class RBSIParsing {
         b_drive = 0b01;
         break;
       default:
-        throw new RuntimeException("Invalid drive motor type");
+        throw new IllegalArgumentException("Invalid drive motor type: " + kFLDriveType);
     }
     switch (kFLSteerType) {
       case "falcon":
@@ -58,7 +58,7 @@ public class RBSIParsing {
         b_steer = 0b01;
         break;
       default:
-        throw new RuntimeException("Invalid steer motor type");
+        throw new IllegalArgumentException("Invalid steer motor type: " + kFLSteerType);
     }
     switch (kFLEncoderType) {
       case "cancoder":
@@ -70,7 +70,7 @@ public class RBSIParsing {
         b_encoder = 0b01;
         break;
       default:
-        throw new RuntimeException("Invalid swerve encoder type");
+        throw new IllegalArgumentException("Invalid swerve encoder type: " + kFLEncoderType);
     }
     return (byte) (0b00000000 | b_drive << 6 | b_steer << 4 | b_encoder << 2);
   }

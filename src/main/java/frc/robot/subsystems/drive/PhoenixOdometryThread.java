@@ -12,8 +12,9 @@ package frc.robot.subsystems.drive;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotController;
-import frc.robot.generated.TunerConstants;
+import frc.robot.generated.TunerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -40,7 +41,7 @@ public class PhoenixOdometryThread extends Thread {
   private final List<Queue<Double>> genericQueues = new ArrayList<>();
   private final List<Queue<Double>> timestampQueues = new ArrayList<>();
 
-  private static boolean isCANFD = TunerConstants.kCANBus.isNetworkFD();
+  private static final boolean isCANFD = TunerFactory.INSTANCE.canBus().isNetworkFD();
   private static PhoenixOdometryThread instance = null;
 
   private long droppedSamples = 0;
@@ -126,7 +127,9 @@ public class PhoenixOdometryThread extends Thread {
           if (phoenixSignals.length > 0) BaseStatusSignal.refreshAll(phoenixSignals);
         }
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        DriverStation.reportWarning("Phoenix odometry thread interrupted", e.getStackTrace());
+        Thread.currentThread().interrupt();
+        return;
       } finally {
         signalsLock.unlock();
       }
@@ -151,7 +154,7 @@ public class PhoenixOdometryThread extends Thread {
           if (!phoenixQueues.get(i).offer(phoenixSignals[i].getValueAsDouble())) droppedSamples++;
         }
         for (int i = 0; i < genericSignals.size(); i++) {
-          genericQueues.get(i).offer(genericSignals.get(i).getAsDouble());
+          if (!genericQueues.get(i).offer(genericSignals.get(i).getAsDouble())) droppedSamples++;
         }
         for (int i = 0; i < timestampQueues.size(); i++) {
           if (!timestampQueues.get(i).offer(timestamp)) droppedSamples++;

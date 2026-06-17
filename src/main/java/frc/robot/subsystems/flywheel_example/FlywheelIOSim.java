@@ -16,21 +16,18 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.system.LinearSystem;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
-import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
+import frc.robot.Constants;
+import frc.robot.Constants.FlywheelConstants;
 
 public class FlywheelIOSim implements FlywheelIO {
-  // Reduction between motors and encoder, as output over input. If the flywheel
-  // spins slower than the motors, this number should be greater than one.
-  private static final double kFlywheelGearing = 1.0;
-
-  // 1/2 MR^2
-  private static final double kFlywheelMomentOfInertia =
-      0.5 * Units.lbsToKilograms(1.5) * Math.pow(Units.inchesToMeters(4), 2);
-
   private final DCMotor m_gearbox = DCMotor.getNEO(1);
   private final LinearSystem<N1, N1, N1> m_plant =
-      LinearSystemId.createFlywheelSystem(m_gearbox, kFlywheelGearing, kFlywheelMomentOfInertia);
+      LinearSystemId.createFlywheelSystem(
+          m_gearbox,
+          FlywheelConstants.kSimGearing,
+          FlywheelConstants.kSimMomentOfInertiaKgMetersSq);
 
   private final FlywheelSim sim = new FlywheelSim(m_plant, m_gearbox);
   private PIDController pid = new PIDController(0.0, 0.0, 0.0);
@@ -44,11 +41,14 @@ public class FlywheelIOSim implements FlywheelIO {
   public void updateInputs(FlywheelIOInputs inputs) {
     if (closedLoop) {
       appliedVolts =
-          MathUtil.clamp(pid.calculate(sim.getAngularVelocityRadPerSec()) + ffVolts, -12.0, 12.0);
+          MathUtil.clamp(
+              pid.calculate(sim.getAngularVelocityRadPerSec()) + ffVolts,
+              -FlywheelConstants.kMaxVoltage,
+              FlywheelConstants.kMaxVoltage);
       sim.setInputVoltage(appliedVolts);
     }
 
-    sim.update(0.02);
+    sim.update(Constants.kLoopPeriodSecs);
 
     inputs.positionRad = 0.0;
     inputs.velocityRadPerSec = sim.getAngularVelocityRadPerSec();
@@ -61,6 +61,11 @@ public class FlywheelIOSim implements FlywheelIO {
     closedLoop = false;
     appliedVolts = volts;
     sim.setInputVoltage(volts);
+  }
+
+  @Override
+  public void setPercent(double percent) {
+    setVoltage(percent * RobotController.getBatteryVoltage());
   }
 
   @Override

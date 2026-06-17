@@ -23,4 +23,17 @@ public interface RioAccelIO {
   default void updateInputs(Inputs inputs) {}
 
   default void close() {}
+
+  static RioAccelIO noop() {
+    return new RioAccelIO() {
+      @Override
+      public void updateInputs(Inputs inputs) {
+        inputs.connected = false;
+        inputs.timestampNs = 0L;
+        inputs.xG = 0.0;
+        inputs.yG = 0.0;
+        inputs.zG = 0.0;
+      }
+    };
+  }
 }

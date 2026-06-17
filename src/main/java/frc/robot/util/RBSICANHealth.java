@@ -29,6 +29,11 @@ public class RBSICANHealth extends VirtualSubsystem {
     bus = RBSICANBusRegistry.getLike(busName);
   }
 
+  @Override
+  protected int getPeriodPriority() {
+    return 20;
+  }
+
   /** Periodic function */
   @Override
   protected void rbsiPeriodic() {

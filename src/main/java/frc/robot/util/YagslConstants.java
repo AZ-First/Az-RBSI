@@ -33,11 +33,12 @@ public class YagslConstants {
 
   // Define the internal YAGSL objects we will read into
   private static final File yagslDir =
-      new File(Filesystem.getDeployDirectory(), DeployConstants.yagslDir);
+      new File(Filesystem.getDeployDirectory(), DeployConstants.kYagslDir);
   public static final SwerveDriveJson swerveDriveJson; // Needed by the Accelerometer subsystem
   private static final PIDFPropertiesJson pidfPropertiesJson;
   private static final PhysicalPropertiesJson physicalPropertiesJson;
   private static final ModuleJson[] moduleJsons;
+  private static final ObjectMapper mapper = new ObjectMapper();
 
   // Use a static <JAVA THING> to read in the YAGSL JSON files with error catching
   static {
@@ -48,17 +49,13 @@ public class YagslConstants {
 
     try {
       tempSwerveJson =
-          new ObjectMapper()
-              .readValue(new File(yagslDir, "swervedrive.json"), SwerveDriveJson.class);
+          mapper.readValue(new File(yagslDir, "swervedrive.json"), SwerveDriveJson.class);
       tempPdifJson =
-          new ObjectMapper()
-              .readValue(
-                  new File(yagslDir, "modules/pidfproperties.json"), PIDFPropertiesJson.class);
+          mapper.readValue(
+              new File(yagslDir, "modules/pidfproperties.json"), PIDFPropertiesJson.class);
       tempPhysicalJson =
-          new ObjectMapper()
-              .readValue(
-                  new File(yagslDir, "modules/physicalproperties.json"),
-                  PhysicalPropertiesJson.class);
+          mapper.readValue(
+              new File(yagslDir, "modules/physicalproperties.json"), PhysicalPropertiesJson.class);
 
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -72,8 +69,10 @@ public class YagslConstants {
       for (int i = 0; i < tempModuleJsons.length; i++) {
         // moduleConfigs.put(swerveDriveJson.modules[i], i);
         File moduleFile = new File(yagslDir, "modules/" + swerveDriveJson.modules[i]);
-        assert moduleFile.exists();
-        tempModuleJsons[i] = new ObjectMapper().readValue(moduleFile, ModuleJson.class);
+        if (!moduleFile.exists()) {
+          throw new IllegalStateException("Missing YAGSL module config: " + moduleFile);
+        }
+        tempModuleJsons[i] = mapper.readValue(moduleFile, ModuleJson.class);
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -111,7 +110,7 @@ public class YagslConstants {
   static List<String> moduleList = Arrays.asList(swerveDriveJson.modules);
 
   // Front Left
-  static ModuleJson flModule = moduleJsons[moduleList.indexOf("frontleft.json")];
+  static ModuleJson flModule = moduleJsons[moduleIndex("frontleft.json")];
   public static final int kFrontLeftDriveMotorId = flModule.drive.id;
   public static final int kFrontLeftSteerMotorId = flModule.angle.id;
   public static final int kFrontLeftEncoderId = flModule.encoder.id;
@@ -129,7 +128,7 @@ public class YagslConstants {
   public static final double kFrontLeftYPosInches = flModule.location.front;
 
   // Front Right
-  static ModuleJson frModule = moduleJsons[moduleList.indexOf("frontright.json")];
+  static ModuleJson frModule = moduleJsons[moduleIndex("frontright.json")];
   public static final int kFrontRightDriveMotorId = frModule.drive.id;
   public static final int kFrontRightSteerMotorId = frModule.angle.id;
   public static final int kFrontRightEncoderId = frModule.encoder.id;
@@ -147,7 +146,7 @@ public class YagslConstants {
   public static final double kFrontRightYPosInches = frModule.location.front;
 
   // Back Left
-  static ModuleJson blModule = moduleJsons[moduleList.indexOf("backleft.json")];
+  static ModuleJson blModule = moduleJsons[moduleIndex("backleft.json")];
   public static final int kBackLeftDriveMotorId = blModule.drive.id;
   public static final int kBackLeftSteerMotorId = blModule.angle.id;
   public static final int kBackLeftEncoderId = blModule.encoder.id;
@@ -165,7 +164,7 @@ public class YagslConstants {
   public static final double kBackLeftYPosInches = blModule.location.front;
 
   // Back Right
-  static ModuleJson brModule = moduleJsons[moduleList.indexOf("backright.json")];
+  static ModuleJson brModule = moduleJsons[moduleIndex("backright.json")];
   public static final int kBackRightDriveMotorId = brModule.drive.id;
   public static final int kBackRightSteerMotorId = brModule.angle.id;
   public static final int kBackRightEncoderId = brModule.encoder.id;
@@ -193,4 +192,13 @@ public class YagslConstants {
   public static final double kSteerD = pidfPropertiesJson.angle.d;
   public static final double kSteerF = pidfPropertiesJson.angle.f;
   public static final double kSteerIZ = pidfPropertiesJson.angle.iz;
+
+  private static int moduleIndex(String fileName) {
+    int index = moduleList.indexOf(fileName);
+    if (index < 0) {
+      throw new IllegalStateException(
+          "YAGSL swervedrive.json is missing required module config '" + fileName + "'.");
+    }
+    return index;
+  }
 }

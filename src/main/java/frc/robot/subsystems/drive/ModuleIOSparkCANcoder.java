@@ -158,7 +158,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     driveConfig
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     driveConfig
         .encoder
         .positionConversionFactor(SwerveConstants.driveEncoderPositionFactor)
@@ -195,7 +195,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         .inverted(turnInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(turnEncoderInverted)
@@ -217,13 +217,13 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         .absoluteEncoderPositionAlwaysOn(true)
         .absoluteEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
-        .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+        .absoluteEncoderVelocityPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.));
     turnConfig
-        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
-        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriodSecs)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriodSecs);
     SparkUtil.tryUntilOk(
         turnSpark,
         5,
@@ -235,18 +235,25 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     turnVelocity = cancoder.getVelocity();
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = cancoder.getPosition();
+    BaseStatusSignal.setUpdateFrequencyForAll(SwerveConstants.kOdometryFrequency, turnPosition);
 
     // Create odometry queues
     timestampQueue = SparkOdometryThread.getInstance().makeTimestampQueue();
     drivePositionQueue =
         SparkOdometryThread.getInstance().registerSignal(driveSpark, driveEncoder::getPosition);
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(cancoder.getPosition());
+    turnPositionQueue =
+        SparkOdometryThread.getInstance()
+            .registerSignal(
+                () -> {
+                  turnPosition.refresh();
+                  return turnPosition.getValueAsDouble();
+                });
   }
 
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
     // Refresh CANcoder absolute
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition, turnPosition, turnVelocity);
     if (!encStatus.isOK()) {
       Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
     }
@@ -286,9 +293,9 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
 
     if (sampleCount <= 0) {
-      inputs.odometryTimestamps = new double[0];
-      inputs.odometryDrivePositionsRad = new double[0];
-      inputs.odometryTurnPositions = new Rotation2d[0];
+      inputs.odometryTimestamps = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryDrivePositionsRad = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryTurnPositions = EMPTY_ROTATION_ARRAY;
       return;
     }
 
@@ -326,7 +333,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
   @Override
   public void setDriveOpenLoop(double output) {
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
     driveSpark.setVoltage(scaledOutput);
 
     // Log output and battery
@@ -342,7 +349,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
   @Override
   public void setTurnOpenLoop(double output) {
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledOutput = output * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledOutput = output * DrivebaseConstants.kNominalVoltage / busVoltage;
     turnSpark.setVoltage(scaledOutput);
 
     // Log output and battery
@@ -373,7 +380,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
             + DrivebaseConstants.kDriveA * accelerationRadPerSec2;
 
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
     driveController.setSetpoint(
         velocityRadPerSec,

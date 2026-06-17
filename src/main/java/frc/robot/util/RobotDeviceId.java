@@ -16,6 +16,7 @@
 package frc.robot.util;
 
 import com.ctre.phoenix6.CANBus;
+import java.util.Objects;
 
 /**
  * Class for wrapping Robot / CAN devices with a name and functionality. Included here are both the
@@ -50,17 +51,34 @@ public class RobotDeviceId {
 
   /** Get the CTRE CANBus object for a named device */
   public CANBus getCANBus() {
+    return RBSICANBusRegistry.getBus(m_CANBus);
+  }
 
-    return new CANBus(m_CANBus);
+  /** Returns whether this device has a configured Power Distribution channel. */
+  public boolean hasPowerPort() {
+    return m_PowerPort != null;
   }
 
   /** Get the Power Port for a named device */
   public int getPowerPort() {
+    if (m_PowerPort == null) {
+      throw new IllegalStateException(
+          "Device " + m_CANDeviceNumber + " on CAN bus '" + m_CANBus + "' has no power port.");
+    }
     return m_PowerPort;
   }
 
   /** Check whether two named devices are, in fact, the same */
-  public boolean equals(RobotDeviceId other) {
-    return other.m_CANDeviceNumber == m_CANDeviceNumber && other.m_CANBus == m_CANBus;
+  @Override
+  public boolean equals(Object other) {
+    if (this == other) return true;
+    if (!(other instanceof RobotDeviceId otherDevice)) return false;
+    return otherDevice.m_CANDeviceNumber == m_CANDeviceNumber
+        && Objects.equals(otherDevice.m_CANBus, m_CANBus);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(m_CANDeviceNumber, m_CANBus);
   }
 }

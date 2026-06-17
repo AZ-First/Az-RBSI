@@ -19,26 +19,28 @@ package frc.robot.util;
  */
 public interface RBSIIO {
 
-  /** Define the power ports for this subsystem */
-  public final int[] powerPorts = {};
+  /** Implementations may override to provide PDH ports. */
+  default int[] powerPorts() {
+    return new int[] {};
+  }
+
+  /** Return the list of PDH power ports used for this mechanism. */
+  default int[] getPowerPorts() {
+    return powerPorts();
+  }
 
   /** Stop all the motors */
-  public default void stop() {}
+  default void stop() {}
 
   /** Set the neutral mode of the motors to COAST */
-  public default void setCoast() {}
+  default void setCoast() {}
 
   /** Set the neutral mode of the motors to BRAKE */
-  public default void setBrake() {}
+  default void setBrake() {}
 
   /** Run open loop at the specified voltage */
-  public default void setVoltage(double volts) {}
+  default void setVoltage(double volts) {}
 
   /** Run open loop at the specified duty cycle */
-  public default void setPercent(double percent) {}
-
-  /** Return the list of PDH power ports used for this mechanism */
-  public default int[] getPowerPorts() {
-    return powerPorts;
-  }
+  default void setPercent(double percent) {}
 }

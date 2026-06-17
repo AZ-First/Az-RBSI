@@ -12,6 +12,14 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+sourceSets {
+    test {
+        java {
+            srcDirs = ['src/test']
+        }
+    }
+}
+
 def ROBOT_MAIN_CLASS = "frc.robot.Main"
 
 // Define my targets (RoboRIO) and artifacts (deployable files)
@@ -91,6 +99,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
+    implementation "org.littletonrobotics.akit:akit-java:$akitJson.version"
     annotationProcessor "org.littletonrobotics.akit:akit-autolog:$akitJson.version"
 }
 

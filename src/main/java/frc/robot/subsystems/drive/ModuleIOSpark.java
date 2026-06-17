@@ -129,7 +129,7 @@ public class ModuleIOSpark implements ModuleIO {
     driveConfig
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     driveConfig
         .encoder
         .positionConversionFactor(SwerveConstants.driveEncoderPositionFactor)
@@ -148,13 +148,13 @@ public class ModuleIOSpark implements ModuleIO {
         .primaryEncoderPositionAlwaysOn(true)
         .primaryEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .primaryEncoderVelocityAlwaysOn(true)
-        .primaryEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+        .primaryEncoderVelocityPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.));
     driveConfig
-        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
-        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriodSecs)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriodSecs);
     SparkUtil.tryUntilOk(
         driveSpark,
         5,
@@ -169,7 +169,7 @@ public class ModuleIOSpark implements ModuleIO {
         .inverted(turnInverted)
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
-        .voltageCompensation(DrivebaseConstants.kOptimalVoltage);
+        .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     turnConfig
         .absoluteEncoder
         .inverted(turnEncoderInverted)
@@ -191,13 +191,13 @@ public class ModuleIOSpark implements ModuleIO {
         .absoluteEncoderPositionAlwaysOn(true)
         .absoluteEncoderPositionPeriodMs((int) (1000.0 / SwerveConstants.kOdometryFrequency))
         .absoluteEncoderVelocityAlwaysOn(true)
-        .absoluteEncoderVelocityPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .appliedOutputPeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .busVoltagePeriodMs((int) (Constants.loopPeriodSecs * 1000.))
-        .outputCurrentPeriodMs((int) (Constants.loopPeriodSecs * 1000.));
+        .absoluteEncoderVelocityPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .appliedOutputPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .busVoltagePeriodMs((int) (Constants.kLoopPeriodSecs * 1000.))
+        .outputCurrentPeriodMs((int) (Constants.kLoopPeriodSecs * 1000.));
     turnConfig
-        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriod)
-        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriod);
+        .openLoopRampRate(DrivebaseConstants.kDriveOpenLoopRampPeriodSecs)
+        .closedLoopRampRate(DrivebaseConstants.kDriveClosedLoopRampPeriodSecs);
     SparkUtil.tryUntilOk(
         turnSpark,
         5,
@@ -256,9 +256,9 @@ public class ModuleIOSpark implements ModuleIO {
     final int sampleCount = Math.min(tsCount, Math.min(driveCount, turnCount));
 
     if (sampleCount <= 0) {
-      inputs.odometryTimestamps = new double[0];
-      inputs.odometryDrivePositionsRad = new double[0];
-      inputs.odometryTurnPositions = new Rotation2d[0];
+      inputs.odometryTimestamps = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryDrivePositionsRad = EMPTY_DOUBLE_ARRAY;
+      inputs.odometryTurnPositions = EMPTY_ROTATION_ARRAY;
       return;
     }
 
@@ -337,7 +337,7 @@ public class ModuleIOSpark implements ModuleIO {
             + DrivebaseConstants.kDriveA * accelerationRadPerSec2;
 
     double busVoltage = RobotController.getBatteryVoltage();
-    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kOptimalVoltage / busVoltage;
+    double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
     driveController.setSetpoint(
         velocityRadPerSec,

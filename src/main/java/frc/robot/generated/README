@@ -1,2 +1,69 @@
-This directory, and in particular the TunerConstants.java file, are the
-Phoenix6 equivalent of the ``src/main/deploy/swerve`` directory for YAGSL.
+Phoenix 6 generated swerve constants for RBSI
+================================================
+
+This package is the Phoenix 6 equivalent of the YAGSL `src/main/deploy/swerve`
+configuration directory.
+
+RBSI keeps one generated TunerConstants file per robot:
+
+- `COMPBOTTunerConstants.java`
+- `DEVBOT1TunerConstants.java`
+- `DEVBOT2TunerConstants.java`
+
+The files are intentionally named per robot. Phoenix Tuner X normally generates
+a file named `TunerConstants.java`; do not leave that generic name in this
+package unless you also update the RBSI view classes.
+
+How to copy a new Phoenix Tuner X file into RBSI
+------------------------------------------------
+
+1. Run the Phoenix Tuner X Swerve Project Generator for the physical robot.
+2. On the final page, choose the option that generates only `TunerConstants`.
+3. Copy the generated file into this directory:
+   `src/main/java/frc/robot/generated/`
+4. Rename it for the selected RBSI robot:
+   - `COMPBOTTunerConstants.java` for `Constants.RobotType.COMPBOT`
+   - `DEVBOT1TunerConstants.java` for `Constants.RobotType.DEVBOT1`
+   - `DEVBOT2TunerConstants.java` for `Constants.RobotType.DEVBOT2`
+5. Edit the Java class declaration inside the copied file so it matches the new
+   filename. For example:
+   `public class COMPBOTTunerConstants`
+6. Comment out the generated import for `CommandSwerveDrivetrain`. RBSI does
+   not use CTRE's generated command drivetrain class.
+7. Comment out the generated `createDrivetrain()` helper. RBSI constructs and
+   owns its drive subsystem through `frc.robot.subsystems.drive.Drive`.
+8. Leave `DrivetrainConstants`, `FrontLeft`, `FrontRight`, `BackLeft`, and
+   `BackRight` public. The RBSI view classes expose those constants to the rest
+   of the robot code.
+
+How the View classes work
+-------------------------
+
+RBSI code should not import `COMPBOTTunerConstants`, `DEVBOT1TunerConstants`, or
+`DEVBOT2TunerConstants` directly.
+
+Instead:
+
+- `TunerView` defines the small interface RBSI needs from any generated file.
+- `COMPBOTTunerView`, `DEVBOT1TunerView`, and `DEVBOT2TunerView` adapt each
+  per-robot generated file to that interface.
+- `TunerFactory` checks `Constants.getRobot()` and returns the correct view.
+- Drive code uses `TunerFactory.INSTANCE` so module IO, odometry, and
+  `SwerveConstants` all read the selected robot's generated constants.
+
+When adding another robot type, add a matching `NewRobotTunerConstants.java`, a
+`NewRobotTunerView.java`, and a `TunerFactory` switch case.
+
+Generic template values
+-----------------------
+
+The template files in this repository are not calibrated for a real robot. They
+are intentionally generic:
+
+- encoder offsets are all `Rotations.of(0.0)`,
+- module locations are `+/-10.0` inches from the robot center,
+- coupling, drive gear, steer gear, and wheel radius values match across the
+  three template files.
+
+After generating real constants, those template values should be replaced by
+the measured values from Phoenix Tuner X.
