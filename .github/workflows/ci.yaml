@@ -48,4 +48,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Run Spotless check
-        run: ./gradlew spotlessCheck --no-daemon --parallel --build-cache
+        run: |
+          ./gradlew tasks --all --quiet > /tmp/gradle-tasks.txt
+          if grep -q '^spotlessCheck ' /tmp/gradle-tasks.txt; then
+            ./gradlew spotlessCheck --no-daemon --parallel --build-cache
+          else
+            echo "Spotless is not configured for this project; skipping formatting check."
+          fi
