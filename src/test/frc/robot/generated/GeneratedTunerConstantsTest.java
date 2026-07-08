@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
-import edu.wpi.first.math.util.Units;
 import org.junit.jupiter.api.Test;
+import org.wpilib.math.util.Units;
 
 class GeneratedTunerConstantsTest {
   private static final double EPSILON = 1e-9;

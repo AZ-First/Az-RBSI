@@ -15,13 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.wpilibj.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.system.Timer;
 
 public class LatencyCompensationTests {
   final double DOUBLE_DELTA = 0.01;
@@ -33,8 +34,8 @@ public class LatencyCompensationTests {
   public void constructDevices() {
     assert HAL.initialize(500, 0);
 
-    talonfx = new TalonFX(0);
-    cancoder = new CANcoder(0);
+    talonfx = new TalonFX(0, new CANBus(""));
+    cancoder = new CANcoder(0, new CANBus(""));
   }
 
   @Test

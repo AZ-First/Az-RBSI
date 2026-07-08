@@ -9,27 +9,28 @@
 
 package frc.robot.commands;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.filter.SlewRateLimiter;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
+import frc.robot.util.MathUtil;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.driverstation.MatchState;
+import org.wpilib.math.filter.SlewRateLimiter;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.util.Units;
+import org.wpilib.system.Timer;
 
 public final class DriveCommands {
 
@@ -57,13 +58,12 @@ public final class DriveCommands {
               double omega = getOmega(omegaLimiter.calculate(omegaSupplier.getAsDouble()));
 
               // Convert to field relative speeds & send command
-              ChassisSpeeds speeds =
-                  new ChassisSpeeds(
+              ChassisVelocities speeds =
+                  new ChassisVelocities(
                       linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
                       linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
                       omega * drive.getMaxAngularSpeedRadPerSec());
-              drive.runVelocity(
-                  ChassisSpeeds.fromFieldRelativeSpeeds(speeds, getAllianceAwareHeading(drive)));
+              drive.runVelocity(speeds.toRobotRelative(getAllianceAwareHeading(drive)));
             },
             drive)
         .beforeStarting(() -> resetLimiters(xLimiter, yLimiter, omegaLimiter));
@@ -92,7 +92,7 @@ public final class DriveCommands {
 
               // Run with straight-up velocities w.r.t. the robot!
               drive.runVelocity(
-                  new ChassisSpeeds(
+                  new ChassisVelocities(
                       linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
                       linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
                       omega * drive.getMaxAngularSpeedRadPerSec()));
@@ -131,13 +131,12 @@ public final class DriveCommands {
                           drive.getHeading().getRadians(), rotationSupplier.get().getRadians());
 
               // Convert to field relative speeds & send command
-              ChassisSpeeds speeds =
-                  new ChassisSpeeds(
+              ChassisVelocities speeds =
+                  new ChassisVelocities(
                       linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
                       linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
                       omega);
-              drive.runVelocity(
-                  ChassisSpeeds.fromFieldRelativeSpeeds(speeds, getAllianceAwareHeading(drive)));
+              drive.runVelocity(speeds.toRobotRelative(getAllianceAwareHeading(drive)));
             },
             drive)
 
@@ -173,7 +172,8 @@ public final class DriveCommands {
   /** Drives robot-relative at a fixed velocity while scheduled. */
   public static Command robotRelativeNudge(
       Drive drive, double vxMetersPerSec, double vyMetersPerSec, double omegaRadPerSec) {
-    ChassisSpeeds speeds = new ChassisSpeeds(vxMetersPerSec, vyMetersPerSec, omegaRadPerSec);
+    ChassisVelocities speeds =
+        new ChassisVelocities(vxMetersPerSec, vyMetersPerSec, omegaRadPerSec);
     return Commands.run(() -> drive.runVelocity(speeds), drive).finallyDo(drive::stop);
   }
 
@@ -220,7 +220,7 @@ public final class DriveCommands {
   }
 
   private static Rotation2d getAllianceAwareHeading(Drive drive) {
-    return DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red
+    return MatchState.getAlliance().orElse(Alliance.BLUE) == Alliance.RED
         ? drive.getHeading().plus(Rotation2d.k180deg)
         : drive.getHeading();
   }
@@ -284,7 +284,7 @@ public final class DriveCommands {
                       }
                       double denominator = n * sumX2 - sumX * sumX;
                       if (n < 2 || Math.abs(denominator) < 1e-9) {
-                        DriverStation.reportWarning(
+                        DriverStationErrors.reportWarning(
                             "Drive FF characterization did not collect enough usable samples.",
                             false);
                         drive.stop();
@@ -324,7 +324,7 @@ public final class DriveCommands {
                       double speed =
                           limiter.calculate(
                               DrivebaseConstants.kWheelRadiusCharacterizationMaxVelocityRadPerSec);
-                      drive.runVelocity(new ChassisSpeeds(0.0, 0.0, speed));
+                      drive.runVelocity(new ChassisVelocities(0.0, 0.0, speed));
                     },
                     drive)),
 
@@ -358,7 +358,7 @@ public final class DriveCommands {
                             wheelDelta += Math.abs(positions[i] - state.positions[i]) / 4.0;
                           }
                           if (wheelDelta <= 1e-9) {
-                            DriverStation.reportWarning(
+                            DriverStationErrors.reportWarning(
                                 "Wheel radius characterization did not measure wheel movement.",
                                 false);
                             drive.stop();

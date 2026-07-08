@@ -11,14 +11,14 @@ package frc.robot.subsystems.drive;
 
 import com.revrobotics.REVLibError;
 import com.revrobotics.spark.SparkBase;
-import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.RobotController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.system.Notifier;
+import org.wpilib.system.RobotController;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -100,7 +100,7 @@ public class SparkOdometryThread {
     Drive.odometryLock.lock();
     try {
       // Get sample timestamp
-      double timestamp = RobotController.getFPGATime() / 1e6;
+      double timestamp = RobotController.getTime() / 1e6;
 
       // Read Spark values, mark invalid in case of error
       double[] sparkValues = new double[sparkSignals.size()];

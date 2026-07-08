@@ -18,11 +18,6 @@
 package frc.robot;
 
 import com.revrobotics.util.StatusLogger;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Threads;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
@@ -34,6 +29,12 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.CommandScheduler;
+import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.MatchState;
+import org.wpilib.system.Threads;
+import org.wpilib.system.Timer;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -96,7 +97,8 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    LoggedPowerDistribution.getInstance(PowerConstants.kPdmCanId, PowerConstants.kPdmType);
+    LoggedPowerDistribution.getInstance(
+        PowerConstants.kPdmCanId, PowerConstants.kPdmChannelCount, PowerConstants.kPdmType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -111,7 +113,7 @@ public class Robot extends LoggedRobot {
 
     // Switch thread to high priority to improve loop timing
     if (isReal()) {
-      Threads.setCurrentThreadPriority(true, 99);
+      Threads.setCurrentThreadPriority(99);
     }
   }
 
@@ -122,7 +124,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // Switch thread to high priority to improve loop timing
-      Threads.setCurrentThreadPriority(true, 99);
+      Threads.setCurrentThreadPriority(99);
     }
     final long t1 = System.nanoTime();
 
@@ -140,7 +142,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // Return thread to normal priority
-      Threads.setCurrentThreadPriority(false, 10);
+      Threads.setCurrentThreadPriority(10);
     }
     final long t4 = System.nanoTime();
 
@@ -233,16 +235,16 @@ public class Robot extends LoggedRobot {
     // https://docs.wpilib.org/en/stable/docs/yearly-overview/2026-game-data.html
     if (FieldState.wonAuto == null) {
       // Only call this code block if the signal from FMS has not yet arrived
-      String gameData = DriverStation.getGameSpecificMessage();
+      String gameData = MatchState.getGameData().orElse("");
       if (gameData.length() > 0) {
         switch (gameData.charAt(0)) {
           case 'B':
             // Blue case code
-            FieldState.wonAuto = DriverStation.Alliance.Blue;
+            FieldState.wonAuto = Alliance.BLUE;
             break;
           case 'R':
             // Red case code
-            FieldState.wonAuto = DriverStation.Alliance.Red;
+            FieldState.wonAuto = Alliance.RED;
             break;
           default:
             // This is corrupt data, do nothing
@@ -254,15 +256,15 @@ public class Robot extends LoggedRobot {
 
   }
 
-  /** This function is called once when test mode is enabled. */
+  /** This function is called once when utility mode is enabled. */
   @Override
-  public void testInit() {
-    // Cancels all running commands at the start of test mode.
+  public void utilityInit() {
+    // Cancels all running commands at the start of utility mode.
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().resetHeadingController();
   }
 
-  /** This function is called periodically during test mode. */
+  /** This function is called periodically during utility mode. */
   @Override
-  public void testPeriodic() {}
+  public void utilityPeriodic() {}
 }

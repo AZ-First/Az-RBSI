@@ -8,13 +8,13 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj2.command.button.CommandPS4Controller;
-import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.ControllerButtonConstants;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.command2.button.CommandNiDsPS4Controller;
+import org.wpilib.command2.button.CommandNiDsPS5Controller;
+import org.wpilib.command2.button.CommandNiDsXboxController;
+import org.wpilib.command2.button.Trigger;
+import org.wpilib.driverstation.internal.DriverStationBackend;
 
 /**
  * Controller-agnostic wrapper for the driver and operator controllers.
@@ -63,7 +63,7 @@ public abstract class RBSIController {
 
   /** Creates a controller wrapper for the HID currently connected at startup. */
   public static RBSIController createDriverController(int port) {
-    String name = DriverStation.getJoystickName(port);
+    String name = DriverStationBackend.getJoystickName(port);
     RBSIController controller = createController(port, name);
 
     Logger.recordOutput("Controller/Port" + port + "/Name", name);
@@ -72,7 +72,7 @@ public abstract class RBSIController {
   }
 
   private static RBSIController createController(int port, String name) {
-    if (DriverStation.getJoystickIsXbox(port)) {
+    if (DriverStationBackend.getJoystickIsGamepad(port)) {
       return new XboxControllerAdapter(port);
     }
 
@@ -121,11 +121,11 @@ public abstract class RBSIController {
   public abstract double getRightY();
 
   private static final class XboxControllerAdapter extends RBSIController {
-    private final CommandXboxController controller;
+    private final CommandNiDsXboxController controller;
 
     private XboxControllerAdapter(int port) {
       super(port, "Xbox");
-      controller = new CommandXboxController(port);
+      controller = new CommandNiDsXboxController(port);
     }
 
     @Override
@@ -184,11 +184,11 @@ public abstract class RBSIController {
   }
 
   private static final class PS4ControllerAdapter extends RBSIController {
-    private final CommandPS4Controller controller;
+    private final CommandNiDsPS4Controller controller;
 
     private PS4ControllerAdapter(int port) {
       super(port, "PS4");
-      controller = new CommandPS4Controller(port);
+      controller = new CommandNiDsPS4Controller(port);
     }
 
     @Override
@@ -239,11 +239,11 @@ public abstract class RBSIController {
   }
 
   private static final class PS5ControllerAdapter extends RBSIController {
-    private final CommandPS5Controller controller;
+    private final CommandNiDsPS5Controller controller;
 
     private PS5ControllerAdapter(int port) {
       super(port, "PS5");
-      controller = new CommandPS5Controller(port);
+      controller = new CommandNiDsPS5Controller(port);
     }
 
     @Override

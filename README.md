@@ -1,6 +1,6 @@
 [![CI](https://github.com/AZ-First/Az-RBSI/actions/workflows/ci.yaml/badge.svg)](https://github.com/AZ-First/Az-RBSI/actions/workflows/ci.yaml)
 
-![AzFIRST Logo](https://github.com/AZ-First/Az-RBSI/blob/main/AZ-First-logo.png?raw=true)
+![AzFIRST Logo](assets/AZ-First-logo.png)
 
 # Az-RBSI
 
@@ -10,6 +10,22 @@ Arizona's Reference Build and Software Implementation for FRC robots, read as
 Az-RBSI is a robot-code template for teams that want a reliable swerve,
 odometry, vision, autonomous, logging, and tuning baseline without starting from
 an empty project.
+
+## 2027 CANOPY/BIOCORE
+
+<p>
+  <img src="assets/season-2027/first-canopy-logo.png" alt="FIRST CANOPY logo" width="260">
+  <img src="assets/season-2027/first-biocore-frc-lockup.png" alt="FRC BIOCORE logo" width="300">
+</p>
+
+To use the BIOCORE VS Code theme:
+
+1. Open the Extensions view in VS Code.
+2. Select `...` > `Install from VSIX...`.
+3. Install
+   [`themes/frc-biocore-high-contrast-theme-1.0.1.vsix`](themes/frc-biocore-high-contrast-theme-1.0.1.vsix).
+4. Run `Preferences: Color Theme` from the command palette and select
+   `FRC BIOCORE High Contrast`.
 
 ## Documentation
 

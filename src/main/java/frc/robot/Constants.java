@@ -17,7 +17,7 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
@@ -25,15 +25,6 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.therekrab.autopilot.APConstraints;
 import com.therekrab.autopilot.APProfile;
 import com.therekrab.autopilot.Autopilot;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.Mass;
-import edu.wpi.first.wpilibj.PowerDistribution;
-import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
@@ -51,7 +42,14 @@ import frc.robot.util.RobotDeviceId;
 import java.util.Set;
 import org.littletonrobotics.junction.Logger;
 import org.photonvision.simulation.SimCameraProperties;
-import swervelib.math.Matter;
+import org.wpilib.framework.RobotBase;
+import org.wpilib.hardware.power.PowerDistribution;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Rotation3d;
+import org.wpilib.math.geometry.Transform3d;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.math.util.Units;
+import org.wpilib.units.measure.Mass;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -118,8 +116,6 @@ public final class Constants {
   public static final class RobotConstants {
 
     public static final Mass kMass = Pounds.of(100.);
-    public static final Matter kChassisMatter =
-        new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kMass.in(Kilograms));
     // Robot moment of inertia; this can be obtained from a CAD model of your drivetrain. Usually,
     // this is between 3 and 8 kg*m^2.
     public static final double kMomentOfInertiaKgMetersSq = 6.8;
@@ -154,8 +150,9 @@ public final class Constants {
   public static final class PowerConstants {
 
     // Power Distribution Module Configuration
-    public static final PowerDistribution.ModuleType kPdmType = PowerDistribution.ModuleType.kRev;
+    public static final PowerDistribution.ModuleType kPdmType = PowerDistribution.ModuleType.REV;
     public static final int kPdmCanId = 1;
+    public static final int kPdmChannelCount = 24;
 
     // Current Limits
     public static final double kTotalMaxCurrentAmps = 120.;
@@ -379,7 +376,7 @@ public final class Constants {
     public static final double kDriveA = 0.0;
     public static final double kDriveS = 0.20;
     public static final double kDriveT =
-        SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
+        SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).Kt;
     public static final double kSteerP = 100.0;
     public static final double kSteerD = 0.5;
     public static final double kSteerS = 0.1;

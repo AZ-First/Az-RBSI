@@ -32,23 +32,15 @@ import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkBase;
-import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkLowLevel.ControlType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.util.MathUtil;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSIEnum.CTREPro;
@@ -56,6 +48,14 @@ import frc.robot.util.SparkUtil;
 import java.util.Arrays;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.filter.Debouncer;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.util.Units;
+import org.wpilib.system.RobotController;
+import org.wpilib.units.measure.Angle;
+import org.wpilib.units.measure.AngularVelocity;
+import org.wpilib.units.measure.Current;
+import org.wpilib.units.measure.Voltage;
 
 /**
  * Module IO implementation for blended TalonFX drive motor controller, SparkMax turn motor
@@ -181,7 +181,7 @@ public class ModuleIOBlended implements ModuleIO {
 
     CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
     driveTalon = new TalonFX(constants.DriveMotorId, canBus);
-    turnSpark = new SparkMax(constants.SteerMotorId, MotorType.kBrushless);
+    turnSpark = new SparkMax(0, constants.SteerMotorId, MotorType.kBrushless);
     cancoder = new CANcoder(constants.EncoderId, canBus);
 
     turnController = turnSpark.getClosedLoopController();

@@ -15,16 +15,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
-import edu.wpi.first.hal.HAL;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.hardware.hal.HAL;
 
 public class FusedCANcoderTests {
   final double SET_DELTA = 0.1;
@@ -37,8 +38,8 @@ public class FusedCANcoderTests {
   public void constructDevices() {
     assert HAL.initialize(500, 0);
 
-    talon = new TalonFX(0);
-    cancoder = new CANcoder(0);
+    talon = new TalonFX(0, new CANBus(""));
+    cancoder = new CANcoder(0, new CANBus(""));
   }
 
   @Test

@@ -9,15 +9,15 @@
 
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.system.plant.LinearSystemId;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
+import frc.robot.util.MathUtil;
 import frc.robot.util.TimeUtil;
+import org.wpilib.math.controller.PIDController;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.math.system.Models;
+import org.wpilib.math.util.Units;
+import org.wpilib.simulation.DCMotorSim;
 
 /**
  * Physics sim implementation of module IO. The sim models are configured using a set of module
@@ -51,12 +51,12 @@ public class ModuleIOSim implements ModuleIO {
     // Create drive and turn sim models
     driveSim =
         new DCMotorSim(
-            LinearSystemId.createDCMotorSystem(
+            Models.singleJointedArmFromPhysicalConstants(
                 DRIVE_GEARBOX, SwerveConstants.kDriveInertia, SwerveConstants.kDriveGearRatio),
             DRIVE_GEARBOX);
     turnSim =
         new DCMotorSim(
-            LinearSystemId.createDCMotorSystem(
+            Models.singleJointedArmFromPhysicalConstants(
                 TURN_GEARBOX, SwerveConstants.kSteerInertia, SwerveConstants.kSteerGearRatio),
             TURN_GEARBOX);
 
@@ -68,15 +68,14 @@ public class ModuleIOSim implements ModuleIO {
   public void simulationPeriodic() {
     // Closed-loop control
     if (driveClosedLoop) {
-      driveAppliedVolts =
-          driveFFVolts + driveController.calculate(driveSim.getAngularVelocityRadPerSec());
+      driveAppliedVolts = driveFFVolts + driveController.calculate(driveSim.getAngularVelocity());
     } else {
       driveController.reset();
     }
 
     if (turnClosedLoop) {
       // Simple angle loop for module simulation; real feedforward is handled by hardware IO.
-      turnAppliedVolts = turnController.calculate(turnSim.getAngularPositionRad());
+      turnAppliedVolts = turnController.calculate(turnSim.getAngularPosition());
     } else {
       turnController.reset();
     }
@@ -93,27 +92,26 @@ public class ModuleIOSim implements ModuleIO {
   @Override
   public void updateInputs(ModuleIOInputs inputs) {
     // Convert rotor -> mechanism
-    double mechanismPositionRad = driveSim.getAngularPositionRad();
-    double mechanismVelocityRadPerSec = driveSim.getAngularVelocityRadPerSec();
+    double mechanismPositionRad = driveSim.getAngularPosition();
+    double mechanismVelocityRadPerSec = driveSim.getAngularVelocity();
 
     // Drive inputs
     inputs.driveConnected = true;
     inputs.drivePositionRad = mechanismPositionRad;
     inputs.driveVelocityRadPerSec = mechanismVelocityRadPerSec;
     inputs.driveAppliedVolts = driveAppliedVolts;
-    inputs.driveCurrentAmps = Math.abs(driveSim.getCurrentDrawAmps());
+    inputs.driveCurrentAmps = Math.abs(driveSim.getCurrentDraw());
 
     // Turn inputs
-    double steerPositionRad = turnSim.getAngularPositionRad();
+    double steerPositionRad = turnSim.getAngularPosition();
 
     inputs.turnConnected = true;
     inputs.turnEncoderConnected = true;
     inputs.turnAbsolutePosition = new Rotation2d(steerPositionRad);
     inputs.turnPosition = new Rotation2d(steerPositionRad);
-    inputs.turnVelocityRadPerSec =
-        turnSim.getAngularVelocityRadPerSec() / SwerveConstants.kSteerGearRatio;
+    inputs.turnVelocityRadPerSec = turnSim.getAngularVelocity() / SwerveConstants.kSteerGearRatio;
     inputs.turnAppliedVolts = turnAppliedVolts;
-    inputs.turnCurrentAmps = Math.abs(turnSim.getCurrentDrawAmps());
+    inputs.turnCurrentAmps = Math.abs(turnSim.getCurrentDraw());
 
     // Odometry (single sample per loop is fine)
     inputs.odometryTimestamps = new double[] {TimeUtil.now()};

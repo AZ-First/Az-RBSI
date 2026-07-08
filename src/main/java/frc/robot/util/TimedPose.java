@@ -13,9 +13,9 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N3;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.linalg.Matrix;
+import org.wpilib.math.numbers.N1;
+import org.wpilib.math.numbers.N3;
 
 public record TimedPose(Pose2d pose, double timestampSeconds, Matrix<N3, N1> stdDevs) {}

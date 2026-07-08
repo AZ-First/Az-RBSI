@@ -17,9 +17,10 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import frc.robot.util.Alert;
+import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.MatchState;
+import org.wpilib.driverstation.RobotState;
 
 public class FieldState {
 
@@ -54,20 +55,20 @@ public class FieldState {
   public static boolean isHubActive() {
 
     // The HUB is active for both alliances in AUTO
-    if (DriverStation.isAutonomous()) {
+    if (RobotState.isAutonomous()) {
       return true;
     }
 
     // The HUB is not active when not in AUTO or TELEOP
-    if (!DriverStation.isTeleop()) {
+    if (!RobotState.isTeleop()) {
       return false;
     }
 
     // Read the approximate match time and alliance. The FMS does not send an official match time to
-    // robots; DriverStation.getMatchTime() is approximate and should not be used to dispute ref
+    // robots; MatchState.getMatchTime() is approximate and should not be used to dispute ref
     // calls or guarantee that a function will trigger before the match ends.
-    double timeRemaining = DriverStation.getMatchTime();
-    Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
+    double timeRemaining = MatchState.getMatchTime();
+    Alliance alliance = MatchState.getAlliance().orElse(Alliance.BLUE);
 
     // If the FMS has not provided an alliance yet, set to TRUE and kick an Alert!
     if (timeRemaining < 130.0 && wonAuto == null) {

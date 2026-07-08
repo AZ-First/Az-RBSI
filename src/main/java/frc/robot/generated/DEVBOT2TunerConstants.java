@@ -1,13 +1,13 @@
 package frc.robot.generated;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.*;
 import com.ctre.phoenix6.signals.*;
 import com.ctre.phoenix6.swerve.*;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.*;
-import edu.wpi.first.units.measure.*;
+import org.wpilib.units.measure.*;
 
 // import frc.robot.subsystems.CommandSwerveDrivetrain;
 

@@ -9,8 +9,8 @@
 
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.math.geometry.Rotation2d;
 import org.littletonrobotics.junction.AutoLog;
+import org.wpilib.math.geometry.Rotation2d;
 
 public interface ModuleIO {
   double[] EMPTY_DOUBLE_ARRAY = new double[0];

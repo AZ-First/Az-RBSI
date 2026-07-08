@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.wpilibj.RobotController;
 import java.util.NavigableMap;
 import org.junit.jupiter.api.Test;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.system.RobotController;
 
 class UtilTests {
   private static final double EPSILON = 1e-9;
@@ -17,7 +17,7 @@ class UtilTests {
   void timeUtilReturnsSecondsFromAdvantageKitMicrosecondTimestamp() {
     assertTrue(HAL.initialize(500, 0));
 
-    double expectedSeconds = RobotController.getFPGATime() * 1.0e-6;
+    double expectedSeconds = RobotController.getTime() * 1.0e-6;
     double actualSeconds = TimeUtil.now();
 
     assertEquals(expectedSeconds, actualSeconds, 0.050);

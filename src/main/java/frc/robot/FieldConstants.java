@@ -19,15 +19,14 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.wpilibj.Filesystem;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import lombok.Getter;
+import org.wpilib.system.Filesystem;
+import org.wpilib.vision.apriltag.AprilTagFieldLayout;
 
 /**
  * Contains various field dimensions and useful reference points. All units are in meters and poses
@@ -62,22 +61,22 @@ public class FieldConstants {
     NONE_ANDYMARK("none-andymark");
 
     AprilTagLayoutType(String name) {
+      Path layoutPath =
+          Constants.disableHAL
+              ? Path.of("src", "main", "deploy", "apriltags", name + ".json")
+              : Path.of(Filesystem.getDeployDirectory().getPath(), "apriltags", name + ".json");
+
       try {
-        layout =
-            new AprilTagFieldLayout(
-                Constants.disableHAL
-                    ? Path.of("src", "main", "deploy", "apriltags", name + ".json")
-                    : Path.of(
-                        Filesystem.getDeployDirectory().getPath(), "apriltags", name + ".json"));
+        layout = new AprilTagFieldLayout(layoutPath);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
 
       try {
-        layoutString = new ObjectMapper().writeValueAsString(layout);
-      } catch (JsonProcessingException e) {
+        layoutString = Files.readString(layoutPath);
+      } catch (IOException e) {
         throw new RuntimeException(
-            "Failed to serialize AprilTag layout JSON " + toString() + "for PhotonVision");
+            "Failed to read AprilTag layout JSON " + toString() + " for PhotonVision", e);
       }
     }
 

@@ -17,45 +17,24 @@
 
 package frc.robot.subsystems.drive;
 
-import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
+import static org.wpilib.units.Units.Volts;
 
-import choreo.trajectory.SwerveSample;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PathPlannerLogging;
-import edu.wpi.first.hal.FRCNetComm.tInstances;
-import edu.wpi.first.hal.FRCNetComm.tResourceType;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.ProfiledPIDController;
-import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.trajectory.TrapezoidProfile;
-import edu.wpi.first.wpilibj.Alert;
-import edu.wpi.first.wpilibj.Alert.AlertType;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.Imu;
+import frc.robot.util.Alert;
+import frc.robot.util.Alert.AlertType;
 import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
 import frc.robot.util.LocalADStarAK;
+import frc.robot.util.MathUtil;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
 import frc.robot.util.RBSISubsystem;
@@ -67,6 +46,26 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.sysid.SysIdRoutine;
+import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.driverstation.MatchState;
+import org.wpilib.driverstation.RobotState;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.math.controller.PIDController;
+import org.wpilib.math.controller.ProfiledPIDController;
+import org.wpilib.math.estimator.SwerveDrivePoseEstimator;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.kinematics.SwerveDriveKinematics;
+import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.math.kinematics.SwerveModuleVelocity;
+import org.wpilib.math.trajectory.TrapezoidProfile;
+import org.wpilib.smartdashboard.Field2d;
+import org.wpilib.smartdashboard.SmartDashboard;
 
 /**
  * Drive subsystem (RBSISubsystem)
@@ -93,7 +92,7 @@ public class Drive extends RBSISubsystem {
 
   // Declare an alert
   private final Alert gyroDisconnectedAlert =
-      new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.kError);
+      new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.ERROR);
 
   // Declare odometry and pose-related variables
   // This one is package-private; used in DriveOdometry, PhoenixOdometryThread, and
@@ -211,7 +210,7 @@ public class Drive extends RBSISubsystem {
     }
 
     // Usage reporting for swerve template
-    HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_AdvantageKit);
+    HAL.reportUsage("RobotDrive", "Swerve_AdvantageKit");
 
     // Configure Autonomous Path Building for PathPlanner based on `AutoType`
     switch (Constants.getAutoType()) {
@@ -233,10 +232,10 @@ public class Drive extends RBSISubsystem {
                       DrivebaseConstants.kSpinI,
                       DrivebaseConstants.kSpinD)),
               AutoConstants.kPathPlannerConfig,
-              () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
+              () -> MatchState.getAlliance().orElse(Alliance.BLUE) == Alliance.RED,
               this);
         } catch (Exception e) {
-          DriverStation.reportError(
+          DriverStationErrors.reportError(
               "Failed to load PathPlanner config and configure AutoBuilder", e.getStackTrace());
         }
         Pathfinding.setPathfinder(new LocalADStarAK());
@@ -281,10 +280,10 @@ public class Drive extends RBSISubsystem {
 
     // The only function of the drive periodic() is to stop the modules if the DriverStation is
     // diabled.
-    if (DriverStation.isDisabled()) {
+    if (RobotState.isDisabled()) {
       for (var module : modules) module.stop();
-      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
-      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
+      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
+      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleVelocity[] {});
     }
 
     field.setRobotPose(m_PoseEstimator.getEstimatedPosition());
@@ -311,7 +310,7 @@ public class Drive extends RBSISubsystem {
     }
 
     // Get module states from modules (ok to allocate; can be cached later if desired)
-    final SwerveModuleState[] moduleStates = new SwerveModuleState[modules.length];
+    final SwerveModuleVelocity[] moduleStates = new SwerveModuleVelocity[modules.length];
     for (int i = 0; i < modules.length; i++) {
       moduleStates[i] = modules[i].getState();
     }
@@ -355,7 +354,7 @@ public class Drive extends RBSISubsystem {
 
   /** Stop the drive. */
   public void stop() {
-    runVelocity(new ChassisSpeeds());
+    runVelocity(new ChassisVelocities());
   }
 
   /**
@@ -376,11 +375,13 @@ public class Drive extends RBSISubsystem {
    *
    * @param speeds Speeds in meters/sec
    */
-  public void runVelocity(ChassisSpeeds speeds) {
+  public void runVelocity(ChassisVelocities speeds) {
     // Calculate module setpoints
-    ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, Constants.kLoopPeriodSecs);
-    SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(discreteSpeeds);
-    SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, getMaxLinearSpeedMetersPerSec());
+    ChassisVelocities discreteSpeeds = speeds.discretize(Constants.kLoopPeriodSecs);
+    SwerveModuleVelocity[] setpointStates = kinematics.toSwerveModuleVelocities(discreteSpeeds);
+    setpointStates =
+        SwerveDriveKinematics.desaturateWheelVelocities(
+            setpointStates, getMaxLinearSpeedMetersPerSec());
 
     // Log unoptimized setpoints and setpoint speeds
     Logger.recordOutput("SwerveStates/Setpoints", setpointStates);
@@ -473,7 +474,7 @@ public class Drive extends RBSISubsystem {
     boolean hadLastWheelDist = haveLastWheelDist;
     if (haveLastWheelDist) {
       for (int i = 0; i < 4; i++) {
-        double dist = odomPositions[i].distanceMeters;
+        double dist = odomPositions[i].distance;
         double d = Math.abs(dist - lastWheelDistM[i]);
         if (d > maxDelta) maxDelta = d;
       }
@@ -481,7 +482,7 @@ public class Drive extends RBSISubsystem {
 
     // Update baseline for next loop
     for (int i = 0; i < 4; i++) {
-      lastWheelDistM[i] = odomPositions[i].distanceMeters;
+      lastWheelDistM[i] = odomPositions[i].distance;
     }
     haveLastWheelDist = true;
 
@@ -539,8 +540,8 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the module states (turn angles and drive velocities) for all of the modules. */
   @AutoLogOutput(key = "SwerveStates/Measured")
-  private SwerveModuleState[] getModuleStates() {
-    SwerveModuleState[] states = new SwerveModuleState[4];
+  private SwerveModuleVelocity[] getModuleStates() {
+    SwerveModuleVelocity[] states = new SwerveModuleVelocity[4];
     for (int i = 0; i < 4; i++) {
       states[i] = modules[i].getState();
     }
@@ -559,8 +560,8 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the measured chassis speeds of the robot. */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
-  public ChassisSpeeds getChassisSpeeds() {
-    return kinematics.toChassisSpeeds(getModuleStates());
+  public ChassisVelocities getChassisSpeeds() {
+    return kinematics.toChassisVelocities(getModuleStates());
   }
 
   /**
@@ -591,11 +592,11 @@ public class Drive extends RBSISubsystem {
    * <p>+X = field forward +Y = field left CCW+ = counterclockwise
    */
   @AutoLogOutput(key = "SwerveChassisSpeeds/FieldMeasured")
-  public ChassisSpeeds getFieldRelativeSpeeds() {
+  public ChassisVelocities getFieldRelativeSpeeds() {
     // Robot-relative measured speeds from modules
-    ChassisSpeeds robotRelative = getChassisSpeeds();
+    ChassisVelocities robotRelative = getChassisSpeeds();
     // Convert to field-relative using authoritative yaw
-    return ChassisSpeeds.fromRobotRelativeSpeeds(robotRelative, getHeading());
+    return robotRelative.toFieldRelative(getHeading());
   }
 
   /**
@@ -605,8 +606,8 @@ public class Drive extends RBSISubsystem {
    */
   @AutoLogOutput(key = "Drive/FieldLinearVelocity")
   public Translation2d getFieldLinearVelocity() {
-    ChassisSpeeds fieldSpeeds = getFieldRelativeSpeeds();
-    return new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
+    ChassisVelocities fieldSpeeds = getFieldRelativeSpeeds();
+    return new Translation2d(fieldSpeeds.vx, fieldSpeeds.vy);
   }
 
   /** Returns interpolated odometry pose at a given timestamp. */
@@ -697,7 +698,7 @@ public class Drive extends RBSISubsystem {
 
   /** Returns whether the robot was in the DISABLED_COAST state at time `timestamp` */
   public boolean isDisabledCoast(double timestamp) {
-    return DriverStation.isDisabled() && (timestamp < disabledCoastUntilTs);
+    return RobotState.isDisabled() && (timestamp < disabledCoastUntilTs);
   }
 
   /** Returns the disabledCoastStartTs variable */
@@ -739,7 +740,7 @@ public class Drive extends RBSISubsystem {
   /** Zeros the gyro based on alliance color */
   public void zeroHeadingForAlliance() {
     imu.zeroYaw(
-        DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue
+        MatchState.getAlliance().orElse(Alliance.BLUE) == Alliance.BLUE
             ? Rotation2d.kZero
             : Rotation2d.k180deg);
     resetHeadingController();
@@ -767,7 +768,7 @@ public class Drive extends RBSISubsystem {
       final Pose2d vision = meas.pose();
 
       // ENABLED: normal fusion
-      if (!DriverStation.isDisabled()) {
+      if (!RobotState.isDisabled()) {
         disabledVisionInitialized = false;
         lastDisabledVisionTs = Double.NaN;
         m_PoseEstimator.addVisionMeasurement(vision, t, meas.stdDevs());
@@ -996,35 +997,26 @@ public class Drive extends RBSISubsystem {
           AutoConstants.kChoreoSteerPID.kI,
           AutoConstants.kChoreoSteerPID.kD);
 
-  /**
-   * Follows the given field-centric path sample with PID for Choreo
-   *
-   * @param pose Current pose of the robot
-   * @param sample Sample along the path to follow
-   */
-  public void choreoController(Pose2d pose, SwerveSample sample) {
-    var targetSpeeds = sample.getChassisSpeeds();
-    targetSpeeds.vxMetersPerSecond += m_pathXController.calculate(pose.getX(), sample.x);
-    targetSpeeds.vyMetersPerSecond += m_pathYController.calculate(pose.getY(), sample.y);
-    targetSpeeds.omegaRadiansPerSecond +=
-        m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading);
-
-    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(targetSpeeds, getHeading()));
-  }
-
-  public void followTrajectory(SwerveSample sample) {
-    // Get the current pose of the robot
-    Pose2d pose = getPose();
-
-    // Choreo samples are field-relative; convert to robot-relative before sending to modules.
-    ChassisSpeeds fieldRelativeSpeeds =
-        new ChassisSpeeds(
-            sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
-            sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
-            sample.omega
-                + m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading));
-
-    // Apply the generated speeds
-    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds, pose.getRotation()));
-  }
+  // TODO(2027): Re-enable these Choreo trajectory followers when ChoreoLib supports 2027 WPILib.
+  // public void choreoController(Pose2d pose, SwerveSample sample) {
+  //   var targetSpeeds = sample.getChassisSpeeds();
+  //   targetSpeeds.vx += m_pathXController.calculate(pose.getX(), sample.x);
+  //   targetSpeeds.vy += m_pathYController.calculate(pose.getY(), sample.y);
+  //   targetSpeeds.omega +=
+  //       m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading);
+  //
+  //   runVelocity(targetSpeeds.toRobotRelative(getHeading()));
+  // }
+  //
+  // public void followTrajectory(SwerveSample sample) {
+  //   Pose2d pose = getPose();
+  //   ChassisVelocities fieldRelativeSpeeds =
+  //       new ChassisVelocities(
+  //           sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
+  //           sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
+  //           sample.omega
+  //               + m_pathThetaController.calculate(pose.getRotation().getRadians(),
+  // sample.heading));
+  //   runVelocity(fieldRelativeSpeeds.toRobotRelative(pose.getRotation()));
+  // }
 }

@@ -5,7 +5,7 @@
       "type": "java",
       "name": "Main",
       "request": "launch",
-      "mainClass": "frc.robot.Main",
+      "mainClass": "first.Main",
       "projectName": "Az-RBSI"
     },
     {

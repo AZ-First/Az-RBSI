@@ -9,16 +9,16 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.util.sendable.Sendable;
-import edu.wpi.first.util.sendable.SendableBuilder;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.smartdashboard.SmartDashboard;
+import org.wpilib.util.sendable.Sendable;
+import org.wpilib.util.sendable.SendableBuilder;
 
 /** Class for managing persistent alerts to be sent over NetworkTables. */
 public class Alert {
@@ -68,10 +68,10 @@ public class Alert {
       activeStartTime = TimeUtil.now();
       switch (type) {
         case ERROR:
-          DriverStation.reportError(text, false);
+          DriverStationErrors.reportError(text, false);
           break;
         case WARNING:
-          DriverStation.reportWarning(text, false);
+          DriverStationErrors.reportWarning(text, false);
           break;
         case INFO:
           System.out.println(text);
@@ -86,10 +86,10 @@ public class Alert {
     if (active && !text.equals(this.text)) {
       switch (type) {
         case ERROR:
-          DriverStation.reportError(text, false);
+          DriverStationErrors.reportError(text, false);
           break;
         case WARNING:
-          DriverStation.reportWarning(text, false);
+          DriverStationErrors.reportWarning(text, false);
           break;
         case INFO:
           System.out.println(text);

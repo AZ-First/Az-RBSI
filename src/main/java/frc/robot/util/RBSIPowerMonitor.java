@@ -13,12 +13,12 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.system.RobotController;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each
@@ -35,7 +35,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private final LoggedTunableNumber batteryCapacityAh;
   private double totalAmpHours = 0.0;
   private double totalEnergyJoules = 0.0;
-  private long lastTimestampUs = RobotController.getFPGATime(); // In microseconds
+  private long lastTimestampUs = RobotController.getTime(); // In microseconds
   private double lastVoltage = 0.0;
   private double lastTotalCurrent = 0.0;
   private boolean totalCurrentOverLimit = false;
@@ -106,7 +106,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     }
 
     // --- Battery estimation ---
-    long nowUs = RobotController.getFPGATime();
+    long nowUs = RobotController.getTime();
     double dtSec = (nowUs - lastTimestampUs) / 1e6;
     lastTimestampUs = nowUs;
 

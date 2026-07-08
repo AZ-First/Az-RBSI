@@ -16,26 +16,26 @@ import com.revrobotics.ResetMode;
 import com.revrobotics.spark.ClosedLoopSlot;
 import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkBase;
-import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkClosedLoopController.ArbFFUnits;
 import com.revrobotics.spark.SparkFlex;
+import com.revrobotics.spark.SparkLowLevel.ControlType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.util.MathUtil;
 import frc.robot.util.SparkUtil;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.filter.Debouncer;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.system.RobotController;
 
 /**
  * Module IO implementation for Spark Flex drive motor controller, Spark Max turn motor controller,
@@ -85,6 +85,7 @@ public class ModuleIOSpark implements ModuleIO {
         };
     driveSpark =
         new SparkFlex(
+            0,
             switch (module) {
               case 0 -> SwerveConstants.kFLDriveMotorId;
               case 1 -> SwerveConstants.kFRDriveMotorId;
@@ -95,6 +96,7 @@ public class ModuleIOSpark implements ModuleIO {
             MotorType.kBrushless);
     turnSpark =
         new SparkMax(
+            0,
             switch (module) {
               case 0 -> SwerveConstants.kFLSteerMotorId;
               case 1 -> SwerveConstants.kFRSteerMotorId;
@@ -208,9 +210,11 @@ public class ModuleIOSpark implements ModuleIO {
     // Create odometry queues
     timestampQueue = SparkOdometryThread.getInstance().makeTimestampQueue();
     drivePositionQueue =
-        SparkOdometryThread.getInstance().registerSignal(driveSpark, driveEncoder::getPosition);
+        SparkOdometryThread.getInstance()
+            .registerSignal(driveSpark, () -> driveEncoder.getPosition().get(0.0));
     turnPositionQueue =
-        SparkOdometryThread.getInstance().registerSignal(turnSpark, turnEncoder::getPosition);
+        SparkOdometryThread.getInstance()
+            .registerSignal(turnSpark, () -> turnEncoder.getPosition().get(0.0));
   }
 
   @Override
@@ -223,7 +227,9 @@ public class ModuleIOSpark implements ModuleIO {
         driveSpark, driveEncoder::getVelocity, (value) -> inputs.driveVelocityRadPerSec = value);
     SparkUtil.ifOk(
         driveSpark,
-        new DoubleSupplier[] {driveSpark::getAppliedOutput, driveSpark::getBusVoltage},
+        new DoubleSupplier[] {
+          () -> driveSpark.getAppliedOutput().get(0.0), () -> driveSpark.getBusVoltage().get(0.0)
+        },
         (values) -> inputs.driveAppliedVolts = values[0] * values[1]);
     SparkUtil.ifOk(
         driveSpark, driveSpark::getOutputCurrent, (value) -> inputs.driveCurrentAmps = value);
@@ -239,7 +245,9 @@ public class ModuleIOSpark implements ModuleIO {
         turnSpark, turnEncoder::getVelocity, (value) -> inputs.turnVelocityRadPerSec = value);
     SparkUtil.ifOk(
         turnSpark,
-        new DoubleSupplier[] {turnSpark::getAppliedOutput, turnSpark::getBusVoltage},
+        new DoubleSupplier[] {
+          () -> turnSpark.getAppliedOutput().get(0.0), () -> turnSpark.getBusVoltage().get(0.0)
+        },
         (values) -> inputs.turnAppliedVolts = values[0] * values[1]);
     SparkUtil.ifOk(
         turnSpark, turnSpark::getOutputCurrent, (value) -> inputs.turnCurrentAmps = value);
