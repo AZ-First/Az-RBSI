@@ -74,8 +74,6 @@ public class FusedCANcoderTests {
     BaseStatusSignal.waitForAll(1.0, talonPos, cancoderPos);
     BaseStatusSignal.waitForAll(1.0, talonPos, cancoderPos);
 
-    System.out.println("Talon Pos vs expected: " + talonPos + " vs " + TALON_POSITION);
-    System.out.println("CANcoder Pos vs expected: " + cancoderPos + " vs " + CANCODER_POSITION);
     assertEquals(talonPos.getValueAsDouble(), TALON_POSITION, SET_DELTA);
     assertEquals(cancoderPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
   }
@@ -119,8 +117,6 @@ public class FusedCANcoderTests {
     talonPos.waitForUpdate(1.0);
 
     /* Make sure Talon matches CANcoder, since it should be using CANcoder's position */
-    System.out.println("Talon Pos vs expected: " + talonPos + " vs " + CANCODER_POSITION);
-    System.out.println("CANcoder Pos vs expected: " + cancoderPos + " vs " + CANCODER_POSITION);
     assertEquals(talonPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
     assertEquals(cancoderPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
   }
@@ -164,8 +160,6 @@ public class FusedCANcoderTests {
     talonPos.waitForUpdate(1.0);
 
     /* Make sure Talon matches CANcoder, since it should be using CANcoder's position */
-    System.out.println("Talon Pos vs expected: " + talonPos + " vs " + CANCODER_POSITION);
-    System.out.println("CANcoder Pos vs expected: " + cancoderPos + " vs " + CANCODER_POSITION);
     assertEquals(talonPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
     assertEquals(cancoderPos.getValueAsDouble(), CANCODER_POSITION, SET_DELTA);
   }

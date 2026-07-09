@@ -86,7 +86,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for stator current */
     double initialCurrent = waitForCurrentAbove(statorCurrent, 100.0, 1.0);
 
-    System.out.println("Stator current is " + initialCurrent + " A");
     assertTrue(initialCurrent > 100); // Stator current should be in excess of 100 amps
 
     /* Now apply the stator current limit */
@@ -99,7 +98,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for stator current */
     statorCurrent.waitForUpdate(1);
 
-    System.out.println("Stator current is " + statorCurrent);
     assertTrue(statorCurrent.getValueAsDouble() < 25); // Give some wiggle room
   }
 
@@ -125,7 +123,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for supply current */
     supplyCurrent.waitForUpdate(1);
 
-    System.out.println("Supply current is " + supplyCurrent);
     assertTrue(
         supplyCurrent.getValueAsDouble() > 25); // Supply current should be high before limiting
 
@@ -139,7 +136,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for supply current */
     supplyCurrent.waitForUpdate(1);
 
-    System.out.println("Supply current is " + supplyCurrent);
     assertTrue(
         supplyCurrent.getValueAsDouble() <= 15
             && supplyCurrent.getValueAsDouble()
@@ -151,7 +147,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for supply current */
     supplyCurrent.waitForUpdate(1);
 
-    System.out.println("Supply current is " + supplyCurrent);
     assertTrue(supplyCurrent.getValueAsDouble() < 10); // Give some wiggle room
   }
 

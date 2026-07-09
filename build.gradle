@@ -141,9 +141,10 @@ gversion {
 }
 
 // Create commit with working changes on event branches
+def deployRequested = gradle.startParameter.taskNames.any({ it.toLowerCase().contains("deploy") })
 task(eventDeploy) {
     doLast {
-        if (project.gradle.startParameter.taskNames.any({ it.toLowerCase().contains("deploy") })) {
+        if (deployRequested) {
             def branchPrefix = "event"
             def branch = 'git branch --show-current'.execute().text.trim()
             def commitMessage = "Update at '${new Date().toString()}'"

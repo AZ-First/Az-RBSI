@@ -113,7 +113,7 @@ public class Robot extends LoggedRobot {
 
     // Switch thread to high priority to improve loop timing
     if (isReal()) {
-      Threads.setCurrentThreadPriority(99);
+      setCurrentThreadPriorityFor2027Migration(99);
     }
   }
 
@@ -124,7 +124,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // Switch thread to high priority to improve loop timing
-      Threads.setCurrentThreadPriority(99);
+      setCurrentThreadPriorityFor2027Migration(99);
     }
     final long t1 = System.nanoTime();
 
@@ -142,7 +142,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // Return thread to normal priority
-      Threads.setCurrentThreadPriority(10);
+      setCurrentThreadPriorityFor2027Migration(10);
     }
     final long t4 = System.nanoTime();
 
@@ -267,4 +267,12 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during utility mode. */
   @Override
   public void utilityPeriodic() {}
+
+  @SuppressWarnings("deprecation")
+  private static void setCurrentThreadPriorityFor2027Migration(int priority) {
+    // TODO(2027): Revisit this as WPILib 2027 moves through beta and release. The current
+    // Threads API still works in alpha-6, but is deprecated because real-time priority misuse can
+    // lock up the system. Replace with the final WPILib guidance or remove the priority adjustment.
+    Threads.setCurrentThreadPriority(priority);
+  }
 }

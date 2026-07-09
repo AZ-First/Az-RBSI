@@ -62,7 +62,6 @@ public class LatencyCompensationTests {
     /* Wait for an update on all of them so they're synchronized */
     StatusCode status = StatusCode.OK;
     for (int i = 0; i < 5; ++i) {
-      System.out.println("Waiting on signals");
       status = BaseStatusSignal.waitForAll(1, talonPos, talonVel, cancoderPos, cancoderVel);
       if (status.isOK()) break;
     }
@@ -84,10 +83,6 @@ public class LatencyCompensationTests {
     double functionCompensatedCANcoder =
         BaseStatusSignal.getLatencyCompensatedValueAsDouble(cancoderPos, cancoderVel);
 
-    /* Assert the two methods match */
-    System.out.println("Talon Pos: " + compensatedTalonPos + " - " + functionCompensatedTalon);
-    System.out.println(
-        "CANcoder Pos: " + compensatedCANcoderPos + " - " + functionCompensatedCANcoder);
     assertEquals(compensatedTalonPos, functionCompensatedTalon, DOUBLE_DELTA);
     assertEquals(compensatedCANcoderPos, functionCompensatedCANcoder, DOUBLE_DELTA);
   }
