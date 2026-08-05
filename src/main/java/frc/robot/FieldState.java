@@ -22,7 +22,16 @@ import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
 
-public class FieldState {
+public final class FieldState {
+  private static final double TRANSITION_END_SECONDS = 130.0;
+  private static final double SHIFT_DURATION_SECONDS = 25.0;
+  private static final double ENDGAME_START_SECONDS = 30.0;
+
+  private static final Alert missingHubDataAlert =
+      new Alert(
+          "No HUB data from FMS! HUB is listed as ACTIVE! Driver BEWARE!", Alert.AlertType.WARNING);
+
+  private FieldState() {}
 
   /**
    * FOR 2026 - REBUILT, store the data from the FMS about the TeleOp shifts here
@@ -53,6 +62,7 @@ public class FieldState {
    * @return Whether the team's alliance's HUB is active right now
    */
   public static boolean isHubActive() {
+    missingHubDataAlert.set(false);
 
     // The HUB is active for both alliances in AUTO
     if (RobotState.isAutonomous()) {
@@ -71,37 +81,26 @@ public class FieldState {
     Alliance alliance = MatchState.getAlliance().orElse(Alliance.BLUE);
 
     // If the FMS has not provided an alliance yet, set to TRUE and kick an Alert!
-    if (timeRemaining < 130.0 && wonAuto == null) {
-      new Alert(
-              "No HUB data from FMS!  HUB is listed as ACTIVE!  Driver BEWARE!",
-              Alert.AlertType.WARNING)
-          .set(true);
+    boolean isMissingHubData = timeRemaining < TRANSITION_END_SECONDS && wonAuto == null;
+    missingHubDataAlert.set(isMissingHubData);
+    if (isMissingHubData) {
       return true;
     }
 
-    if (timeRemaining >= 130.0) {
-      // TRANSITION SHIFT -- Both HUBs active
-      return true;
-
-    } else if (timeRemaining >= 105.0) {
-      // SHIFT 1 -- Non-winning alliance gets a first go
-      return !(wonAuto == alliance);
-
-    } else if (timeRemaining >= 80.0) {
-      // SHIFT 2 -- Winning alliance gets a chance
-      return (wonAuto == alliance);
-
-    } else if (timeRemaining >= 55.0) {
-      // SHIFT 3 -- Trade off
-      return !(wonAuto == alliance);
-
-    } else if (timeRemaining >= 30.0) {
-      // SHIFT 4 -- Trade off again
-      return (wonAuto == alliance);
-
-    } else {
-      // ENDGAME -- Both HUBs active
+    // Both HUBs are active during transition and endgame.
+    if (timeRemaining >= TRANSITION_END_SECONDS || timeRemaining < ENDGAME_START_SECONDS) {
       return true;
     }
+
+    // The non-winning alliance is active in odd shifts; the winning alliance is active in even
+    // shifts.
+    return isAllianceActiveDuringShift(timeRemaining, alliance, wonAuto);
+  }
+
+  static boolean isAllianceActiveDuringShift(
+      double timeRemaining, Alliance alliance, Alliance autoWinner) {
+    int shift = (int) Math.ceil((TRANSITION_END_SECONDS - timeRemaining) / SHIFT_DURATION_SECONDS);
+    boolean wonAutoIsActive = shift % 2 == 0;
+    return wonAutoIsActive == (autoWinner == alliance);
   }
 }

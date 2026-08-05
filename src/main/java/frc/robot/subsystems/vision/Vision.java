@@ -71,8 +71,8 @@ public class Vision extends VirtualSubsystem {
 
   // Smoothing buffer (recent fused estimates)
   private final ArrayDeque<TimedPose> fusedBuffer = new ArrayDeque<>();
-  private final double smoothWindowSec = 0.25;
-  private final int smoothMaxSize = 12;
+  private static final double SMOOTH_WINDOW_SECONDS = 0.25;
+  private static final int SMOOTH_MAX_SIZE = 12;
 
   // Trusted tags configuration (swappable per event/field)
   private final AtomicReference<Set<Integer>> trustedTags = new AtomicReference<>(Set.of());
@@ -207,9 +207,9 @@ public class Vision extends VirtualSubsystem {
 
           GateResult gate = passesScrutiny(cam, obs);
           if (tuningMode) {
-            Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason);
+            Logger.recordOutput("Vision/Camera" + cam + "/GateFail", gate.reason());
           }
-          if (!gate.accepted) {
+          if (!gate.accepted()) {
             rejected++;
             continue;
           }
@@ -221,10 +221,10 @@ public class Vision extends VirtualSubsystem {
           }
 
           // Compare this estimate to current "best" -- score current estimate using `isBetter()`
-          if (best == null || isBetter(built.estimate, best)) {
-            best = built.estimate;
-            bestTrustScale = built.trustScale;
-            bestTrustedCount = built.trustedCount;
+          if (best == null || isBetter(built.estimate(), best)) {
+            best = built.estimate();
+            bestTrustScale = built.trustScale();
+            bestTrustedCount = built.trustedCount();
             bestTagCount = obs.tagCount();
           }
         }
@@ -264,12 +264,9 @@ public class Vision extends VirtualSubsystem {
 
       // =====
       // Fuse all accepted cams at the newest timestamp among them
-      double tFusion = Double.NaN;
-      for (int i = 0; i < perCamAccepted.size(); i++) {
-        final double timestamp = perCamAccepted.get(i).timestampSeconds();
-        if (!Double.isFinite(tFusion) || timestamp > tFusion) {
-          tFusion = timestamp;
-        }
+      double tFusion = Double.NEGATIVE_INFINITY;
+      for (TimedPose estimate : perCamAccepted) {
+        tFusion = Math.max(tFusion, estimate.timestampSeconds());
       }
       if (!Double.isFinite(tFusion)) return;
 
@@ -393,15 +390,7 @@ public class Vision extends VirtualSubsystem {
   /** Gating + Scoring ***************************************************** */
 
   /** GateResult Class */
-  private static final class GateResult {
-    final boolean accepted;
-    final String reason;
-
-    GateResult(boolean accepted, String reason) {
-      this.accepted = accepted;
-      this.reason = reason;
-    }
-  }
+  private record GateResult(boolean accepted, String reason) {}
 
   /**
    * Gating Function -- checks all sorts of things!
@@ -447,20 +436,10 @@ public class Vision extends VirtualSubsystem {
   }
 
   /** Built Estimate Class */
-  private static final class BuiltEstimate {
-    final TimedPose estimate;
-    final double trustScale;
-    final int trustedCount;
-
-    BuiltEstimate(TimedPose estimate, double trustScale, int trustedCount) {
-      this.estimate = estimate;
-      this.trustScale = trustScale;
-      this.trustedCount = trustedCount;
-    }
-  }
+  private record BuiltEstimate(TimedPose estimate, double trustScale, int trustedCount) {}
 
   /**
-   * Build a pose esitmate
+   * Build a pose estimate.
    *
    * @param cam Camera Index
    * @param obs PoseObservation
@@ -484,12 +463,12 @@ public class Vision extends VirtualSubsystem {
     }
 
     // Trusted tag blending
-    final Set<Integer> kTrusted = trustedTags.get();
-    final int[] usedIds = (obs.usedTagIds() != null) ? obs.usedTagIds() : new int[0];
+    final Set<Integer> trusted = trustedTags.get();
+    final int[] usedIds = (obs.usedTagIds() != null) ? obs.usedTagIds() : kEmptyTagIdArray;
 
     int trustedCount = 0;
-    for (int i = 0; i < usedIds.length; i++) {
-      if (kTrusted.contains(usedIds[i])) trustedCount++;
+    for (int usedId : usedIds) {
+      if (trusted.contains(usedId)) trustedCount++;
     }
 
     // If no trusted tags, return null
@@ -533,7 +512,7 @@ public class Vision extends VirtualSubsystem {
    * @param a Base pose
    * @param b Competitor pose
    */
-  private boolean isBetter(TimedPose a, TimedPose b) {
+  private static boolean isBetter(TimedPose a, TimedPose b) {
     // Lower trace of stddev vector (x+y+theta) is better
     double ta = a.stdDevs().get(0, 0) + a.stdDevs().get(1, 0) + a.stdDevs().get(2, 0);
     double tb = b.stdDevs().get(0, 0) + b.stdDevs().get(1, 0) + b.stdDevs().get(2, 0);
@@ -574,7 +553,7 @@ public class Vision extends VirtualSubsystem {
   /**
    * Fuse poses at a specified timestamp
    *
-   * @param estimates Array of TimedPose esitmates
+   * @param estimates Array of timed pose estimates
    * @param tFusion The timestamp at which to fuse the measurements
    */
   private TimedPose fuseAtTime(ArrayList<TimedPose> estimates, double tFusion) {
@@ -637,7 +616,7 @@ public class Vision extends VirtualSubsystem {
    *
    * @param alignedAtTF List of aligned poses
    * @param tFusion Fusion timestamp
-   * @return Fuesed TimedPose object
+   * @return Fused timed pose object
    */
   private TimedPose inverseVarianceFuse(ArrayList<TimedPose> alignedAtTF, double tFusion) {
     // If size of alignedAtTF is 0 or 1, return null or the only value
@@ -650,8 +629,7 @@ public class Vision extends VirtualSubsystem {
     double sumCos = 0.0, sumSin = 0.0;
 
     // Loop over poses in the list
-    for (int i = 0; i < alignedAtTF.size(); i++) {
-      final TimedPose e = alignedAtTF.get(i);
+    for (TimedPose e : alignedAtTF) {
       final Pose2d p = e.pose();
       final Matrix<N3, N1> s = e.stdDevs();
 
@@ -723,14 +701,14 @@ public class Vision extends VirtualSubsystem {
   private void pushFused(TimedPose fused) {
     fusedBuffer.addLast(fused);
 
-    while (fusedBuffer.size() > smoothMaxSize) {
+    while (fusedBuffer.size() > SMOOTH_MAX_SIZE) {
       fusedBuffer.removeFirst();
     }
 
     // Trim by time window relative to newest
     while (!fusedBuffer.isEmpty()
         && fused.timestampSeconds() - fusedBuffer.peekFirst().timestampSeconds()
-            > smoothWindowSec) {
+            > SMOOTH_WINDOW_SECONDS) {
       fusedBuffer.removeFirst();
     }
   }

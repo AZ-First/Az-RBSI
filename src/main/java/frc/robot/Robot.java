@@ -232,26 +232,19 @@ public class Robot extends LoggedRobot {
     //
     // https://docs.wpilib.org/en/stable/docs/yearly-overview/2026-game-data.html
     if (FieldState.wonAuto == null) {
-      // Only call this code block if the signal from FMS has not yet arrived
-      String gameData = MatchState.getGameData().orElse("");
-      if (gameData.length() > 0) {
-        switch (gameData.charAt(0)) {
-          case 'B':
-            // Blue case code
-            FieldState.wonAuto = Alliance.BLUE;
-            break;
-          case 'R':
-            // Red case code
-            FieldState.wonAuto = Alliance.RED;
-            break;
-          default:
-            // This is corrupt data, do nothing
-            break;
-        }
-      }
+      FieldState.wonAuto = parseAutoWinner(MatchState.getGameData().orElse(""));
     }
-    // Anything else for the teleopPeriodic() function
+  }
 
+  private static Alliance parseAutoWinner(String gameData) {
+    if (gameData.isEmpty()) {
+      return null;
+    }
+    return switch (gameData.charAt(0)) {
+      case 'B' -> Alliance.BLUE;
+      case 'R' -> Alliance.RED;
+      default -> null;
+    };
   }
 
   /** This function is called once when utility mode is enabled. */

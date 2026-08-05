@@ -281,7 +281,7 @@ public class Drive extends RBSISubsystem {
   public void rbsiPeriodic() {
 
     // The only function of the drive periodic() is to stop the modules if the DriverStation is
-    // diabled.
+    // disabled.
     if (RobotState.isDisabled()) {
       for (var module : modules) module.stop();
       Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
@@ -302,7 +302,9 @@ public class Drive extends RBSISubsystem {
   public void simulationPeriodic() {
 
     // IMPORTANT: do not run sim physics during REPLAY
-    if (Constants.getMode() != Mode.SIM) return;
+    if (Constants.getMode() != Mode.SIM) {
+      return;
+    }
 
     final double dt = Constants.kLoopPeriodSecs;
 
@@ -347,10 +349,8 @@ public class Drive extends RBSISubsystem {
    * @param brake True to set motors to brake mode, false for coast.
    */
   public void setMotorBrake(boolean brake) {
-    {
-      for (Module swerveModule : modules) {
-        swerveModule.setBrakeMode(brake);
-      }
+    for (Module swerveModule : modules) {
+      swerveModule.setBrakeMode(brake);
     }
   }
 
@@ -364,9 +364,10 @@ public class Drive extends RBSISubsystem {
    * return to their normal orientations the next time a nonzero velocity is requested.
    */
   public void stopWithX() {
-    Rotation2d[] headings = new Rotation2d[4];
-    for (int i = 0; i < 4; i++) {
-      headings[i] = getModuleTranslations()[i].getAngle();
+    Translation2d[] moduleTranslations = getModuleTranslations();
+    Rotation2d[] headings = new Rotation2d[moduleTranslations.length];
+    for (int i = 0; i < moduleTranslations.length; i++) {
+      headings[i] = moduleTranslations[i].getAngle();
     }
     kinematics.resetHeadings(headings);
     stop();
@@ -390,7 +391,7 @@ public class Drive extends RBSISubsystem {
     Logger.recordOutput("SwerveChassisSpeeds/Setpoints", discreteSpeeds);
 
     // Send setpoints to modules
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < modules.length; i++) {
       modules[i].runSetpoint(setpointStates[i]);
     }
 
@@ -404,8 +405,8 @@ public class Drive extends RBSISubsystem {
    * @param output Specified drive output for characterization
    */
   public void runCharacterization(double output) {
-    for (int i = 0; i < 4; i++) {
-      modules[i].runCharacterization(output);
+    for (Module module : modules) {
+      module.runCharacterization(output);
     }
   }
 
@@ -461,12 +462,12 @@ public class Drive extends RBSISubsystem {
     }
 
     // If coast already expired, nothing to do.
-    if (!(now < disabledCoastUntilTs)) {
+    if (now >= disabledCoastUntilTs) {
       return;
     }
 
     // Need odometry positions to detect motion
-    if (odomPositions == null || odomPositions.length < 4) {
+    if (odomPositions == null || odomPositions.length < modules.length) {
       return;
     }
 
@@ -475,7 +476,7 @@ public class Drive extends RBSISubsystem {
     double maxDelta = 0.0;
     boolean hadLastWheelDist = haveLastWheelDist;
     if (haveLastWheelDist) {
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < modules.length; i++) {
         double dist = odomPositions[i].distance;
         double d = Math.abs(dist - lastWheelDistM[i]);
         if (d > maxDelta) maxDelta = d;
@@ -483,7 +484,7 @@ public class Drive extends RBSISubsystem {
     }
 
     // Update baseline for next loop
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < modules.length; i++) {
       lastWheelDistM[i] = odomPositions[i].distance;
     }
     haveLastWheelDist = true;
@@ -535,7 +536,7 @@ public class Drive extends RBSISubsystem {
     return modules;
   }
 
-  /** Return the prodiledPID angle controller */
+  /** Return the profiled PID angle controller. */
   public ProfiledPIDController getAngleController() {
     return angleController;
   }
@@ -543,8 +544,8 @@ public class Drive extends RBSISubsystem {
   /** Returns the module states (turn angles and drive velocities) for all of the modules. */
   @AutoLogOutput(key = "SwerveStates/Measured")
   private SwerveModuleVelocity[] getModuleStates() {
-    SwerveModuleVelocity[] states = new SwerveModuleVelocity[4];
-    for (int i = 0; i < 4; i++) {
+    SwerveModuleVelocity[] states = new SwerveModuleVelocity[modules.length];
+    for (int i = 0; i < modules.length; i++) {
       states[i] = modules[i].getState();
     }
     return states;
@@ -553,8 +554,8 @@ public class Drive extends RBSISubsystem {
   /** Returns the module positions (turn angles and drive positions) for all of the modules. */
   @AutoLogOutput(key = "SwerveStates/Positions")
   SwerveModulePosition[] getModulePositions() {
-    SwerveModulePosition[] states = new SwerveModulePosition[4];
-    for (int i = 0; i < 4; i++) {
+    SwerveModulePosition[] states = new SwerveModulePosition[modules.length];
+    for (int i = 0; i < modules.length; i++) {
       states[i] = modules[i].getPosition();
     }
     return states;
@@ -625,12 +626,12 @@ public class Drive extends RBSISubsystem {
     return poseBuffer.getSample(timestampSeconds);
   }
 
-  /** Returns the oldest timetamp in the current pose buffer */
+  /** Returns the oldest timestamp in the current pose buffer. */
   public double getPoseBufferOldestTime() {
     return poseBuffer.getOldestTimestamp().orElse(Double.NaN);
   }
 
-  /** Returns the newest timetamp in the current pose buffer */
+  /** Returns the newest timestamp in the current pose buffer. */
   public double getPoseBufferNewestTime() {
     return poseBuffer.getNewestTimestamp().orElse(Double.NaN);
   }
@@ -651,14 +652,10 @@ public class Drive extends RBSISubsystem {
     if (sub.isEmpty()) return OptionalDouble.empty();
 
     double maxAbs = 0.0;
-    boolean any = false;
-    for (double v : sub.values()) {
-      any = true;
-      double a = Math.abs(v);
-      if (a > maxAbs) maxAbs = a;
+    for (double value : sub.values()) {
+      maxAbs = Math.max(maxAbs, Math.abs(value));
     }
-    // Return a value if there's anything to report, else empty
-    return any ? OptionalDouble.of(maxAbs) : OptionalDouble.empty();
+    return OptionalDouble.of(maxAbs);
   }
 
   /** Get the last EPOCH of a pose reset */
@@ -718,8 +715,8 @@ public class Drive extends RBSISubsystem {
 
   /** Returns the position of each module in radians. */
   public double[] getWheelRadiusCharacterizationPositions() {
-    double[] values = new double[4];
-    for (int i = 0; i < 4; i++) {
+    double[] values = new double[modules.length];
+    for (int i = 0; i < modules.length; i++) {
       values[i] = modules[i].getWheelRadiusCharacterizationPosition();
     }
     return values;
@@ -728,10 +725,10 @@ public class Drive extends RBSISubsystem {
   /** Returns the average velocity of the modules in rotations/sec (Phoenix native units). */
   public double getFFCharacterizationVelocity() {
     double output = 0.0;
-    for (int i = 0; i < 4; i++) {
-      output += modules[i].getFFCharacterizationVelocity() / 4.0;
+    for (Module module : modules) {
+      output += module.getFFCharacterizationVelocity();
     }
-    return output;
+    return output / modules.length;
   }
 
   /************************************************************************* */
@@ -740,7 +737,7 @@ public class Drive extends RBSISubsystem {
   /**
    * Resets the current odometry pose
    *
-   * @param pose The specified pose to which to reset the poseEsitmator
+   * @param pose The specified pose to which to reset the pose estimator
    */
   public void resetPose(Pose2d pose) {
     final double now = TimeUtil.now();

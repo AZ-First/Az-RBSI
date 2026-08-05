@@ -33,6 +33,8 @@ import org.wpilib.units.measure.Angle;
  * time synchronization.
  */
 public class PhoenixOdometryThread extends Thread {
+  private static final int QUEUE_CAPACITY = 128;
+
   private final Lock signalsLock =
       new ReentrantLock(); // Prevents conflicts when registering signals
   private BaseStatusSignal[] phoenixSignals = new BaseStatusSignal[0];
@@ -61,14 +63,14 @@ public class PhoenixOdometryThread extends Thread {
 
   @Override
   public void start() {
-    if (timestampQueues.size() > 0) {
+    if (!timestampQueues.isEmpty()) {
       super.start();
     }
   }
 
   /** Registers a Phoenix signal to be read from the thread. */
   public Queue<Double> registerSignal(StatusSignal<Angle> signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
+    Queue<Double> queue = createQueue();
     signalsLock.lock();
     Drive.odometryLock.lock();
     try {
@@ -78,30 +80,30 @@ public class PhoenixOdometryThread extends Thread {
       phoenixSignals = newSignals;
       phoenixQueues.add(queue);
     } finally {
-      signalsLock.unlock();
       Drive.odometryLock.unlock();
+      signalsLock.unlock();
     }
     return queue;
   }
 
   /** Registers a generic signal to be read from the thread. */
   public Queue<Double> registerSignal(DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
+    Queue<Double> queue = createQueue();
     signalsLock.lock();
     Drive.odometryLock.lock();
     try {
       genericSignals.add(signal);
       genericQueues.add(queue);
     } finally {
-      signalsLock.unlock();
       Drive.odometryLock.unlock();
+      signalsLock.unlock();
     }
     return queue;
   }
 
   /** Returns a new queue that returns timestamp values for each sample. */
   public Queue<Double> makeTimestampQueue() {
-    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
+    Queue<Double> queue = createQueue();
     Drive.odometryLock.lock();
     try {
       timestampQueues.add(queue);
@@ -124,7 +126,9 @@ public class PhoenixOdometryThread extends Thread {
           // that is not CAN FD, regardless of Pro licensing. No reasoning for this
           // behavior is provided by the documentation.
           Thread.sleep((long) (1000.0 / SwerveConstants.kOdometryFrequency));
-          if (phoenixSignals.length > 0) BaseStatusSignal.refreshAll(phoenixSignals);
+          if (phoenixSignals.length > 0) {
+            BaseStatusSignal.refreshAll(phoenixSignals);
+          }
         }
       } catch (InterruptedException e) {
         DriverStationErrors.reportWarning("Phoenix odometry thread interrupted", e.getStackTrace());
@@ -151,13 +155,13 @@ public class PhoenixOdometryThread extends Thread {
 
         // Add new samples to queues
         for (int i = 0; i < phoenixSignals.length; i++) {
-          if (!phoenixQueues.get(i).offer(phoenixSignals[i].getValueAsDouble())) droppedSamples++;
+          offerSample(phoenixQueues.get(i), phoenixSignals[i].getValueAsDouble());
         }
         for (int i = 0; i < genericSignals.size(); i++) {
-          if (!genericQueues.get(i).offer(genericSignals.get(i).getAsDouble())) droppedSamples++;
+          offerSample(genericQueues.get(i), genericSignals.get(i).getAsDouble());
         }
-        for (int i = 0; i < timestampQueues.size(); i++) {
-          if (!timestampQueues.get(i).offer(timestamp)) droppedSamples++;
+        for (Queue<Double> timestampQueue : timestampQueues) {
+          offerSample(timestampQueue, timestamp);
         }
       } finally {
         Drive.odometryLock.unlock();
@@ -167,6 +171,16 @@ public class PhoenixOdometryThread extends Thread {
       if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
         Logger.recordOutput("Drive/OdomThread/DroppedSamples", droppedSamples);
       }
+    }
+  }
+
+  private static Queue<Double> createQueue() {
+    return new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+  }
+
+  private void offerSample(Queue<Double> queue, double sample) {
+    if (!queue.offer(sample)) {
+      droppedSamples++;
     }
   }
 }

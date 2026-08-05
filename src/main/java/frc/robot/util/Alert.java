@@ -14,7 +14,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.smartdashboard.SmartDashboard;
 import org.wpilib.util.sendable.Sendable;
@@ -49,14 +48,18 @@ public class Alert {
    * @param type Alert level specifying urgency.
    */
   public Alert(String group, String text, AlertType type) {
-    if (!groups.containsKey(group)) {
-      groups.put(group, new SendableAlerts());
-      SmartDashboard.putData(group, groups.get(group));
-    }
+    SendableAlerts alertGroup =
+        groups.computeIfAbsent(
+            group,
+            name -> {
+              SendableAlerts createdGroup = new SendableAlerts();
+              SmartDashboard.putData(name, createdGroup);
+              return createdGroup;
+            });
 
     this.text = text;
     this.type = type;
-    groups.get(group).alerts.add(this);
+    alertGroup.alerts.add(this);
   }
 
   /**
@@ -66,17 +69,7 @@ public class Alert {
   public void set(boolean active) {
     if (active && !this.active) {
       activeStartTime = TimeUtil.now();
-      switch (type) {
-        case ERROR:
-          DriverStationErrors.reportError(text, false);
-          break;
-        case WARNING:
-          DriverStationErrors.reportWarning(text, false);
-          break;
-        case INFO:
-          System.out.println(text);
-          break;
-      }
+      reportToConsole();
     }
     this.active = active;
   }
@@ -84,32 +77,29 @@ public class Alert {
   /** Updates current alert text. */
   public void setText(String text) {
     if (active && !text.equals(this.text)) {
-      switch (type) {
-        case ERROR:
-          DriverStationErrors.reportError(text, false);
-          break;
-        case WARNING:
-          DriverStationErrors.reportWarning(text, false);
-          break;
-        case INFO:
-          System.out.println(text);
-          break;
-      }
+      this.text = text;
+      reportToConsole();
+      return;
     }
     this.text = text;
+  }
+
+  private void reportToConsole() {
+    switch (type) {
+      case ERROR -> DriverStationErrors.reportError(text, false);
+      case WARNING -> DriverStationErrors.reportWarning(text, false);
+      case INFO -> System.out.println(text);
+    }
   }
 
   private static class SendableAlerts implements Sendable {
     public final List<Alert> alerts = new ArrayList<>();
 
     public String[] getStrings(AlertType type) {
-      Predicate<Alert> activeFilter = (Alert x) -> x.type == type && x.active;
-      Comparator<Alert> timeSorter =
-          (Alert a1, Alert a2) -> Double.compare(a2.activeStartTime, a1.activeStartTime);
       return alerts.stream()
-          .filter(activeFilter)
-          .sorted(timeSorter)
-          .map((Alert a) -> a.text)
+          .filter(alert -> alert.type == type && alert.active)
+          .sorted(Comparator.comparingDouble((Alert alert) -> alert.activeStartTime).reversed())
+          .map(alert -> alert.text)
           .toArray(String[]::new);
     }
 

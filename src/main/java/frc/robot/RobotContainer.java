@@ -87,7 +87,7 @@ public class RobotContainer {
   final OverrideSwitches overrides = new OverrideSwitches(2); // Console toggle switches
 
   // These two are needed for the Sweep evaluator for camera FOV simulation
-  final CommandJoystick joystick3 = new CommandJoystick(3); //  Joystick for CamersSweepEvaluator
+  final CommandJoystick joystick3 = new CommandJoystick(3); // Joystick for CameraSweepEvaluator
   private final CameraSweepEvaluator sweep;
 
   /** Declare the robot subsystems here ************************************ */
@@ -136,7 +136,7 @@ public class RobotContainer {
   private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
 
   /**
-   * Constructor for the Robot Container. This container holds subsystems, opertator interface
+   * Constructor for the Robot Container. This container holds subsystems, operator interface
    * devices, and commands.
    */
   public RobotContainer() {
@@ -215,7 +215,7 @@ public class RobotContainer {
     // Init all CAN busses specified in the `Constants.CANBuses` class
     canHealth = Arrays.stream(Constants.CANBuses.ALL).map(RBSICANHealth::new).toList();
 
-    // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
+    // In addition to the initial battery capacity from the dashboard, ``RBSIPowerMonitor`` takes
     // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
     // include ``m_drivebase``, as that is automatically monitored.
     m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
