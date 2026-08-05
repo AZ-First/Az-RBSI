@@ -383,6 +383,7 @@ public final class Constants {
 
     // Odometry-related constants ==================================
     public static final double kPoseBufferHistorySecs = 1.5;
+    public static final double kPathPlannerVisionFreshnessSec = 0.5;
     // How aggressively to pull pose toward vision while DISABLED.
     // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
     public static final double kDisabledVisionBlendAlpha = 0.15;

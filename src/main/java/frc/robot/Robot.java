@@ -19,7 +19,6 @@ package frc.robot;
 
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
@@ -182,7 +181,6 @@ public class Robot extends LoggedRobot {
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
-    m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
     // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
     // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
