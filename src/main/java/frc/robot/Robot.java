@@ -17,6 +17,9 @@
 
 package frc.robot;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.commands.PathPlannerAuto;
+import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
@@ -32,6 +35,7 @@ import org.wpilib.command2.Command;
 import org.wpilib.command2.CommandScheduler;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.MatchState;
+import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.system.Threads;
 import org.wpilib.system.Timer;
 
@@ -193,6 +197,19 @@ public class Robot extends LoggedRobot {
               throw new RuntimeException(
                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
         };
+
+    if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
+      Pose2d startingPose = pathPlannerAuto.getStartingPose();
+      if (startingPose != null) {
+        if (AutoBuilder.shouldFlip()) {
+          startingPose = FlippingUtil.flipFieldPose(startingPose);
+        }
+        Logger.recordOutput("Auto/StartingPose", startingPose);
+        if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
+          m_autonomousCommand = null;
+        }
+      }
+    }
 
     if (m_autonomousCommand != null) {
       CommandScheduler.getInstance().schedule(m_autonomousCommand);

@@ -41,11 +41,8 @@ public class VisionIOPhotonVision implements VisionIO {
   public void updateInputs(VisionIOInputs inputs) {
     inputs.connected = camera.isConnected();
 
-    // Cap the number of unread results processed per loop
-    final int kMaxUnread = 5;
-
     final Set<Integer> unionTagIds = new HashSet<>();
-    final ArrayList<PoseObservation> poseObservations = new ArrayList<>(kMaxUnread);
+    final ArrayList<PoseObservation> poseObservations = new ArrayList<>(1);
 
     double newestTargetTs = Double.NEGATIVE_INFINITY;
     Rotation2d bestYaw = Rotation2d.kZero;
@@ -53,9 +50,11 @@ public class VisionIOPhotonVision implements VisionIO {
 
     List<org.photonvision.targeting.PhotonPipelineResult> unreadResults =
         camera.getAllUnreadResults();
-    int startIndex = Math.max(0, unreadResults.size() - kMaxUnread);
-
-    for (int resultIndex = startIndex; resultIndex < unreadResults.size(); resultIndex++) {
+    // PhotonVision returns unread changes in FIFO order. Drain the FIFO, but retain only the newest
+    // result so a slow robot loop cannot create a camera-processing backlog.
+    for (int resultIndex = Math.max(0, unreadResults.size() - 1);
+        resultIndex < unreadResults.size();
+        resultIndex++) {
       var result = unreadResults.get(resultIndex);
 
       final double ts = result.getTimestampSeconds();

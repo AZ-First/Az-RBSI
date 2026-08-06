@@ -17,22 +17,27 @@
 
 package frc.robot.subsystems.drive;
 
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
 import frc.robot.Constants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
+import java.util.ArrayList;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.driverstation.RobotState;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.kinematics.SwerveModulePosition;
 
 public final class DriveOdometry extends VirtualSubsystem {
+  private static final int MAX_VISION_MEASUREMENTS_PER_LOOP = 2;
 
   // Declare the io and inputs
   private final Drive drive;
   private final Imu imu;
   private final Module[] modules;
+  private final BaseStatusSignal[] bulkRefreshSignals;
 
   // Per-cycle cached objects (to avoid repeated allocations)
   private final SwerveModulePosition[] odomPositions = new SwerveModulePosition[4];
@@ -45,6 +50,14 @@ public final class DriveOdometry extends VirtualSubsystem {
     this.drive = drive;
     this.imu = imu;
     this.modules = modules;
+
+    ArrayList<BaseStatusSignal> signals = new ArrayList<>();
+    for (Module module : modules) {
+      for (BaseStatusSignal signal : module.getBulkRefreshSignals()) {
+        signals.add(signal);
+      }
+    }
+    bulkRefreshSignals = signals.toArray(new BaseStatusSignal[0]);
   }
 
   /**
@@ -61,8 +74,24 @@ public final class DriveOdometry extends VirtualSubsystem {
   /** Periodic function to read inputs */
   @Override
   public void rbsiPeriodic() {
+    final long loopStartNanos = System.nanoTime();
+    final long bulkRefreshStartNanos = System.nanoTime();
+    final StatusCode bulkRefreshStatus =
+        bulkRefreshSignals.length == 0
+            ? StatusCode.OK
+            : BaseStatusSignal.refreshAll(bulkRefreshSignals);
+    final long bulkRefreshEndNanos = System.nanoTime();
 
+    for (Module module : modules) {
+      module.setBulkRefreshStatus(bulkRefreshStatus);
+    }
+
+    final long lockWaitStartNanos = System.nanoTime();
     Drive.odometryLock.lock();
+    final long lockAcquiredNanos = System.nanoTime();
+    long moduleInputsEndNanos = lockAcquiredNanos;
+    long estimatorStartNanos = lockAcquiredNanos;
+    int sampleCount = 0;
     try {
       final var imuInputs = imu.getInputs();
 
@@ -70,6 +99,8 @@ public final class DriveOdometry extends VirtualSubsystem {
       for (var module : modules) {
         module.periodic();
       }
+      moduleInputsEndNanos = System.nanoTime();
+      estimatorStartNanos = moduleInputsEndNanos;
 
       // ----------------------------------------------------------------------
       // Pure SIM (not replaying a log): use sim pose/yaw
@@ -93,8 +124,8 @@ public final class DriveOdometry extends VirtualSubsystem {
       }
 
       // ----------------------------------------------------------------------
-      // DISABLED (REAL only): minimal ticking — keep buffers alive, do NOT integrate module deltas.
-      // (If you want replay integration while disabled, this branch is already !isReplayActive.)
+      // DISABLED (REAL only): keep estimator history and external buffers alive so delayed vision
+      // measurements can still be applied while the robot is carried or repositioned.
       // ----------------------------------------------------------------------
       if (RobotState.isDisabled() && !isReplayActive) {
         final double now = TimeUtil.now();
@@ -104,15 +135,20 @@ public final class DriveOdometry extends VirtualSubsystem {
           drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
         }
 
+        SwerveModulePosition[] currentPositions = drive.getModulePositions();
+
         // Coast state from "now" + current module positions
         drive.updateDisabledCoastState(
             RobotState.isEnabled(),
             RobotState.isDisabled(),
             now,
             imuInputs.yawRateRadPerSec,
-            drive.getModulePositions());
+            currentPositions);
 
-        // keep pose buffer alive with the *current estimator pose*
+        drive.poseEstimatorUpdateWithTime(
+            now, Rotation2d.fromRadians(imuInputs.yawPositionRad), currentPositions);
+
+        // Keep the external vision-alignment buffer on the same timestamp and pose.
         drive.poseBufferAddSample(now, drive.getPose());
         drive.setGyroDisconnectedAlert(!imuInputs.connected);
         return;
@@ -123,6 +159,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       // ----------------------------------------------------------------------
       final double[] ts = modules[0].getOdometryTimestamps();
       final int n = (ts == null) ? 0 : ts.length;
+      sampleCount = n;
 
       // Always keep yaw buffers “alive” even if no samples
       if (n == 0) {
@@ -266,10 +303,34 @@ public final class DriveOdometry extends VirtualSubsystem {
       drive.setGyroDisconnectedAlert(!imuInputs.connected);
 
     } finally {
+      final long visionApplyStartNanos = System.nanoTime();
+      int visionMeasurementsProcessed = 0;
+      long visionApplyEndNanos;
+      try {
+        visionMeasurementsProcessed =
+            drive.applyQueuedVisionMeasurements(MAX_VISION_MEASUREMENTS_PER_LOOP);
+        Logger.recordOutput("Odometry/Robot", drive.getPose());
+      } finally {
+        visionApplyEndNanos = System.nanoTime();
+        Drive.odometryLock.unlock();
+      }
 
-      Logger.recordOutput("Odometry/Robot", drive.getPose());
-
-      Drive.odometryLock.unlock();
+      final long loopEndNanos = System.nanoTime();
+      Logger.recordOutput(
+          "Odometry/Timing/BulkRefreshMS", (bulkRefreshEndNanos - bulkRefreshStartNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/LockWaitMS", (lockAcquiredNanos - lockWaitStartNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/ModuleInputsAndQueueDrainMS",
+          (moduleInputsEndNanos - lockAcquiredNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/EstimatorMS", (visionApplyStartNanos - estimatorStartNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/VisionApplyMS", (visionApplyEndNanos - visionApplyStartNanos) / 1e6);
+      Logger.recordOutput("Odometry/Timing/TotalMS", (loopEndNanos - loopStartNanos) / 1e6);
+      Logger.recordOutput("Odometry/SamplesProcessed", sampleCount);
+      Logger.recordOutput("Odometry/VisionMeasurementsProcessed", visionMeasurementsProcessed);
+      Logger.recordOutput("Odometry/BulkRefreshStatus", bulkRefreshStatus.toString());
     }
   }
 }

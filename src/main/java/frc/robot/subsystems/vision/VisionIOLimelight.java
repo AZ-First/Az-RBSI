@@ -85,7 +85,11 @@ public class VisionIOLimelight implements VisionIO {
     Set<Integer> unionTagIds = new HashSet<>();
     List<PoseObservation> poseObservations = new ArrayList<>();
 
-    for (var rawSample : megatag1Subscriber.readQueue()) {
+    var megatag1Samples = megatag1Subscriber.readQueue();
+    for (int sampleIndex = Math.max(0, megatag1Samples.length - 1);
+        sampleIndex < megatag1Samples.length;
+        sampleIndex++) {
+      var rawSample = megatag1Samples[sampleIndex];
       if (!isValidBotPoseSample(rawSample.value)) continue;
 
       int tagCount = getTagCount(rawSample.value);
@@ -118,7 +122,11 @@ public class VisionIOLimelight implements VisionIO {
               used));
     }
 
-    for (var rawSample : megatag2Subscriber.readQueue()) {
+    var megatag2Samples = megatag2Subscriber.readQueue();
+    for (int sampleIndex = Math.max(0, megatag2Samples.length - 1);
+        sampleIndex < megatag2Samples.length;
+        sampleIndex++) {
+      var rawSample = megatag2Samples[sampleIndex];
       if (!isValidBotPoseSample(rawSample.value)) continue;
 
       int tagCount = getTagCount(rawSample.value);

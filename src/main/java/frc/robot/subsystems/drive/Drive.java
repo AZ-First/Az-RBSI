@@ -93,6 +93,17 @@ public class Drive extends RBSISubsystem {
   // Declare an alert
   private final Alert gyroDisconnectedAlert =
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.ERROR);
+  private final Alert pathPlannerStartPoseAlert =
+      new Alert("PathPlanner auto start pose is outside the allowed radius.", AlertType.ERROR);
+  private boolean pathPlannerStartBlocked = false;
+  private PathPlannerStartAction pendingPathPlannerStartAction;
+  private Pose2d pendingPathPlannerStartPose;
+
+  enum PathPlannerStartAction {
+    RESET_TO_PATH_START,
+    USE_VISION_POSE,
+    BLOCK_AUTO
+  }
 
   // Declare odometry and pose-related variables
   // This one is package-private; used in DriveOdometry, PhoenixOdometryThread, and
@@ -132,6 +143,9 @@ public class Drive extends RBSISubsystem {
   private boolean disabledVisionInitialized = false;
   private Pose2d lastDisabledVisionPose = new Pose2d();
   private double lastDisabledVisionTs = Double.NaN;
+  private final LatestSampleQueue<TimedPose> pendingVisionMeasurements =
+      new LatestSampleQueue<>(16);
+  private long droppedVisionMeasurements = 0;
 
   /** Constructor */
   public Drive(Imu imu) {
@@ -379,6 +393,15 @@ public class Drive extends RBSISubsystem {
    * @param speeds Speeds in meters/sec
    */
   public void runVelocity(ChassisVelocities speeds) {
+    if (pathPlannerStartBlocked && RobotState.isAutonomousEnabled()) {
+      for (Module module : modules) {
+        module.stop();
+      }
+      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
+      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleVelocity[] {});
+      return;
+    }
+
     // Calculate module setpoints
     ChassisVelocities discreteSpeeds = speeds.discretize(Constants.kLoopPeriodSecs);
     SwerveModuleVelocity[] setpointStates = kinematics.toSwerveModuleVelocities(discreteSpeeds);
@@ -747,23 +770,92 @@ public class Drive extends RBSISubsystem {
     poseBufferAddSample(now, pose);
   }
 
-  /** Applies PathPlanner's starting pose only when vision has not localized the robot recently. */
-  private void resetPoseFromPathPlanner(Pose2d pose) {
+  /** Validates PathPlanner's starting pose and returns whether autonomous may run. */
+  public boolean validatePathPlannerAutoStart(Pose2d pathStartPose) {
+    pendingPathPlannerStartAction = evaluatePathPlannerStart(pathStartPose);
+    pendingPathPlannerStartPose = pathStartPose;
+    return pendingPathPlannerStartAction != PathPlannerStartAction.BLOCK_AUTO;
+  }
+
+  private PathPlannerStartAction evaluatePathPlannerStart(Pose2d pathStartPose) {
     final double now = TimeUtil.now();
     final double visionAge = now - lastAcceptedVisionReceiptTimestamp;
     final boolean hasRecentVision =
         Double.isFinite(visionAge)
             && visionAge >= 0.0
             && visionAge <= DrivebaseConstants.kPathPlannerVisionFreshnessSec;
+    final Pose2d currentPose = getPose();
+    final double startDistanceMeters =
+        currentPose.getTranslation().getDistance(pathStartPose.getTranslation());
+    final PathPlannerStartAction action =
+        determinePathPlannerStartAction(
+            currentPose,
+            pathStartPose,
+            hasRecentVision,
+            DrivebaseConstants.kPathPlannerStartToleranceMeters);
 
-    Logger.recordOutput("Auto/NominalStartingPose", pose);
-    Logger.recordOutput("Auto/PoseBeforeResetDecision", getPose());
+    pathPlannerStartBlocked = action == PathPlannerStartAction.BLOCK_AUTO;
+    pathPlannerStartPoseAlert.setText(
+        String.format(
+            "PathPlanner auto blocked: robot is %.2f m from the requested start (limit %.2f m).",
+            startDistanceMeters, DrivebaseConstants.kPathPlannerStartToleranceMeters));
+    pathPlannerStartPoseAlert.set(pathPlannerStartBlocked);
+
+    Logger.recordOutput("Auto/NominalStartingPose", pathStartPose);
+    Logger.recordOutput("Auto/PoseBeforeResetDecision", currentPose);
     Logger.recordOutput("Auto/VisionMeasurementAgeSec", visionAge);
     Logger.recordOutput(
         "Auto/LastVisionMeasurementTimestamp", lastAcceptedVisionMeasurementTimestamp);
-    Logger.recordOutput("Auto/PoseResetSkippedForVision", hasRecentVision);
+    Logger.recordOutput("Auto/StartPoseDistanceMeters", startDistanceMeters);
+    Logger.recordOutput("Auto/StartPoseAction", action.toString());
+    Logger.recordOutput("Auto/StartPoseBlocked", pathPlannerStartBlocked);
+    Logger.recordOutput(
+        "Auto/PoseResetSkippedForVision", action == PathPlannerStartAction.USE_VISION_POSE);
 
-    if (!hasRecentVision) {
+    return action;
+  }
+
+  static PathPlannerStartAction determinePathPlannerStartAction(
+      Pose2d currentPose, Pose2d pathStartPose, boolean hasRecentVision, double toleranceMeters) {
+    boolean estimatorUninitialized = currentPose.getTranslation().getNorm() <= 1e-6;
+    if (!hasRecentVision || estimatorUninitialized) {
+      return PathPlannerStartAction.RESET_TO_PATH_START;
+    }
+
+    double distance = currentPose.getTranslation().getDistance(pathStartPose.getTranslation());
+    return Double.isFinite(distance) && distance <= toleranceMeters
+        ? PathPlannerStartAction.USE_VISION_POSE
+        : PathPlannerStartAction.BLOCK_AUTO;
+  }
+
+  /** Applies PathPlanner's starting-pose policy from AutoBuilder's reset callback. */
+  private void resetPoseFromPathPlanner(Pose2d pose) {
+    PathPlannerStartAction action;
+    boolean usingPreflightDecision =
+        pendingPathPlannerStartAction != null
+            && pendingPathPlannerStartPose != null
+            && pendingPathPlannerStartPose.getTranslation().getDistance(pose.getTranslation())
+                <= 1e-6
+            && Math.abs(
+                    pendingPathPlannerStartPose
+                        .getRotation()
+                        .minus(pose.getRotation())
+                        .getRadians())
+                <= 1e-6;
+
+    if (usingPreflightDecision) {
+      action = pendingPathPlannerStartAction;
+    } else {
+      action = evaluatePathPlannerStart(pose);
+    }
+    pendingPathPlannerStartAction = null;
+    pendingPathPlannerStartPose = null;
+
+    boolean resetSuppressed = action != PathPlannerStartAction.RESET_TO_PATH_START;
+    Logger.recordOutput("Auto/PathPlannerResetUsedPreflightDecision", usingPreflightDecision);
+    Logger.recordOutput("Auto/PathPlannerResetSuppressed", resetSuppressed);
+
+    if (!resetSuppressed) {
       resetPose(pose);
     }
   }
@@ -790,130 +882,109 @@ public class Drive extends RBSISubsystem {
    *
    * @param measurement The pose @ timestamp to add to the pose estimator
    */
-  // Called by Vision via consumer.accept(TimedPose)
+  // Called by Vision via consumer.accept(TimedPose). Odometry applies queued measurements while it
+  // already owns the estimator lock.
   public void addVisionMeasurement(TimedPose meas) {
-    odometryLock.lock();
-    try {
-      // Always use measurement timestamp when fusing (enabled path)
-      final double t = meas.timestampSeconds();
-      final Pose2d vision = meas.pose();
+    if (pendingVisionMeasurements.offerLatest(meas)) {
+      droppedVisionMeasurements++;
+    }
+  }
 
-      // ENABLED: normal fusion
-      if (!RobotState.isDisabled()) {
-        disabledVisionInitialized = false;
-        lastDisabledVisionTs = Double.NaN;
-        m_PoseEstimator.addVisionMeasurement(vision, t, meas.stdDevs());
-        markVisionMeasurementAccepted(t);
+  /** Applies a bounded number of queued vision measurements. Caller must own odometryLock. */
+  int applyQueuedVisionMeasurements(int maxMeasurements) {
+    int processed = 0;
+    while (processed < maxMeasurements) {
+      TimedPose measurement = pendingVisionMeasurements.poll();
+      if (measurement == null) {
+        break;
+      }
+      applyVisionMeasurementLocked(measurement);
+      processed++;
+    }
+
+    Logger.recordOutput("Vision/EstimatorQueueDepth", pendingVisionMeasurements.size());
+    Logger.recordOutput("Vision/EstimatorQueueDropped", droppedVisionMeasurements);
+    Logger.recordOutput("Vision/EstimatorQueueProcessed", processed);
+    return processed;
+  }
+
+  private void applyVisionMeasurementLocked(TimedPose meas) {
+    final double t = meas.timestampSeconds();
+    final Pose2d vision = meas.pose();
+
+    if (!RobotState.isDisabled()) {
+      disabledVisionInitialized = false;
+      lastDisabledVisionTs = Double.NaN;
+      m_PoseEstimator.addVisionMeasurement(vision, t, meas.stdDevs());
+      markVisionMeasurementAccepted(t);
+      return;
+    }
+
+    final boolean coast = isDisabledCoast(t);
+    if (coast) {
+      final double coastAge = t - getDisabledCoastStartTs();
+      if (coastAge >= 0.0 && coastAge < DrivebaseConstants.kDisabledVisionIgnoreAfterDisableSec) {
         return;
       }
+    }
 
-      // DISABLED -- check if within "coast phase"
-      final boolean coast = isDisabledCoast(t);
+    final double alpha =
+        coast
+            ? Math.min(
+                DrivebaseConstants.kDisabledVisionBlendAlpha,
+                DrivebaseConstants.kDisabledVisionCoastBlendAlpha)
+            : DrivebaseConstants.kDisabledVisionBlendAlpha;
+    final boolean stale =
+        Double.isFinite(lastDisabledVisionTs)
+            && (t - lastDisabledVisionTs) > DrivebaseConstants.kDisabledVisionStale;
 
-      // If coasting,
-      if (coast) {
-        final double coastAge = t - getDisabledCoastStartTs();
-        Logger.recordOutput("Vision/Debug/disabledCoastAge", coastAge);
+    if (coast) {
+      disabledVisionInitialized = false;
+    }
 
-        // Ignore vision briefly right after ENABLE->DISABLE (prevents “phase mismatch” at disable
-        // edge)
-        if (coastAge >= 0.0 && coastAge < DrivebaseConstants.kDisabledVisionIgnoreAfterDisableSec) {
-          Logger.recordOutput("Vision/Debug/disabledIgnoreEarlyCoast", true);
-          return;
-        }
-      }
-      Logger.recordOutput("Vision/Debug/disabledIgnoreEarlyCoast", false);
-
-      // If we're coasting, avoid snapping Pose to Vision; lean gentler than stationary.
-      final double alpha =
-          coast
-              ? Math.min(
-                  DrivebaseConstants.kDisabledVisionBlendAlpha,
-                  DrivebaseConstants.kDisabledVisionCoastBlendAlpha)
-              : DrivebaseConstants.kDisabledVisionBlendAlpha;
-
-      // "Current" for blending target (estimator pose)
-      final Pose2d current = m_PoseEstimator.getEstimatedPosition();
-
-      // Debug
-      Logger.recordOutput("Vision/Debug/disabledCoast", coast);
-      Logger.recordOutput("Vision/Debug/disabledVisionInitialized", disabledVisionInitialized);
-      Logger.recordOutput("Vision/Debug/disabledVisionTs", t);
-      Logger.recordOutput(
-          "Vision/Debug/disabledVisionAge",
-          Double.isFinite(lastDisabledVisionTs) ? (t - lastDisabledVisionTs) : Double.NaN);
-
-      // Check if the last while-disabled vision timestamp is stale (too old)
-      final boolean stale =
-          Double.isFinite(lastDisabledVisionTs)
-              && (t - lastDisabledVisionTs) > DrivebaseConstants.kDisabledVisionStale;
-      Logger.recordOutput("Vision/Debug/visionStale", stale);
-
-      // If coasting, intentionally DO NOT snap; reset initialization so that once coast ends, the
-      // first good stationary frame snaps.
-      if (coast) {
-        disabledVisionInitialized = false;
-      }
-
-      // If not initialized AND not coasting: snap hard to vision once
-      if (!disabledVisionInitialized && !coast) {
-        disabledVisionInitialized = true;
-        lastDisabledVisionPose = vision;
-        lastDisabledVisionTs = t;
-
-        m_PoseEstimator.resetPosition(getRawGyroHeading(), getModulePositions(), vision);
-        markPoseReset(t);
-        poseBufferAddSample(t, vision);
-        markVisionMeasurementAccepted(t);
-
-        Logger.recordOutput("Vision/DisabledInitSnap", true);
-        Logger.recordOutput("Vision/DisabledReject", false);
-        Logger.recordOutput("Vision/DisabledBlendAlphaUsed", alpha);
-        return;
-      }
-      Logger.recordOutput("Vision/DisabledInitSnap", false);
-
-      // Check that there is not a huge jump from the last accepted disabled vision pose
-      final Pose2d gateRef =
-          Double.isFinite(lastDisabledVisionTs) ? lastDisabledVisionPose : vision;
-
-      final double deltaTranslation = gateRef.getTranslation().getDistance(vision.getTranslation());
-      final double deltaRotation =
-          Math.abs(gateRef.getRotation().minus(vision.getRotation()).getRadians());
-
-      Logger.recordOutput("Vision/Debug/dTransFromLastVision", deltaTranslation);
-      Logger.recordOutput("Vision/Debug/dRotFromLastVision", deltaRotation);
-
-      // Reject large jumps only if vision measurement is not stale (large delta-T can mean large
-      // change in position)
-      if (!stale
-          && (deltaTranslation > DrivebaseConstants.kDisabledVisionMaxJumpM
-              || deltaRotation > DrivebaseConstants.kDisabledVisionMaxJumpRad)) {
-        Logger.recordOutput("Vision/DisabledReject", true);
-        Logger.recordOutput("Vision/DisabledBlendAlphaUsed", alpha);
-        return;
-      }
-      Logger.recordOutput("Vision/DisabledReject", false);
-
-      // Accept this vision frame as the new reference
+    if (!disabledVisionInitialized && !coast) {
+      disabledVisionInitialized = true;
       lastDisabledVisionPose = vision;
       lastDisabledVisionTs = t;
 
-      // Blend toward vision -- gentle correction
-      final Pose2d blended = current.interpolate(vision, alpha);
-
-      // Push values to pose estimator and pose buffer
-      m_PoseEstimator.resetPosition(getRawGyroHeading(), getModulePositions(), blended);
+      m_PoseEstimator.resetPosition(getRawGyroHeading(), getModulePositions(), vision);
       markPoseReset(t);
-      poseBufferAddSample(t, blended);
+      poseBufferAddSample(t, vision);
       markVisionMeasurementAccepted(t);
 
-      Logger.recordOutput("Vision/DisabledBlendedPose", blended);
+      Logger.recordOutput("Vision/DisabledInitSnap", true);
+      Logger.recordOutput("Vision/DisabledReject", false);
       Logger.recordOutput("Vision/DisabledBlendAlphaUsed", alpha);
-
-    } finally {
-      odometryLock.unlock();
+      return;
     }
+    Logger.recordOutput("Vision/DisabledInitSnap", false);
+
+    final Pose2d gateRef = Double.isFinite(lastDisabledVisionTs) ? lastDisabledVisionPose : vision;
+    final double deltaTranslation = gateRef.getTranslation().getDistance(vision.getTranslation());
+    final double deltaRotation =
+        Math.abs(gateRef.getRotation().minus(vision.getRotation()).getRadians());
+
+    if (!stale
+        && (deltaTranslation > DrivebaseConstants.kDisabledVisionMaxJumpM
+            || deltaRotation > DrivebaseConstants.kDisabledVisionMaxJumpRad)) {
+      Logger.recordOutput("Vision/DisabledReject", true);
+      Logger.recordOutput("Vision/DisabledBlendAlphaUsed", alpha);
+      return;
+    }
+    Logger.recordOutput("Vision/DisabledReject", false);
+
+    lastDisabledVisionPose = vision;
+    lastDisabledVisionTs = t;
+
+    // Preserve estimator history after the one initialization snap so delayed measurements remain
+    // meaningful and Vision does not have to reset its smoothing gate on every frame.
+    m_PoseEstimator.addVisionMeasurement(vision, t, meas.stdDevs());
+    final Pose2d fusedPose = m_PoseEstimator.getEstimatedPosition();
+    poseBufferAddSample(t, fusedPose);
+    markVisionMeasurementAccepted(t);
+
+    Logger.recordOutput("Vision/DisabledBlendedPose", fusedPose);
+    Logger.recordOutput("Vision/DisabledBlendAlphaUsed", 0.0);
   }
 
   private void markVisionMeasurementAccepted(double measurementTimestamp) {

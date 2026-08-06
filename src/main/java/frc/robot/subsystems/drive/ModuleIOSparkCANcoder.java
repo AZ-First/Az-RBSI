@@ -10,6 +10,7 @@
 package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.revrobotics.PersistMode;
@@ -70,6 +71,8 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
   private final StatusSignal<Angle> turnAbsolutePosition;
   private final StatusSignal<Angle> turnPosition;
   private final StatusSignal<AngularVelocity> turnVelocity;
+  private final BaseStatusSignal[] bulkRefreshSignals;
+  private StatusCode bulkRefreshStatus = StatusCode.OK;
 
   // Queue inputs from odometry thread
   private final Queue<Double> timestampQueue;
@@ -237,6 +240,8 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     turnVelocity = cancoder.getVelocity();
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = cancoder.getPosition();
+    // turnPosition is refreshed by SparkOdometryThread for the high-rate queue.
+    bulkRefreshSignals = new BaseStatusSignal[] {turnAbsolutePosition, turnVelocity};
     BaseStatusSignal.setUpdateFrequencyForAll(SwerveConstants.kOdometryFrequency, turnPosition);
 
     // Create odometry queues
@@ -254,11 +259,22 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
   }
 
   @Override
+  public BaseStatusSignal[] getBulkRefreshSignals() {
+    return bulkRefreshSignals;
+  }
+
+  @Override
+  public void setBulkRefreshStatus(StatusCode status) {
+    bulkRefreshStatus = status;
+  }
+
+  @Override
   public void updateInputs(ModuleIOInputs inputs) {
-    // Refresh CANcoder absolute
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition, turnPosition, turnVelocity);
-    if (!encStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    boolean encStatus =
+        BaseStatusSignal.isAllGood(turnAbsolutePosition, turnPosition, turnVelocity);
+    if (!encStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/EncRefreshStatus", bulkRefreshStatus.toString());
     }
 
     // Drive inputs (Spark)
@@ -279,7 +295,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
 
     // Turn inputs (CANcoder abs + Spark velocity/applied/current)
     SparkUtil.sparkStickyFault = false;
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus);
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());

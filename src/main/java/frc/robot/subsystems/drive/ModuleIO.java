@@ -9,10 +9,13 @@
 
 package frc.robot.subsystems.drive;
 
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
 import org.littletonrobotics.junction.AutoLog;
 import org.wpilib.math.geometry.Rotation2d;
 
 public interface ModuleIO {
+  BaseStatusSignal[] NO_BULK_REFRESH_SIGNALS = new BaseStatusSignal[0];
   double[] EMPTY_DOUBLE_ARRAY = new double[0];
   Rotation2d[] EMPTY_ROTATION_ARRAY = new Rotation2d[0];
 
@@ -39,6 +42,14 @@ public interface ModuleIO {
 
   /** Updates the set of loggable inputs. */
   public default void updateInputs(ModuleIOInputs inputs) {}
+
+  /** Returns telemetry signals that should be refreshed in one drivetrain-wide transaction. */
+  public default BaseStatusSignal[] getBulkRefreshSignals() {
+    return NO_BULK_REFRESH_SIGNALS;
+  }
+
+  /** Supplies the result of the drivetrain-wide telemetry refresh. */
+  public default void setBulkRefreshStatus(StatusCode status) {}
 
   /** Run the drive motor at the specified open loop value. */
   public default void setDriveOpenLoop(double output) {}

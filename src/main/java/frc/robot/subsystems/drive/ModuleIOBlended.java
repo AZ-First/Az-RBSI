@@ -11,6 +11,7 @@ package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -104,6 +105,8 @@ public class ModuleIOBlended implements ModuleIO {
   private final StatusSignal<Angle> turnPosition;
   private final Queue<Double> turnPositionQueue;
   private final StatusSignal<AngularVelocity> turnVelocity;
+  private final BaseStatusSignal[] bulkRefreshSignals;
+  private StatusCode bulkRefreshStatus = StatusCode.OK;
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
@@ -291,6 +294,17 @@ public class ModuleIOBlended implements ModuleIO {
     turnPosition = cancoder.getPosition();
     turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(cancoder.getPosition());
 
+    bulkRefreshSignals =
+        new BaseStatusSignal[] {
+          drivePosition,
+          driveVelocity,
+          driveAppliedVolts,
+          driveCurrent,
+          turnAbsolutePosition,
+          turnPosition,
+          turnVelocity
+        };
+
     // Configure periodic frames
     BaseStatusSignal.setUpdateFrequencyForAll(
         SwerveConstants.kOdometryFrequency, drivePositionOdom);
@@ -301,21 +315,33 @@ public class ModuleIOBlended implements ModuleIO {
   }
 
   @Override
-  public void updateInputs(ModuleIOInputs inputs) {
-    // Refresh signals
-    var driveStatus =
-        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+  public BaseStatusSignal[] getBulkRefreshSignals() {
+    return bulkRefreshSignals;
+  }
 
-    if (!driveStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+  @Override
+  public void setBulkRefreshStatus(StatusCode status) {
+    bulkRefreshStatus = status;
+  }
+
+  @Override
+  public void updateInputs(ModuleIOInputs inputs) {
+    boolean driveStatus =
+        BaseStatusSignal.isAllGood(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+    boolean encStatus =
+        BaseStatusSignal.isAllGood(turnAbsolutePosition, turnPosition, turnVelocity);
+
+    if (!driveStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/DriveRefreshStatus", bulkRefreshStatus.toString());
     }
-    if (!encStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    if (!encStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/EncRefreshStatus", bulkRefreshStatus.toString());
     }
 
     // Drive inputs
-    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
+    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus);
     inputs.drivePositionRad = Units.rotationsToRadians(drivePosition.getValueAsDouble());
     inputs.driveVelocityRadPerSec = Units.rotationsToRadians(driveVelocity.getValueAsDouble());
     inputs.driveAppliedVolts = driveAppliedVolts.getValueAsDouble();
@@ -323,7 +349,7 @@ public class ModuleIOBlended implements ModuleIO {
 
     // Turn inputs (Spark for turn motor, CANcoder for absolute)
     SparkUtil.sparkStickyFault = false;
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus);
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());

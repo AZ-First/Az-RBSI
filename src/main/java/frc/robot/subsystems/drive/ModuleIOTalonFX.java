@@ -11,6 +11,7 @@ package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -94,6 +95,8 @@ public class ModuleIOTalonFX implements ModuleIO {
   private final StatusSignal<AngularVelocity> turnVelocity;
   private final StatusSignal<Voltage> turnAppliedVolts;
   private final StatusSignal<Current> turnCurrent;
+  private final BaseStatusSignal[] bulkRefreshSignals;
+  private StatusCode bulkRefreshStatus = StatusCode.OK;
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
@@ -227,6 +230,19 @@ public class ModuleIOTalonFX implements ModuleIO {
     turnAppliedVolts = turnTalon.getMotorVoltage();
     turnCurrent = turnTalon.getStatorCurrent();
 
+    bulkRefreshSignals =
+        new BaseStatusSignal[] {
+          drivePosition,
+          driveVelocity,
+          driveAppliedVolts,
+          driveCurrent,
+          turnPosition,
+          turnVelocity,
+          turnAppliedVolts,
+          turnCurrent,
+          turnAbsolutePosition
+        };
+
     // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
     BaseStatusSignal.setUpdateFrequencyForAll(
         SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
@@ -247,30 +263,41 @@ public class ModuleIOTalonFX implements ModuleIO {
 
   /** Input Updating Loop ************************************************** */
   @Override
-  public void updateInputs(ModuleIOInputs inputs) {
+  public BaseStatusSignal[] getBulkRefreshSignals() {
+    return bulkRefreshSignals;
+  }
 
-    // Refresh Phoenix signals
-    var driveStatus =
-        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var turnStatus =
-        BaseStatusSignal.refreshAll(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+  @Override
+  public void setBulkRefreshStatus(StatusCode status) {
+    bulkRefreshStatus = status;
+  }
+
+  @Override
+  public void updateInputs(ModuleIOInputs inputs) {
+    boolean driveStatus =
+        BaseStatusSignal.isAllGood(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+    boolean turnStatus =
+        BaseStatusSignal.isAllGood(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
+    boolean encStatus = BaseStatusSignal.isAllGood(turnAbsolutePosition);
 
     // Log *which* groups are failing and what the code is
-    if (!driveStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+    if (!driveStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/DriveRefreshStatus", bulkRefreshStatus.toString());
     }
-    if (!turnStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/TurnRefreshStatus", turnStatus.toString());
+    if (!turnStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/TurnRefreshStatus", bulkRefreshStatus.toString());
     }
-    if (!encStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    if (!encStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/EncRefreshStatus", bulkRefreshStatus.toString());
     }
 
     // Connectivity flags
-    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
-    inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus.isOK());
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
+    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus);
+    inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus);
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus);
 
     // Update drive inputs
     inputs.drivePositionRad = Units.rotationsToRadians(drivePosition.getValueAsDouble());

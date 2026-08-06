@@ -336,7 +336,7 @@ public final class Constants {
     // For Profiled PID Motion -- NEED TUNING!
     // Used in a variety of contexts, including PathPlanner and AutoPilot
     // Chassis (not module) across-the-field strafing motion
-    public static final double kStrafeP = 5.0;
+    public static final double kStrafeP = 3.0;
     public static final double kStrafeI = 0.0;
     public static final double kStrafeD = 0.0;
     // Chassis (not module) solid-body rotation
@@ -384,6 +384,7 @@ public final class Constants {
     // Odometry-related constants ==================================
     public static final double kPoseBufferHistorySecs = 1.5;
     public static final double kPathPlannerVisionFreshnessSec = 0.5;
+    public static final double kPathPlannerStartToleranceMeters = 0.5;
     // How aggressively to pull pose toward vision while DISABLED.
     // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
     public static final double kDisabledVisionBlendAlpha = 0.15;
