@@ -63,7 +63,8 @@ public final class DriveCommands {
                       linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
                       linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
                       omega * drive.getMaxAngularSpeedRadPerSec());
-              drive.runVelocity(speeds.toRobotRelative(getAllianceAwareHeading(drive)));
+              Rotation2d heading = getAllianceRelativeHeading(drive.getHeading());
+              drive.runVelocity(speeds.toRobotRelative(heading));
             },
             drive)
         .beforeStarting(() -> resetLimiters(xLimiter, yLimiter, omegaLimiter));
@@ -136,7 +137,8 @@ public final class DriveCommands {
                       linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
                       linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
                       omega);
-              drive.runVelocity(speeds.toRobotRelative(getAllianceAwareHeading(drive)));
+              Rotation2d heading = getAllianceRelativeHeading(drive.getHeading());
+              drive.runVelocity(speeds.toRobotRelative(heading));
             },
             drive)
 
@@ -219,10 +221,10 @@ public final class DriveCommands {
     }
   }
 
-  private static Rotation2d getAllianceAwareHeading(Drive drive) {
+  private static Rotation2d getAllianceRelativeHeading(Rotation2d heading) {
     return MatchState.getAlliance().orElse(Alliance.BLUE) == Alliance.RED
-        ? drive.getHeading().plus(Rotation2d.k180deg)
-        : drive.getHeading();
+        ? heading.plus(Rotation2d.k180deg)
+        : heading;
   }
 
   /***************************************************************************/
