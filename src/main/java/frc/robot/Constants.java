@@ -29,8 +29,6 @@ import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
-import frc.robot.util.RBSIController.Axis;
-import frc.robot.util.RBSIController.Button;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.RBSIEnum.DriveStyle;
@@ -281,38 +279,6 @@ public final class Constants {
   }
 
   /************************************************************************* */
-  /** Driver Controller Button Constants *********************************** */
-  public static final class ControllerButtonConstants {
-    // Face buttons are named by physical position. RBSIController maps these to Xbox, PS4, or PS5
-    // names for the detected controller.
-
-    // DRIVER BUTTONS
-    public static final Button ROBOT_RELATIVE = Button.EAST_FACE; // Xbox B / PS Circle
-    public static final Button BRAKE = Button.SOUTH_FACE; // Xbox A / PS Cross
-    public static final Button X_LOCK = Button.WEST_FACE; // Xbox X / PS Square
-    public static final Button ZERO_GYRO = Button.NORTH_FACE; // Xbox Y / PS Triangle
-
-    // Bumpers
-    public static final Button RUN_FLYWHEEL = Button.RIGHT_BUMPER; // Xbox RB / PS R1
-    public static final Button AUTOPILOT_DEMO = Button.LEFT_BUMPER; // Xbox LB / PS L1
-
-    // Triggers
-    public static final Axis LEFT_TRIGGER = Axis.LEFT_TRIGGER;
-    public static final Axis RIGHT_TRIGGER = Axis.RIGHT_TRIGGER;
-
-    // D-PAD POV Buttons
-    public static final Button NUDGE_LEFT = Button.POV_LEFT;
-    public static final Button NUDGE_RIGHT = Button.POV_RIGHT;
-    public static final Button NUDGE_FORWARD = Button.POV_UP;
-    public static final Button NUDGE_BACK = Button.POV_DOWN;
-
-    // Pressing the joysticks
-    public static final Button LEFT_STICK_BUTTON = Button.LEFT_STICK;
-    public static final Button RIGHT_STICK_BUTTON = Button.RIGHT_STICK;
-
-    public static final double kTriggerPressedThreshold = 0.5;
-  }
-
   /************************************************************************* */
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {

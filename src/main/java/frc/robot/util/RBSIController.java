@@ -8,7 +8,6 @@
 
 package frc.robot.util;
 
-import frc.robot.Constants.ControllerButtonConstants;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.command2.button.CommandNiDsPS4Controller;
 import org.wpilib.command2.button.CommandNiDsPS5Controller;
@@ -21,10 +20,12 @@ import org.wpilib.driverstation.internal.DriverStationBackend;
  *
  * <p>The selected physical controller is detected once at robot startup. RobotContainer should bind
  * to typed physical-position inputs from this class instead of binding directly to Xbox-, PS4-, or
- * PS5-specific button names. Teams can remap robot actions in {@link
- * frc.robot.Constants.ControllerButtonConstants} without editing this class.
+ * PS5-specific button names. Button trigger names describe where the control is located rather than
+ * the robot action bound to it.
  */
 public abstract class RBSIController {
+  private static final double DEFAULT_TRIGGER_PRESSED_THRESHOLD = 0.5;
+
   public enum Button {
     SOUTH_FACE,
     EAST_FACE,
@@ -102,10 +103,80 @@ public abstract class RBSIController {
 
   public abstract Trigger button(Button button);
 
+  /** Returns the trigger for the south face button (Xbox A / PlayStation Cross). */
+  public Trigger southFaceButton() {
+    return button(Button.SOUTH_FACE);
+  }
+
+  /** Returns the trigger for the east face button (Xbox B / PlayStation Circle). */
+  public Trigger eastFaceButton() {
+    return button(Button.EAST_FACE);
+  }
+
+  /** Returns the trigger for the west face button (Xbox X / PlayStation Square). */
+  public Trigger westFaceButton() {
+    return button(Button.WEST_FACE);
+  }
+
+  /** Returns the trigger for the north face button (Xbox Y / PlayStation Triangle). */
+  public Trigger northFaceButton() {
+    return button(Button.NORTH_FACE);
+  }
+
+  /** Returns the trigger for the left bumper (Xbox LB / PlayStation L1). */
+  public Trigger leftBumper() {
+    return button(Button.LEFT_BUMPER);
+  }
+
+  /** Returns the trigger for the right bumper (Xbox RB / PlayStation R1). */
+  public Trigger rightBumper() {
+    return button(Button.RIGHT_BUMPER);
+  }
+
+  /** Returns the trigger for the left stick being pressed. */
+  public Trigger leftStickButton() {
+    return button(Button.LEFT_STICK);
+  }
+
+  /** Returns the trigger for the right stick being pressed. */
+  public Trigger rightStickButton() {
+    return button(Button.RIGHT_STICK);
+  }
+
+  /** Returns the trigger for the POV/D-pad being pressed left. */
+  public Trigger povLeft() {
+    return button(Button.POV_LEFT);
+  }
+
+  /** Returns the trigger for the POV/D-pad being pressed right. */
+  public Trigger povRight() {
+    return button(Button.POV_RIGHT);
+  }
+
+  /** Returns the trigger for the POV/D-pad being pressed up. */
+  public Trigger povUp() {
+    return button(Button.POV_UP);
+  }
+
+  /** Returns the trigger for the POV/D-pad being pressed down. */
+  public Trigger povDown() {
+    return button(Button.POV_DOWN);
+  }
+
+  /** Returns the trigger for the left analog trigger being pressed. */
+  public Trigger leftTrigger() {
+    return axisTrigger(Axis.LEFT_TRIGGER);
+  }
+
+  /** Returns the trigger for the right analog trigger being pressed. */
+  public Trigger rightTrigger() {
+    return axisTrigger(Axis.RIGHT_TRIGGER);
+  }
+
   public abstract double axis(Axis axis);
 
   public Trigger axisTrigger(Axis axis) {
-    return axisTrigger(axis, ControllerButtonConstants.kTriggerPressedThreshold);
+    return axisTrigger(axis, DEFAULT_TRIGGER_PRESSED_THRESHOLD);
   }
 
   public Trigger axisTrigger(Axis axis, double threshold) {
