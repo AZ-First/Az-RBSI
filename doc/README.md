@@ -19,6 +19,12 @@ project front door; this page is the working table of contents.
 | [RBSI-SysId.md](RBSI-SysId.md) | Running SysId routines and applying flywheel characterization results. |
 | [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md) | Design reference for time-aligned odometry and vision fusion. |
 | [RBSI-AdvantageScope.md](RBSI-AdvantageScope.md) | Standard AdvantageScope layout tabs and how to add mechanism power/timing plots. |
+| [recommendations/PathPlanner-Integration.md](recommendations/PathPlanner-Integration.md) | Recommended architecture for combining PathPlanner with WPILib commands, configurable autos, and dynamic routing. |
+| [recommendations/Commands-V2-V3-Parallel-Infrastructure.md](recommendations/Commands-V2-V3-Parallel-Infrastructure.md) | Migration architecture for safely supporting WPILib Commands V2 and V3. |
+| [recommendations/Robot-Decision-Automation.md](recommendations/Robot-Decision-Automation.md) | Recommended architecture for match-aware mechanism coordination and bounded robot decision-making. |
+| [recommendations/FRC-Product-Watch-2026-2027.md](recommendations/FRC-Product-Watch-2026-2027.md) | Purchasing and evaluation recommendations for notable REBUILT products and BIOCORE-era technology. |
+| [recommendations/Pose-Odometry-Vision-Integration.md](recommendations/Pose-Odometry-Vision-Integration.md) | Architecture review and migration recommendations for precise, reliable, efficient localization. |
+| [recommendations/Top-Team-Common-Practices.md](recommendations/Top-Team-Common-Practices.md) | Evidence-backed engineering, software, practice, scouting, and competition routines common to high-performing teams. |
 
 ## New User Bring-Up Path
 
@@ -45,6 +51,18 @@ project front door; this page is the working table of contents.
   [RBSI-Vision.md](RBSI-Vision.md#troubleshooting)
 - PathPlanner/Choreo startup and reset behavior:
   [RBSI-Autonomous.md](RBSI-Autonomous.md#match-execution-flow)
+- Advanced PathPlanner/WPILib integration:
+  [recommendations/PathPlanner-Integration.md](recommendations/PathPlanner-Integration.md)
+- Commands V2/V3 migration architecture:
+  [recommendations/Commands-V2-V3-Parallel-Infrastructure.md](recommendations/Commands-V2-V3-Parallel-Infrastructure.md)
+- Robot decision and mechanism automation:
+  [recommendations/Robot-Decision-Automation.md](recommendations/Robot-Decision-Automation.md)
+- REBUILT product lessons and BIOCORE technology watch list:
+  [recommendations/FRC-Product-Watch-2026-2027.md](recommendations/FRC-Product-Watch-2026-2027.md)
+- Pose, odometry, and vision integration architecture:
+  [recommendations/Pose-Odometry-Vision-Integration.md](recommendations/Pose-Odometry-Vision-Integration.md)
+- Common practices of high-performing teams:
+  [recommendations/Top-Team-Common-Practices.md](recommendations/Top-Team-Common-Practices.md)
 - Pose buffer internals:
   [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md)
 - AdvantageScope pit-debug layout:
