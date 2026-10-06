@@ -9,7 +9,7 @@ import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIOSim;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.wpilib.command2.Command;
+import org.wpilib.command3.Command;
 import org.wpilib.hardware.hal.HAL;
 import org.wpilib.math.geometry.Translation2d;
 import org.wpilib.math.util.MathUtil;

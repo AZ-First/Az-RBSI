@@ -17,15 +17,9 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.commands.PathPlannerAuto;
-import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -34,11 +28,12 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
-import org.wpilib.command2.Command;
-import org.wpilib.command2.CommandScheduler;
+import org.wpilib.command3.Command;
+import org.wpilib.command3.Scheduler;
 import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.MatchState;
-import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.system.Threads;
 import org.wpilib.system.Timer;
 
 /**
@@ -54,10 +49,6 @@ public class Robot extends LoggedRobot {
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
   private int timingLogLoops = 0;
-  private final ArrayList<String> commandEvents = new ArrayList<>();
-  private final LinkedHashSet<Command> activeCommands = new LinkedHashSet<>();
-  private final IdentityHashMap<Command, Integer> commandIds = new IdentityHashMap<>();
-  private int nextCommandId = 1;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -111,7 +102,6 @@ public class Robot extends LoggedRobot {
 
     // Start AdvantageKit logger
     Logger.start();
-    configureCommandLogging();
 
     // Instantiate our RobotContainer. This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
@@ -120,12 +110,23 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
+
+    // Switch thread to high priority to improve loop timing
+    if (isReal()) {
+      setCurrentThreadPriorityFor2027Migration(99);
+    }
   }
 
   // /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
     final long t0 = System.nanoTime();
+
+    if (isReal()) {
+      // Switch thread to high priority to improve loop timing
+      setCurrentThreadPriorityFor2027Migration(99);
+    }
+    final long t1 = System.nanoTime();
 
     // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
@@ -136,52 +137,28 @@ public class Robot extends LoggedRobot {
     // finished or interrupted commands, and running subsystem periodic() methods.
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
-    CommandScheduler.getInstance().run();
-    Logger.recordOutput(
-        "Commands/Active", activeCommands.stream().map(this::commandLabel).toArray(String[]::new));
-    Logger.recordOutput("Commands/Events", commandEvents.toArray(String[]::new));
-    commandEvents.clear();
+    Scheduler.getDefault().run();
     final long t3 = System.nanoTime();
+
+    if (isReal()) {
+      // Return thread to normal priority
+      setCurrentThreadPriorityFor2027Migration(10);
+    }
+    final long t4 = System.nanoTime();
 
     if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
       timingLogLoops = 0;
-      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t3 - t0) / 1e6);
-      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
       Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
     }
-  }
-
-  private void configureCommandLogging() {
-    CommandScheduler scheduler = CommandScheduler.getInstance();
-    scheduler.onCommandInitialize(
-        command -> {
-          activeCommands.add(command);
-          commandEvents.add("Initialize " + commandLabel(command));
-        });
-    scheduler.onCommandFinish(
-        command -> {
-          activeCommands.remove(command);
-          commandEvents.add("Finish " + commandLabel(command));
-        });
-    scheduler.onCommandInterrupt(
-        (command, interruptor) -> {
-          activeCommands.remove(command);
-          commandEvents.add(
-              "Interrupt "
-                  + commandLabel(command)
-                  + interruptor.map(value -> " by " + commandLabel(value)).orElse(""));
-        });
-  }
-
-  private String commandLabel(Command command) {
-    return command.getName()
-        + "#"
-        + commandIds.computeIfAbsent(command, ignored -> nextCommandId++);
   }
 
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
+    Scheduler.getDefault().cancelAll();
+    m_robotContainer.stopActuators();
     // Set the brakes to stop robot motion
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
@@ -204,37 +181,53 @@ public class Robot extends LoggedRobot {
   public void autonomousInit() {
 
     // Just in case, cancel all running commands
-    CommandScheduler.getInstance().cancelAll();
+    Scheduler.getDefault().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
 
-    // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
-    // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
     m_autonomousCommand =
         switch (Constants.getAutoType()) {
           case MANUAL -> m_robotContainer.getManualAuto();
-          case PATHPLANNER -> m_robotContainer.getAutonomousCommandPathPlanner();
-          case CHOREO -> m_robotContainer.getAutonomousCommandChoreo();
+          case PATHPLANNER, CHOREO -> {
+            DriverStationErrors.reportWarning(
+                "Selected autonomous framework is unavailable on the Commands V3 branch.", false);
+            yield null;
+          }
           default ->
               throw new RuntimeException(
                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
         };
 
-    if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
-      Pose2d startingPose = pathPlannerAuto.getStartingPose();
-      if (startingPose != null) {
-        if (AutoBuilder.shouldFlip()) {
-          startingPose = FlippingUtil.flipFieldPose(startingPose);
-        }
-        Logger.recordOutput("Auto/StartingPose", startingPose);
-        if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
-          m_autonomousCommand = null;
-        }
-      }
-    }
-
+    // Commands V3 deferred: PathPlanner and Choreo auto selection and PathPlanner preflight
+    //     // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...),
+    // which
+    //     // aligns the pose estimator to the selected auto's start while preserving the gyro
+    // reference.
+    //     m_autonomousCommand =
+    //         switch (Constants.getAutoType()) {
+    //           case MANUAL -> m_robotContainer.getManualAuto();
+    //           case PATHPLANNER -> m_robotContainer.getAutonomousCommandPathPlanner();
+    //           case CHOREO -> m_robotContainer.getAutonomousCommandChoreo();
+    //           default ->
+    //               throw new RuntimeException(
+    //                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+    //         };
+    //
+    //     if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
+    //       Pose2d startingPose = pathPlannerAuto.getStartingPose();
+    //       if (startingPose != null) {
+    //         if (AutoBuilder.shouldFlip()) {
+    //           startingPose = FlippingUtil.flipFieldPose(startingPose);
+    //         }
+    //         Logger.recordOutput("Auto/StartingPose", startingPose);
+    //         if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
+    //           m_autonomousCommand = null;
+    //         }
+    //       }
+    //     }
+    // End deferred integration.
     if (m_autonomousCommand != null) {
-      CommandScheduler.getInstance().schedule(m_autonomousCommand);
+      Scheduler.getDefault().schedule(m_autonomousCommand);
     }
   }
 
@@ -250,7 +243,7 @@ public class Robot extends LoggedRobot {
     // continue until interrupted by another command, remove
     // this line or comment it out.
     if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
+      Scheduler.getDefault().cancel(m_autonomousCommand);
       m_autonomousCommand = null;
     }
     m_robotContainer.getDrivebase().setMotorBrake(true);
@@ -290,11 +283,19 @@ public class Robot extends LoggedRobot {
   @Override
   public void utilityInit() {
     // Cancels all running commands at the start of utility mode.
-    CommandScheduler.getInstance().cancelAll();
+    Scheduler.getDefault().cancelAll();
     m_robotContainer.getDrivebase().resetHeadingController();
   }
 
   /** This function is called periodically during utility mode. */
   @Override
   public void utilityPeriodic() {}
+
+  @SuppressWarnings("deprecation")
+  private static void setCurrentThreadPriorityFor2027Migration(int priority) {
+    // TODO(2027): Revisit this as WPILib 2027 moves through beta and release. The current
+    // Threads API still works in alpha-8, but is deprecated because real-time priority misuse can
+    // lock up the system. Replace with the final WPILib guidance or remove the priority adjustment.
+    Threads.setCurrentThreadPriority(priority);
+  }
 }
