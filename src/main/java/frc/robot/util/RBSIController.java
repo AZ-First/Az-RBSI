@@ -9,10 +9,10 @@
 package frc.robot.util;
 
 import org.littletonrobotics.junction.Logger;
-import org.wpilib.command2.button.CommandNiDsPS4Controller;
-import org.wpilib.command2.button.CommandNiDsPS5Controller;
-import org.wpilib.command2.button.CommandNiDsXboxController;
-import org.wpilib.command2.button.Trigger;
+import org.wpilib.command3.Trigger;
+import org.wpilib.command3.button.CommandNiDsPS4Controller;
+import org.wpilib.command3.button.CommandNiDsPS5Controller;
+import org.wpilib.command3.button.CommandNiDsXboxController;
 import org.wpilib.driverstation.internal.DriverStationBackend;
 
 /**
