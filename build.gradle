@@ -101,6 +101,10 @@ dependencies {
 test {
     useJUnitPlatform()
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+    // Commands V3 uses JDK continuations; GradleRIO supplies these for robot and sim tasks,
+    // but its test task needs them explicitly in the 2027 alpha toolchain.
+    jvmArgs '--add-opens=java.base/jdk.internal.vm=ALL-UNNAMED',
+            '--add-opens=java.base/java.lang=ALL-UNNAMED'
 }
 
 // Simulation configuration (e.g. environment variables).

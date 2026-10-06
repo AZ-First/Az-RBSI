@@ -9,25 +9,20 @@
 
 package frc.robot;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
-import frc.robot.util.RBSIEnum.AutoType;
-import java.lang.reflect.Field;
 import org.junit.jupiter.api.Test;
+import org.wpilib.command3.Scheduler;
 
 public class RobotContainerTest {
 
   @Test
-  public void createChoreoRobotContainer() throws ReflectiveOperationException {
-    Field autoTypeField = Constants.class.getDeclaredField("autoType");
-    autoTypeField.setAccessible(true);
-    AutoType previous = (AutoType) autoTypeField.get(null);
+  public void createManualRobotContainer() {
     try {
-      autoTypeField.set(null, AutoType.CHOREO);
-      RobotContainer container = new RobotContainer();
-      assertNotNull(container.getAutonomousCommandChoreo());
-    } finally {
-      autoTypeField.set(null, previous);
+      new RobotContainer();
+      Scheduler.getDefault().run();
+    } catch (Exception e) {
+      fail("Failed to instantiate RobotContainer.", e);
     }
   }
 }
