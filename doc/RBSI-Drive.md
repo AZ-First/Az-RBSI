@@ -75,6 +75,11 @@ Check these first:
 - Pigeon/NavX configuration,
 - PDH/PDP power ports.
 
+For SystemCore multi-bus wiring, set the 13 per-device CAN assignments in
+`Constants.DrivebaseConstants` and verify the physical port of every motor, encoder, and Pigeon.
+See [CAN bus assignments](RBSI-Constants.md#canbuses). Keep a Phoenix steer TalonFX and its
+CANcoder together on one bus; other module devices can be spread across buses.
+
 The power-port mapping does not control motors, but it affects current logging
 and subsystem power monitoring. Bad power-port maps make electrical debugging
 much harder.
@@ -87,6 +92,7 @@ Important values in `DrivebaseConstants`:
 - `kMaxLinearAccelMetersPerSecSq`
 - `kWheelRadiusMeters`
 - `kSlipCurrentAmps`
+- `kPigeonCANBus` and each module's drive, steer, and encoder CAN bus assignment
 - `kDriveP`, `kDriveD`, `kDriveS`, `kDriveV`, `kDriveA`, `kDriveT`
 - `kSteerP`, `kSteerD`, `kSteerS`
 - `kStrafeP`, `kStrafeI`, `kStrafeD`

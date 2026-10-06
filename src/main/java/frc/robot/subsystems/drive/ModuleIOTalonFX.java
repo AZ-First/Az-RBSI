@@ -10,7 +10,6 @@
 package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
@@ -22,7 +21,6 @@ import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
-import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -130,10 +128,13 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
-    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
-    turnTalon = new TalonFX(constants.SteerMotorId, canBus);
-    cancoder = new CANcoder(constants.EncoderId, canBus);
+    String driveBus = SwerveConstants.driveCANBus(module);
+    String steerBus = SwerveConstants.steerCANBus(module);
+    String encoderBus = SwerveConstants.encoderCANBus(module);
+    SwerveConstants.requireSameBusForRemoteEncoder(module, steerBus, encoderBus);
+    driveTalon = new TalonFX(constants.DriveMotorId, RBSICANBusRegistry.getBus(driveBus));
+    turnTalon = new TalonFX(constants.SteerMotorId, RBSICANBusRegistry.getBus(steerBus));
+    cancoder = new CANcoder(constants.EncoderId, RBSICANBusRegistry.getBus(encoderBus));
 
     Logger.recordOutput("Drive/EncoderOffsets/Module" + module, constants.EncoderOffset);
 
@@ -214,7 +215,8 @@ public class ModuleIOTalonFX implements ModuleIO {
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
     drivePositionOdom = drivePosition.clone(); // NEW
-    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+    drivePositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(driveBus, drivePositionOdom);
 
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
@@ -223,7 +225,8 @@ public class ModuleIOTalonFX implements ModuleIO {
     // Create turn status signals
     turnPosition = turnTalon.getPosition();
     turnPositionOdom = turnPosition.clone(); // NEW
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnPositionOdom);
+    turnPositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(steerBus, turnPositionOdom);
 
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnVelocity = turnTalon.getVelocity();
@@ -244,21 +247,15 @@ public class ModuleIOTalonFX implements ModuleIO {
         };
 
     // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
+    drivePositionOdom.setUpdateFrequency(SwerveConstants.kOdometryFrequency);
+    turnPositionOdom.setUpdateFrequency(SwerveConstants.kOdometryFrequency);
     BaseStatusSignal.setUpdateFrequencyForAll(
-        SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
+        50.0, drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
     BaseStatusSignal.setUpdateFrequencyForAll(
-        50.0,
-        drivePosition,
-        turnPosition,
-        driveVelocity,
-        driveAppliedVolts,
-        driveCurrent,
-        turnAbsolutePosition,
-        turnVelocity,
-        turnAppliedVolts,
-        turnCurrent);
+        50.0, turnPosition, turnVelocity, turnAppliedVolts, turnCurrent, turnAbsolutePosition);
 
-    ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
+    driveTalon.optimizeBusUtilization();
+    turnTalon.optimizeBusUtilization();
   }
 
   /** Input Updating Loop ************************************************** */

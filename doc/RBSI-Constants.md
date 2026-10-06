@@ -99,10 +99,25 @@ Tune these early for the real robot:
 
 - `RIO`
 - `DRIVE`
-- `ALL`
+- `SYSTEMCORE_0` through `SYSTEMCORE_4` (`can_s0` through `can_s4`)
+- `ALL`, built from the buses actually selected for drive devices plus `RIO`
 
-These names must match CTRE, REV, and generated swerve configuration expectations. Add any
-additional CANivore or vendor buses here and include them in `ALL` so health monitoring sees them.
+The five SystemCore names are its native interfaces, ordered left to right. `DRIVE` preserves the
+existing named CANivore default. The registry initializes every bus in `ALL` and health-monitors
+them. Add other mechanism buses to `ALL` if you assign devices outside the drivebase to them.
+
+The `DrivebaseConstants` CAN assignments select a bus independently for the Pigeon and each
+module's drive motor, steer motor, and CANcoder. All default to `DRIVE`; change them to one or more
+`SYSTEMCORE_*` constants to match your wiring. `RobotDevices` inherits these assignments through
+`SwerveConstants`, so CAN identity and power monitoring stay consistent. Phoenix TalonFX steer
+motors using remote/fused CANcoder feedback **must share a bus with their CANcoder**; the TalonFX
+IO rejects a mismatched assignment at startup. The drive motor and Pigeon may use other buses.
+REV's 2027 motor constructors use numbered native SystemCore CAN ports; this project maps the
+`SYSTEMCORE_*` names to those ports and rejects an external named bus for a REV motor.
+
+Splitting modules across buses limits the scope of a bus failure, but does not itself implement
+three-module fault-tolerant swerve control. Validate the wiring and loss-of-device behavior on
+hardware before relying on device-out operation.
 
 ## RobotDevices
 

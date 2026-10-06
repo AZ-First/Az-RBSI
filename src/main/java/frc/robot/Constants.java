@@ -38,6 +38,7 @@ import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.littletonrobotics.junction.Logger;
 import org.photonvision.simulation.SimCameraProperties;
 import org.wpilib.framework.RobotBase;
@@ -168,8 +169,45 @@ public final class Constants {
   public static final class CANBuses {
     public static final String RIO = "rio";
     public static final String DRIVE = "DriveTrain";
+    // SystemCore's five native CAN interfaces, ordered left to right.
+    public static final String SYSTEMCORE_0 = "can_s0";
+    public static final String SYSTEMCORE_1 = "can_s1";
+    public static final String SYSTEMCORE_2 = "can_s2";
+    public static final String SYSTEMCORE_3 = "can_s3";
+    public static final String SYSTEMCORE_4 = "can_s4";
 
-    public static final String[] ALL = {RIO, DRIVE};
+    // Register and health-monitor every bus actually selected below.
+    public static final String[] ALL =
+        Stream.of(
+                RIO,
+                DrivebaseConstants.kPigeonCANBus,
+                DrivebaseConstants.kFLDriveCANBus,
+                DrivebaseConstants.kFLSteerCANBus,
+                DrivebaseConstants.kFLEncoderCANBus,
+                DrivebaseConstants.kFRDriveCANBus,
+                DrivebaseConstants.kFRSteerCANBus,
+                DrivebaseConstants.kFREncoderCANBus,
+                DrivebaseConstants.kBLDriveCANBus,
+                DrivebaseConstants.kBLSteerCANBus,
+                DrivebaseConstants.kBLEncoderCANBus,
+                DrivebaseConstants.kBRDriveCANBus,
+                DrivebaseConstants.kBRSteerCANBus,
+                DrivebaseConstants.kBREncoderCANBus)
+            .distinct()
+            .toArray(String[]::new);
+
+    /** REV's 2027 constructors use a numbered SystemCore port rather than a Phoenix bus name. */
+    public static int revPort(String bus) {
+      return switch (bus) {
+        case RIO, SYSTEMCORE_0 -> 0;
+        case SYSTEMCORE_1 -> 1;
+        case SYSTEMCORE_2 -> 2;
+        case SYSTEMCORE_3 -> 3;
+        case SYSTEMCORE_4 -> 4;
+        default ->
+            throw new IllegalArgumentException("REV device requires a SystemCore CAN bus: " + bus);
+      };
+    }
   }
 
   /************************************************************************* */
@@ -210,7 +248,7 @@ public final class Constants {
         new RobotDeviceId(SwerveConstants.kBREncoderId, SwerveConstants.kBREncoderCanbus, null);
     // Pigeon
     public static final RobotDeviceId PIGEON =
-        new RobotDeviceId(SwerveConstants.kPigeonId, SwerveConstants.kCANbusName, null);
+        new RobotDeviceId(SwerveConstants.kPigeonId, SwerveConstants.kPigeonCanbus, null);
 
     /* SUBSYSTEM CAN DEVICE IDS */
     // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
@@ -282,6 +320,23 @@ public final class Constants {
   /************************************************************************* */
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
+
+    // Assign each drive device to a registered CAN bus. Defaults preserve the old single-bus
+    // layout. Use CANBuses.SYSTEMCORE_0 through SYSTEMCORE_4 to split the drive on SystemCore.
+    // A Phoenix steer TalonFX and its remote CANcoder MUST share a bus for fused feedback.
+    public static final String kPigeonCANBus = CANBuses.DRIVE;
+    public static final String kFLDriveCANBus = CANBuses.DRIVE;
+    public static final String kFLSteerCANBus = CANBuses.DRIVE;
+    public static final String kFLEncoderCANBus = CANBuses.DRIVE;
+    public static final String kFRDriveCANBus = CANBuses.DRIVE;
+    public static final String kFRSteerCANBus = CANBuses.DRIVE;
+    public static final String kFREncoderCANBus = CANBuses.DRIVE;
+    public static final String kBLDriveCANBus = CANBuses.DRIVE;
+    public static final String kBLSteerCANBus = CANBuses.DRIVE;
+    public static final String kBLEncoderCANBus = CANBuses.DRIVE;
+    public static final String kBRDriveCANBus = CANBuses.DRIVE;
+    public static final String kBRSteerCANBus = CANBuses.DRIVE;
+    public static final String kBREncoderCANBus = CANBuses.DRIVE;
 
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed

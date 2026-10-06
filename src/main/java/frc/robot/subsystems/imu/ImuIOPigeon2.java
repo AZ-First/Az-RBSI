@@ -40,7 +40,7 @@ public class ImuIOPigeon2 implements ImuIO {
   // Define the Pigeon2 Hardware
   private final Pigeon2 pigeon =
       new Pigeon2(
-          SwerveConstants.kPigeonId, RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
+          SwerveConstants.kPigeonId, RBSICANBusRegistry.getBus(SwerveConstants.kPigeonCanbus));
 
   // Cached signals
   private final StatusSignal<Angle> yawSignal = pigeon.getYaw();
@@ -76,7 +76,9 @@ public class ImuIOPigeon2 implements ImuIO {
     pigeon.optimizeBusUtilization();
 
     odomTimestamps = PhoenixOdometryThread.getInstance().makeTimestampQueue();
-    odomYawsDeg = PhoenixOdometryThread.getInstance().registerSignal(yawSignal);
+    odomYawsDeg =
+        PhoenixOdometryThread.getInstance()
+            .registerSignal(SwerveConstants.kPigeonCanbus, yawSignal);
   }
 
   /** Update the Inputs */

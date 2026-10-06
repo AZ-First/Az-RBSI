@@ -10,7 +10,6 @@
 package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
@@ -182,10 +181,15 @@ public class ModuleIOBlended implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
-    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
-    turnSpark = new SparkMax(0, constants.SteerMotorId, MotorType.kBrushless);
-    cancoder = new CANcoder(constants.EncoderId, canBus);
+    String driveBus = SwerveConstants.driveCANBus(module);
+    String encoderBus = SwerveConstants.encoderCANBus(module);
+    driveTalon = new TalonFX(constants.DriveMotorId, RBSICANBusRegistry.getBus(driveBus));
+    turnSpark =
+        new SparkMax(
+            Constants.CANBuses.revPort(SwerveConstants.steerCANBus(module)),
+            constants.SteerMotorId,
+            MotorType.kBrushless);
+    cancoder = new CANcoder(constants.EncoderId, RBSICANBusRegistry.getBus(encoderBus));
 
     turnController = turnSpark.getClosedLoopController();
 
@@ -283,7 +287,8 @@ public class ModuleIOBlended implements ModuleIO {
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
     drivePositionOdom = drivePosition.clone(); // NEW
-    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+    drivePositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(driveBus, drivePositionOdom);
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
@@ -292,7 +297,8 @@ public class ModuleIOBlended implements ModuleIO {
     turnVelocity = cancoder.getVelocity();
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = cancoder.getPosition();
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(cancoder.getPosition());
+    turnPositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(encoderBus, cancoder.getPosition());
 
     bulkRefreshSignals =
         new BaseStatusSignal[] {

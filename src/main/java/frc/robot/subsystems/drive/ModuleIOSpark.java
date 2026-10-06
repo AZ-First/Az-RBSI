@@ -85,7 +85,7 @@ public class ModuleIOSpark implements ModuleIO {
         };
     driveSpark =
         new SparkFlex(
-            0,
+            Constants.CANBuses.revPort(SwerveConstants.driveCANBus(module)),
             switch (module) {
               case 0 -> SwerveConstants.kFLDriveMotorId;
               case 1 -> SwerveConstants.kFRDriveMotorId;
@@ -96,7 +96,7 @@ public class ModuleIOSpark implements ModuleIO {
             MotorType.kBrushless);
     turnSpark =
         new SparkMax(
-            0,
+            Constants.CANBuses.revPort(SwerveConstants.steerCANBus(module)),
             switch (module) {
               case 0 -> SwerveConstants.kFLSteerMotorId;
               case 1 -> SwerveConstants.kFRSteerMotorId;

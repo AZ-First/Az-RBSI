@@ -38,6 +38,7 @@ public final class DriveOdometry extends VirtualSubsystem {
   private final Imu imu;
   private final Module[] modules;
   private final BaseStatusSignal[] bulkRefreshSignals;
+  private final BaseStatusSignal[][] moduleBulkRefreshSignals;
 
   // Per-cycle cached objects (to avoid repeated allocations)
   private final SwerveModulePosition[] odomPositions = new SwerveModulePosition[4];
@@ -50,10 +51,12 @@ public final class DriveOdometry extends VirtualSubsystem {
     this.drive = drive;
     this.imu = imu;
     this.modules = modules;
+    moduleBulkRefreshSignals = new BaseStatusSignal[modules.length][];
 
     ArrayList<BaseStatusSignal> signals = new ArrayList<>();
-    for (Module module : modules) {
-      for (BaseStatusSignal signal : module.getBulkRefreshSignals()) {
+    for (int i = 0; i < modules.length; i++) {
+      moduleBulkRefreshSignals[i] = modules[i].getBulkRefreshSignals();
+      for (BaseStatusSignal signal : moduleBulkRefreshSignals[i]) {
         signals.add(signal);
       }
     }
@@ -76,15 +79,30 @@ public final class DriveOdometry extends VirtualSubsystem {
   public void rbsiPeriodic() {
     final long loopStartNanos = System.nanoTime();
     final long bulkRefreshStartNanos = System.nanoTime();
-    final StatusCode bulkRefreshStatus =
-        bulkRefreshSignals.length == 0
-            ? StatusCode.OK
-            : BaseStatusSignal.refreshAll(bulkRefreshSignals);
-    final long bulkRefreshEndNanos = System.nanoTime();
-
-    for (Module module : modules) {
-      module.setBulkRefreshStatus(bulkRefreshStatus);
+    StatusCode bulkRefreshStatus = StatusCode.OK;
+    if (SwerveConstants.kDrivebaseHasMultipleCANBuses) {
+      // Phoenix rejects refreshAll across networks; preserve each module's own connection status.
+      for (int i = 0; i < modules.length; i++) {
+        StatusCode moduleStatus = StatusCode.OK;
+        for (BaseStatusSignal signal : moduleBulkRefreshSignals[i]) {
+          StatusCode status = BaseStatusSignal.refreshAll(signal);
+          if (!status.isOK()) {
+            moduleStatus = status;
+            bulkRefreshStatus = status;
+          }
+        }
+        modules[i].setBulkRefreshStatus(moduleStatus);
+      }
+    } else {
+      bulkRefreshStatus =
+          bulkRefreshSignals.length == 0
+              ? StatusCode.OK
+              : BaseStatusSignal.refreshAll(bulkRefreshSignals);
+      for (Module module : modules) {
+        module.setBulkRefreshStatus(bulkRefreshStatus);
+      }
     }
+    final long bulkRefreshEndNanos = System.nanoTime();
 
     final long lockWaitStartNanos = System.nanoTime();
     Drive.odometryLock.lock();

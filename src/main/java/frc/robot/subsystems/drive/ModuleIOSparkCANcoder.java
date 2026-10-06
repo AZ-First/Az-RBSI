@@ -108,7 +108,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         };
     driveSpark =
         new SparkFlex(
-            0,
+            Constants.CANBuses.revPort(SwerveConstants.driveCANBus(module)),
             switch (module) {
               case 0 -> SwerveConstants.kFLDriveMotorId;
               case 1 -> SwerveConstants.kFRDriveMotorId;
@@ -119,7 +119,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
             MotorType.kBrushless);
     turnSpark =
         new SparkMax(
-            0,
+            Constants.CANBuses.revPort(SwerveConstants.steerCANBus(module)),
             switch (module) {
               case 0 -> SwerveConstants.kFLSteerMotorId;
               case 1 -> SwerveConstants.kFRSteerMotorId;
@@ -154,7 +154,7 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
               case 3 -> SwerveConstants.kBREncoderId;
               default -> 0;
             },
-            RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName));
+            RBSICANBusRegistry.getBus(SwerveConstants.encoderCANBus(module)));
     driveController = driveSpark.getClosedLoopController();
     turnController = turnSpark.getClosedLoopController();
 
