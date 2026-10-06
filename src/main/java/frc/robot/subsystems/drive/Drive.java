@@ -18,22 +18,14 @@
 package frc.robot.subsystems.drive;
 
 import static frc.robot.subsystems.drive.SwerveConstants.*;
-import static org.wpilib.units.Units.Volts;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-import com.pathplanner.lib.pathfinding.Pathfinding;
-import com.pathplanner.lib.util.PathPlannerLogging;
 import frc.robot.Constants;
-import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.Alert;
 import frc.robot.util.Alert.AlertType;
 import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
-import frc.robot.util.LocalADStarAK;
 import frc.robot.util.MathUtil;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
@@ -46,14 +38,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
-import org.wpilib.command2.Command;
-import org.wpilib.command2.sysid.SysIdRoutine;
 import org.wpilib.driverstation.Alliance;
-import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
 import org.wpilib.hardware.hal.HAL;
-import org.wpilib.math.controller.PIDController;
 import org.wpilib.math.controller.ProfiledPIDController;
 import org.wpilib.math.estimator.SwerveDrivePoseEstimator;
 import org.wpilib.math.geometry.Pose2d;
@@ -78,8 +66,10 @@ public class Drive extends RBSISubsystem {
   // Declare Hardware
   private final Imu imu;
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
-  private final SysIdRoutine sysId;
 
+  // Commands V3 deferred: SysId field
+  //   private final SysIdRoutine sysId;
+  // End deferred integration.
   // Pose Buffer Declarations
   private final ConcurrentTimeInterpolatableBuffer<Pose2d> poseBuffer =
       ConcurrentTimeInterpolatableBuffer.createBuffer(DrivebaseConstants.kPoseBufferHistorySecs);
@@ -93,18 +83,20 @@ public class Drive extends RBSISubsystem {
   // Declare an alert
   private final Alert gyroDisconnectedAlert =
       new Alert("Disconnected gyro, using kinematics as fallback.", AlertType.ERROR);
-  private final Alert pathPlannerStartPoseAlert =
-      new Alert("PathPlanner auto start pose is outside the allowed radius.", AlertType.ERROR);
-  private boolean pathPlannerStartBlocked = false;
-  private PathPlannerStartAction pendingPathPlannerStartAction;
-  private Pose2d pendingPathPlannerStartPose;
 
-  enum PathPlannerStartAction {
-    RESET_TO_PATH_START,
-    USE_VISION_POSE,
-    BLOCK_AUTO
-  }
-
+  // Commands V3 deferred: PathPlanner start-pose state
+  //   private final Alert pathPlannerStartPoseAlert =
+  //       new Alert("PathPlanner auto start pose is outside the allowed radius.", AlertType.ERROR);
+  //   private boolean pathPlannerStartBlocked = false;
+  //   private PathPlannerStartAction pendingPathPlannerStartAction;
+  //   private Pose2d pendingPathPlannerStartPose;
+  //
+  //   enum PathPlannerStartAction {
+  //     RESET_TO_PATH_START,
+  //     USE_VISION_POSE,
+  //     BLOCK_AUTO
+  //   }
+  // End deferred integration.
   // Declare odometry and pose-related variables
   // This one is package-private; used in DriveOdometry, PhoenixOdometryThread, and
   // SparkOdometryThread
@@ -160,8 +152,10 @@ public class Drive extends RBSISubsystem {
             new TrapezoidProfile.Constraints(
                 getMaxAngularSpeedRadPerSec(), getMaxAngularAccelRadPerSecPerSec()));
     angleController.enableContinuousInput(-Math.PI, Math.PI);
-    m_pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
 
+    // Commands V3 deferred: Choreo heading controller
+    //     m_pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
+    // End deferred integration.
     // If REAL (i.e., NOT simulation), parse out the module types
     if (Constants.getMode() == Mode.REAL) {
 
@@ -228,64 +222,66 @@ public class Drive extends RBSISubsystem {
     // Usage reporting for swerve template
     HAL.reportUsage("RobotDrive", "Swerve_AdvantageKit");
 
-    // Configure Autonomous Path Building for PathPlanner based on `AutoType`
-    switch (Constants.getAutoType()) {
-      case PATHPLANNER:
-        try {
-          // Configure AutoBuilder for PathPlanner
-          AutoBuilder.configure(
-              this::getPose,
-              this::resetPoseFromPathPlanner,
-              this::getChassisSpeeds,
-              (speeds, feedforwards) -> runVelocity(speeds),
-              new PPHolonomicDriveController(
-                  new PIDConstants(
-                      DrivebaseConstants.kStrafeP,
-                      DrivebaseConstants.kStrafeI,
-                      DrivebaseConstants.kStrafeD),
-                  new PIDConstants(
-                      DrivebaseConstants.kSpinP,
-                      DrivebaseConstants.kSpinI,
-                      DrivebaseConstants.kSpinD)),
-              AutoConstants.kPathPlannerConfig,
-              () -> MatchState.getAlliance().orElse(Alliance.BLUE) == Alliance.RED,
-              this);
-        } catch (Exception e) {
-          DriverStationErrors.reportError(
-              "Failed to load PathPlanner config and configure AutoBuilder", e.getStackTrace());
-        }
-        Pathfinding.setPathfinder(new LocalADStarAK());
-        PathPlannerLogging.setLogActivePathCallback(
-            (activePath) -> {
-              Logger.recordOutput("Odometry/Trajectory", activePath.toArray(new Pose2d[0]));
-            });
-        PathPlannerLogging.setLogTargetPoseCallback(
-            (targetPose) -> {
-              Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
-            });
-        break;
-
-      case CHOREO:
-        // Choreo autos are configured in RobotContainer through AutoFactory.
-        break;
-
-      case MANUAL:
-        // Nothing to be done for MANUAL; may just use AutoPilot
-        break;
-      default:
-    }
-
-    // Configure SysId for drivebase characterization
-    sysId =
-        new SysIdRoutine(
-            new SysIdRoutine.Config(
-                null,
-                null,
-                null,
-                (state) -> Logger.recordOutput("Drive/SysIdState", state.toString())),
-            new SysIdRoutine.Mechanism(
-                (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
-
+    // Commands V3 deferred: PathPlanner AutoBuilder and drive SysId setup
+    //     // Configure Autonomous Path Building for PathPlanner based on `AutoType`
+    //     switch (Constants.getAutoType()) {
+    //       case PATHPLANNER:
+    //         try {
+    //           // Configure AutoBuilder for PathPlanner
+    //           AutoBuilder.configure(
+    //               this::getPose,
+    //               this::resetPoseFromPathPlanner,
+    //               this::getChassisSpeeds,
+    //               (speeds, feedforwards) -> runVelocity(speeds),
+    //               new PPHolonomicDriveController(
+    //                   new PIDConstants(
+    //                       DrivebaseConstants.kStrafeP,
+    //                       DrivebaseConstants.kStrafeI,
+    //                       DrivebaseConstants.kStrafeD),
+    //                   new PIDConstants(
+    //                       DrivebaseConstants.kSpinP,
+    //                       DrivebaseConstants.kSpinI,
+    //                       DrivebaseConstants.kSpinD)),
+    //               AutoConstants.kPathPlannerConfig,
+    //               () -> MatchState.getAlliance().orElse(Alliance.BLUE) == Alliance.RED,
+    //               this);
+    //         } catch (Exception e) {
+    //           DriverStationErrors.reportError(
+    //               "Failed to load PathPlanner config and configure AutoBuilder",
+    // e.getStackTrace());
+    //         }
+    //         Pathfinding.setPathfinder(new LocalADStarAK());
+    //         PathPlannerLogging.setLogActivePathCallback(
+    //             (activePath) -> {
+    //               Logger.recordOutput("Odometry/Trajectory", activePath.toArray(new Pose2d[0]));
+    //             });
+    //         PathPlannerLogging.setLogTargetPoseCallback(
+    //             (targetPose) -> {
+    //               Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
+    //             });
+    //         break;
+    //
+    //       case CHOREO:
+    //         // Choreo autos are configured in RobotContainer through AutoFactory.
+    //         break;
+    //
+    //       case MANUAL:
+    //         // Nothing to be done for MANUAL; may just use AutoPilot
+    //         break;
+    //       default:
+    //     }
+    //
+    //     // Configure SysId for drivebase characterization
+    //     sysId =
+    //         new SysIdRoutine(
+    //             new SysIdRoutine.Config(
+    //                 null,
+    //                 null,
+    //                 null,
+    //                 (state) -> Logger.recordOutput("Drive/SysIdState", state.toString())),
+    //             new SysIdRoutine.Mechanism(
+    //                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
+    // End deferred integration.
     SmartDashboard.putData("Field", field);
   }
 
@@ -393,15 +389,16 @@ public class Drive extends RBSISubsystem {
    * @param speeds Speeds in meters/sec
    */
   public void runVelocity(ChassisVelocities speeds) {
-    if (pathPlannerStartBlocked && RobotState.isAutonomousEnabled()) {
-      for (Module module : modules) {
-        module.stop();
-      }
-      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
-      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleVelocity[] {});
-      return;
-    }
-
+    // Commands V3 deferred: PathPlanner blocked-start safety gate
+    //     if (pathPlannerStartBlocked && RobotState.isAutonomousEnabled()) {
+    //       for (Module module : modules) {
+    //         module.stop();
+    //       }
+    //       Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
+    //       Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleVelocity[] {});
+    //       return;
+    //     }
+    // End deferred integration.
     // Calculate module setpoints
     ChassisVelocities discreteSpeeds = speeds.discretize(Constants.kLoopPeriodSecs);
     SwerveModuleVelocity[] setpointStates = kinematics.toSwerveModuleVelocities(discreteSpeeds);
@@ -535,23 +532,24 @@ public class Drive extends RBSISubsystem {
   }
 
   /************************************************************************* */
-  /** SysId Characterization Routines ************************************** */
-
-  /** Returns a command to run a quasistatic test in the specified direction. */
-  public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-    return run(() -> runCharacterization(0.0))
-        .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
-        .andThen(sysId.quasistatic(direction));
-  }
-
-  /** Returns a command to run a dynamic test in the specified direction. */
-  public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    return run(() -> runCharacterization(0.0))
-        .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
-        .andThen(sysId.dynamic(direction));
-  }
-
-  /************************************************************************* */
+  // Commands V3 deferred: drive SysId commands
+  //   /************************************************************************* */
+  //   /** SysId Characterization Routines ************************************** */
+  //
+  //   /** Returns a command to run a quasistatic test in the specified direction. */
+  //   public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+  //     return run(() -> runCharacterization(0.0))
+  //         .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
+  //         .andThen(sysId.quasistatic(direction));
+  //   }
+  //
+  //   /** Returns a command to run a dynamic test in the specified direction. */
+  //   public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+  //     return run(() -> runCharacterization(0.0))
+  //         .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
+  //         .andThen(sysId.dynamic(direction));
+  //   }
+  // End deferred integration.
   /** Getter Functions ***************************************************** */
 
   /** Returns the module array */
@@ -770,96 +768,99 @@ public class Drive extends RBSISubsystem {
     poseBufferAddSample(now, pose);
   }
 
-  /** Validates PathPlanner's starting pose and returns whether autonomous may run. */
-  public boolean validatePathPlannerAutoStart(Pose2d pathStartPose) {
-    pendingPathPlannerStartAction = evaluatePathPlannerStart(pathStartPose);
-    pendingPathPlannerStartPose = pathStartPose;
-    return pendingPathPlannerStartAction != PathPlannerStartAction.BLOCK_AUTO;
-  }
-
-  private PathPlannerStartAction evaluatePathPlannerStart(Pose2d pathStartPose) {
-    final double now = TimeUtil.now();
-    final double visionAge = now - lastAcceptedVisionReceiptTimestamp;
-    final boolean hasRecentVision =
-        Double.isFinite(visionAge)
-            && visionAge >= 0.0
-            && visionAge <= DrivebaseConstants.kPathPlannerVisionFreshnessSec;
-    final Pose2d currentPose = getPose();
-    final double startDistanceMeters =
-        currentPose.getTranslation().getDistance(pathStartPose.getTranslation());
-    final PathPlannerStartAction action =
-        determinePathPlannerStartAction(
-            currentPose,
-            pathStartPose,
-            hasRecentVision,
-            DrivebaseConstants.kPathPlannerStartToleranceMeters);
-
-    pathPlannerStartBlocked = action == PathPlannerStartAction.BLOCK_AUTO;
-    pathPlannerStartPoseAlert.setText(
-        String.format(
-            "PathPlanner auto blocked: robot is %.2f m from the requested start (limit %.2f m).",
-            startDistanceMeters, DrivebaseConstants.kPathPlannerStartToleranceMeters));
-    pathPlannerStartPoseAlert.set(pathPlannerStartBlocked);
-
-    Logger.recordOutput("Auto/NominalStartingPose", pathStartPose);
-    Logger.recordOutput("Auto/PoseBeforeResetDecision", currentPose);
-    Logger.recordOutput("Auto/VisionMeasurementAgeSec", visionAge);
-    Logger.recordOutput(
-        "Auto/LastVisionMeasurementTimestamp", lastAcceptedVisionMeasurementTimestamp);
-    Logger.recordOutput("Auto/StartPoseDistanceMeters", startDistanceMeters);
-    Logger.recordOutput("Auto/StartPoseAction", action.toString());
-    Logger.recordOutput("Auto/StartPoseBlocked", pathPlannerStartBlocked);
-    Logger.recordOutput(
-        "Auto/PoseResetSkippedForVision", action == PathPlannerStartAction.USE_VISION_POSE);
-
-    return action;
-  }
-
-  static PathPlannerStartAction determinePathPlannerStartAction(
-      Pose2d currentPose, Pose2d pathStartPose, boolean hasRecentVision, double toleranceMeters) {
-    boolean estimatorUninitialized = currentPose.getTranslation().getNorm() <= 1e-6;
-    if (!hasRecentVision || estimatorUninitialized) {
-      return PathPlannerStartAction.RESET_TO_PATH_START;
-    }
-
-    double distance = currentPose.getTranslation().getDistance(pathStartPose.getTranslation());
-    return Double.isFinite(distance) && distance <= toleranceMeters
-        ? PathPlannerStartAction.USE_VISION_POSE
-        : PathPlannerStartAction.BLOCK_AUTO;
-  }
-
-  /** Applies PathPlanner's starting-pose policy from AutoBuilder's reset callback. */
-  private void resetPoseFromPathPlanner(Pose2d pose) {
-    PathPlannerStartAction action;
-    boolean usingPreflightDecision =
-        pendingPathPlannerStartAction != null
-            && pendingPathPlannerStartPose != null
-            && pendingPathPlannerStartPose.getTranslation().getDistance(pose.getTranslation())
-                <= 1e-6
-            && Math.abs(
-                    pendingPathPlannerStartPose
-                        .getRotation()
-                        .minus(pose.getRotation())
-                        .getRadians())
-                <= 1e-6;
-
-    if (usingPreflightDecision) {
-      action = pendingPathPlannerStartAction;
-    } else {
-      action = evaluatePathPlannerStart(pose);
-    }
-    pendingPathPlannerStartAction = null;
-    pendingPathPlannerStartPose = null;
-
-    boolean resetSuppressed = action != PathPlannerStartAction.RESET_TO_PATH_START;
-    Logger.recordOutput("Auto/PathPlannerResetUsedPreflightDecision", usingPreflightDecision);
-    Logger.recordOutput("Auto/PathPlannerResetSuppressed", resetSuppressed);
-
-    if (!resetSuppressed) {
-      resetPose(pose);
-    }
-  }
-
+  // Commands V3 deferred: PathPlanner pose-start preflight and reset
+  //   /** Validates PathPlanner's starting pose and returns whether autonomous may run. */
+  //   public boolean validatePathPlannerAutoStart(Pose2d pathStartPose) {
+  //     pendingPathPlannerStartAction = evaluatePathPlannerStart(pathStartPose);
+  //     pendingPathPlannerStartPose = pathStartPose;
+  //     return pendingPathPlannerStartAction != PathPlannerStartAction.BLOCK_AUTO;
+  //   }
+  //
+  //   private PathPlannerStartAction evaluatePathPlannerStart(Pose2d pathStartPose) {
+  //     final double now = TimeUtil.now();
+  //     final double visionAge = now - lastAcceptedVisionReceiptTimestamp;
+  //     final boolean hasRecentVision =
+  //         Double.isFinite(visionAge)
+  //             && visionAge >= 0.0
+  //             && visionAge <= DrivebaseConstants.kPathPlannerVisionFreshnessSec;
+  //     final Pose2d currentPose = getPose();
+  //     final double startDistanceMeters =
+  //         currentPose.getTranslation().getDistance(pathStartPose.getTranslation());
+  //     final PathPlannerStartAction action =
+  //         determinePathPlannerStartAction(
+  //             currentPose,
+  //             pathStartPose,
+  //             hasRecentVision,
+  //             DrivebaseConstants.kPathPlannerStartToleranceMeters);
+  //
+  //     pathPlannerStartBlocked = action == PathPlannerStartAction.BLOCK_AUTO;
+  //     pathPlannerStartPoseAlert.setText(
+  //         String.format(
+  //             "PathPlanner auto blocked: robot is %.2f m from the requested start (limit %.2f
+  // m).",
+  //             startDistanceMeters, DrivebaseConstants.kPathPlannerStartToleranceMeters));
+  //     pathPlannerStartPoseAlert.set(pathPlannerStartBlocked);
+  //
+  //     Logger.recordOutput("Auto/NominalStartingPose", pathStartPose);
+  //     Logger.recordOutput("Auto/PoseBeforeResetDecision", currentPose);
+  //     Logger.recordOutput("Auto/VisionMeasurementAgeSec", visionAge);
+  //     Logger.recordOutput(
+  //         "Auto/LastVisionMeasurementTimestamp", lastAcceptedVisionMeasurementTimestamp);
+  //     Logger.recordOutput("Auto/StartPoseDistanceMeters", startDistanceMeters);
+  //     Logger.recordOutput("Auto/StartPoseAction", action.toString());
+  //     Logger.recordOutput("Auto/StartPoseBlocked", pathPlannerStartBlocked);
+  //     Logger.recordOutput(
+  //         "Auto/PoseResetSkippedForVision", action == PathPlannerStartAction.USE_VISION_POSE);
+  //
+  //     return action;
+  //   }
+  //
+  //   static PathPlannerStartAction determinePathPlannerStartAction(
+  //       Pose2d currentPose, Pose2d pathStartPose, boolean hasRecentVision, double
+  // toleranceMeters) {
+  //     boolean estimatorUninitialized = currentPose.getTranslation().getNorm() <= 1e-6;
+  //     if (!hasRecentVision || estimatorUninitialized) {
+  //       return PathPlannerStartAction.RESET_TO_PATH_START;
+  //     }
+  //
+  //     double distance = currentPose.getTranslation().getDistance(pathStartPose.getTranslation());
+  //     return Double.isFinite(distance) && distance <= toleranceMeters
+  //         ? PathPlannerStartAction.USE_VISION_POSE
+  //         : PathPlannerStartAction.BLOCK_AUTO;
+  //   }
+  //
+  //   /** Applies PathPlanner's starting-pose policy from AutoBuilder's reset callback. */
+  //   private void resetPoseFromPathPlanner(Pose2d pose) {
+  //     PathPlannerStartAction action;
+  //     boolean usingPreflightDecision =
+  //         pendingPathPlannerStartAction != null
+  //             && pendingPathPlannerStartPose != null
+  //             && pendingPathPlannerStartPose.getTranslation().getDistance(pose.getTranslation())
+  //                 <= 1e-6
+  //             && Math.abs(
+  //                     pendingPathPlannerStartPose
+  //                         .getRotation()
+  //                         .minus(pose.getRotation())
+  //                         .getRadians())
+  //                 <= 1e-6;
+  //
+  //     if (usingPreflightDecision) {
+  //       action = pendingPathPlannerStartAction;
+  //     } else {
+  //       action = evaluatePathPlannerStart(pose);
+  //     }
+  //     pendingPathPlannerStartAction = null;
+  //     pendingPathPlannerStartPose = null;
+  //
+  //     boolean resetSuppressed = action != PathPlannerStartAction.RESET_TO_PATH_START;
+  //     Logger.recordOutput("Auto/PathPlannerResetUsedPreflightDecision", usingPreflightDecision);
+  //     Logger.recordOutput("Auto/PathPlannerResetSuppressed", resetSuppressed);
+  //
+  //     if (!resetSuppressed) {
+  //       resetPose(pose);
+  //     }
+  //   }
+  // End deferred integration.
   /** Zeros the gyro based on alliance color */
   public void zeroHeadingForAlliance() {
     imu.zeroYaw(
@@ -1083,30 +1084,31 @@ public class Drive extends RBSISubsystem {
   }
 
   /************************************************************************* */
-  /** CHOREO SECTION (Ignore if AutoType == PATHPLANNER) ******************* */
+  /** CHOREO SECTION ******************************************************* */
 
   /** Choreo: Reset odometry */
   public void resetOdometry(Pose2d pose) {
     resetPose(pose);
   }
 
-  // Choreo Controller Values
-  private final PIDController m_pathXController =
-      new PIDController(
-          AutoConstants.kChoreoDrivePID.kP,
-          AutoConstants.kChoreoDrivePID.kI,
-          AutoConstants.kChoreoDrivePID.kD);
-  private final PIDController m_pathYController =
-      new PIDController(
-          AutoConstants.kChoreoDrivePID.kP,
-          AutoConstants.kChoreoDrivePID.kI,
-          AutoConstants.kChoreoDrivePID.kD);
-  private final PIDController m_pathThetaController =
-      new PIDController(
-          AutoConstants.kChoreoSteerPID.kP,
-          AutoConstants.kChoreoSteerPID.kI,
-          AutoConstants.kChoreoSteerPID.kD);
-
+  // Commands V3 deferred: Choreo PID controllers
+  //   // Choreo Controller Values
+  //   private final PIDController m_pathXController =
+  //       new PIDController(
+  //           AutoConstants.kChoreoDrivePID.kP,
+  //           AutoConstants.kChoreoDrivePID.kI,
+  //           AutoConstants.kChoreoDrivePID.kD);
+  //   private final PIDController m_pathYController =
+  //       new PIDController(
+  //           AutoConstants.kChoreoDrivePID.kP,
+  //           AutoConstants.kChoreoDrivePID.kI,
+  //           AutoConstants.kChoreoDrivePID.kD);
+  //   private final PIDController m_pathThetaController =
+  //       new PIDController(
+  //           AutoConstants.kChoreoSteerPID.kP,
+  //           AutoConstants.kChoreoSteerPID.kI,
+  //           AutoConstants.kChoreoSteerPID.kD);
+  // End deferred integration.
   // TODO(2027): Re-enable these Choreo trajectory followers when ChoreoLib supports 2027 WPILib.
   // public void choreoController(Pose2d pose, SwerveSample sample) {
   //   var targetSpeeds = sample.getChassisSpeeds();

@@ -13,20 +13,33 @@
 package frc.robot.util;
 
 import org.littletonrobotics.junction.Logger;
-import org.wpilib.command2.SubsystemBase;
+import org.wpilib.command3.Mechanism;
+import org.wpilib.command3.Scheduler;
+import org.wpilib.framework.RobotBase;
 
 /**
  * This class is designed to include Az-RBSI specific methods on top of the standard WPILib
- * command-based subsystem classes. All non-drivebase subsystems (e.g., flywheels, arms, elevators,
- * etc.) should subclass ``RBSISubsystem`` rather than ``SubsystemBase`` in order to gain access to
- * added functionality.
+ * command-based mechanism classes. Robot mechanisms (e.g., drivebases, flywheels, arms, elevators)
+ * should subclass ``RBSISubsystem`` rather than ``Mechanism`` to gain access to added
+ * functionality.
  */
-public abstract class RBSISubsystem extends SubsystemBase {
+public abstract class RBSISubsystem extends Mechanism {
   private static final int TIMING_LOG_PERIOD_LOOPS = 5;
   private static final int[] NO_POWER_PORTS = {};
 
   private final String name = getClass().getSimpleName();
   private int timingLogLoops = 0;
+
+  protected RBSISubsystem() {
+    Scheduler.getDefault()
+        .addPeriodic(
+            () -> {
+              periodic();
+              if (RobotBase.isSimulation()) {
+                simulationPeriodic();
+              }
+            });
+  }
 
   /**
    * Guaranteed timing wrapper (cannot be bypassed by subclasses).
@@ -38,7 +51,6 @@ public abstract class RBSISubsystem extends SubsystemBase {
    * <p>If you see a compiler error here, remove your periodic() override and move your logic into
    * rbsiPeriodic().
    */
-  @Deprecated(forRemoval = false)
   public final void periodic() {
     long start = System.nanoTime();
     rbsiPeriodic();
@@ -51,6 +63,9 @@ public abstract class RBSISubsystem extends SubsystemBase {
 
   /** Subclasses must implement this instead of periodic(). */
   protected abstract void rbsiPeriodic();
+
+  /** Override to update simulation state after the regular periodic callback. */
+  public void simulationPeriodic() {}
 
   /**
    * Gets the power ports associated with this Subsystem.

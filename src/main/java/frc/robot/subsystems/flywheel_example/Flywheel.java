@@ -10,26 +10,23 @@
 package frc.robot.subsystems.flywheel_example;
 
 import static frc.robot.Constants.FlywheelConstants.*;
-import static org.wpilib.units.Units.Second;
-import static org.wpilib.units.Units.Seconds;
-import static org.wpilib.units.Units.Volts;
 
 import frc.robot.Constants;
 import frc.robot.util.MathUtil;
 import frc.robot.util.RBSISubsystem;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
-import org.wpilib.command2.Command;
-import org.wpilib.command2.sysid.SysIdRoutine;
 import org.wpilib.math.util.Units;
 import org.wpilib.system.RobotController;
 
 public class Flywheel extends RBSISubsystem {
   private final FlywheelIO io;
   private final FlywheelIOInputsAutoLogged inputs = new FlywheelIOInputsAutoLogged();
-  private final SysIdRoutine voltageSysId;
-  private final SysIdRoutine dutyCycleSysId;
 
+  // Commands V3 deferred: SysId routine fields
+  //   private final SysIdRoutine voltageSysId;
+  //   private final SysIdRoutine dutyCycleSysId;
+  // End deferred integration.
   /** Creates a new Flywheel. */
   public Flywheel(FlywheelIO io) {
     this.io = io;
@@ -46,12 +43,13 @@ public class Flywheel extends RBSISubsystem {
         io.configureGains(kSimP, 0.0, kSimD, kSimS, kSimV, kSimA);
         break;
     }
-
-    // Configure SysId routines. The voltage routine is the preferred source for kS/kV/kA fits.
-    voltageSysId = createSysIdRoutine("FlywheelVoltage", this::runVolts);
-    dutyCycleSysId = createSysIdRoutine("FlywheelDutyCycle", this::runDutyCycleForSysIdVolts);
   }
 
+  // Commands V3 deferred: SysId routine setup
+  //     // Configure SysId routines. The voltage routine is the preferred source for kS/kV/kA fits.
+  //     voltageSysId = createSysIdRoutine("FlywheelVoltage", this::runVolts);
+  //     dutyCycleSysId = createSysIdRoutine("FlywheelDutyCycle", this::runDutyCycleForSysIdVolts);
+  // End deferred integration.
   /** Periodic function -- inherits timing logic from RBSISubsystem */
   @Override
   protected void rbsiPeriodic() {
@@ -99,44 +97,45 @@ public class Flywheel extends RBSISubsystem {
     io.stop();
   }
 
-  /** Returns a command to run a quasistatic test in the specified direction. */
-  public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-    return sysIdVoltageQuasistatic(direction);
-  }
-
-  /** Returns a command to run a dynamic test in the specified direction. */
-  public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-    return sysIdVoltageDynamic(direction);
-  }
-
-  /** Returns a command to run a direct-voltage quasistatic test. */
-  public Command sysIdVoltageQuasistatic(SysIdRoutine.Direction direction) {
-    return voltageSysId
-        .quasistatic(direction)
-        .withName("Flywheel SysId Voltage " + directionLabel(direction) + " Quasistatic");
-  }
-
-  /** Returns a command to run a direct-voltage dynamic test. */
-  public Command sysIdVoltageDynamic(SysIdRoutine.Direction direction) {
-    return voltageSysId
-        .dynamic(direction)
-        .withName("Flywheel SysId Voltage " + directionLabel(direction) + " Dynamic");
-  }
-
-  /** Returns a command to run a duty-cycle quasistatic test. */
-  public Command sysIdDutyCycleQuasistatic(SysIdRoutine.Direction direction) {
-    return dutyCycleSysId
-        .quasistatic(direction)
-        .withName("Flywheel SysId Duty Cycle " + directionLabel(direction) + " Quasistatic");
-  }
-
-  /** Returns a command to run a duty-cycle dynamic test. */
-  public Command sysIdDutyCycleDynamic(SysIdRoutine.Direction direction) {
-    return dutyCycleSysId
-        .dynamic(direction)
-        .withName("Flywheel SysId Duty Cycle " + directionLabel(direction) + " Dynamic");
-  }
-
+  // Commands V3 deferred: SysId command methods
+  //   /** Returns a command to run a quasistatic test in the specified direction. */
+  //   public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+  //     return sysIdVoltageQuasistatic(direction);
+  //   }
+  //
+  //   /** Returns a command to run a dynamic test in the specified direction. */
+  //   public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+  //     return sysIdVoltageDynamic(direction);
+  //   }
+  //
+  //   /** Returns a command to run a direct-voltage quasistatic test. */
+  //   public Command sysIdVoltageQuasistatic(SysIdRoutine.Direction direction) {
+  //     return voltageSysId
+  //         .quasistatic(direction)
+  //         .withName("Flywheel SysId Voltage " + directionLabel(direction) + " Quasistatic");
+  //   }
+  //
+  //   /** Returns a command to run a direct-voltage dynamic test. */
+  //   public Command sysIdVoltageDynamic(SysIdRoutine.Direction direction) {
+  //     return voltageSysId
+  //         .dynamic(direction)
+  //         .withName("Flywheel SysId Voltage " + directionLabel(direction) + " Dynamic");
+  //   }
+  //
+  //   /** Returns a command to run a duty-cycle quasistatic test. */
+  //   public Command sysIdDutyCycleQuasistatic(SysIdRoutine.Direction direction) {
+  //     return dutyCycleSysId
+  //         .quasistatic(direction)
+  //         .withName("Flywheel SysId Duty Cycle " + directionLabel(direction) + " Quasistatic");
+  //   }
+  //
+  //   /** Returns a command to run a duty-cycle dynamic test. */
+  //   public Command sysIdDutyCycleDynamic(SysIdRoutine.Direction direction) {
+  //     return dutyCycleSysId
+  //         .dynamic(direction)
+  //         .withName("Flywheel SysId Duty Cycle " + directionLabel(direction) + " Dynamic");
+  //   }
+  // End deferred integration.
   /** Returns the current velocity in RPM. */
   @AutoLogOutput(key = "Mechanism/Flywheel")
   public double getVelocityRPM() {
@@ -148,29 +147,31 @@ public class Flywheel extends RBSISubsystem {
     return inputs.velocityRadPerSec;
   }
 
+  // Commands V3 deferred: SysId routine helpers
+  //   private SysIdRoutine createSysIdRoutine(String name, java.util.function.DoubleConsumer
+  // output) {
+  //     return new SysIdRoutine(
+  //         new SysIdRoutine.Config(
+  //             Volts.of(kSysIdQuasistaticRampRateVoltsPerSec).per(Second),
+  //             Volts.of(kSysIdDynamicStepVoltageVolts),
+  //             Seconds.of(kSysIdTimeoutSecs),
+  //             (state) -> recordSysIdState(name, state)),
+  //         new SysIdRoutine.Mechanism(
+  //             (voltage) -> output.accept(voltage.in(Volts)), null, this, name));
+  //   }
+  //
+  //   private void recordSysIdState(String routineName, SysIdRoutine.State state) {
+  //     Logger.recordOutput("SysIdTestState", state.toString());
+  //     Logger.recordOutput("Flywheel/SysIdRoutine", routineName);
+  //     Logger.recordOutput("Flywheel/SysIdState", state.toString());
+  //   }
+  //
+  //   private static String directionLabel(SysIdRoutine.Direction direction) {
+  //     return direction == SysIdRoutine.Direction.kForward ? "Forward" : "Reverse";
+  //   }
+  // End deferred integration.
   @Override
   public int[] getPowerPorts() {
     return io.getPowerPorts();
-  }
-
-  private SysIdRoutine createSysIdRoutine(String name, java.util.function.DoubleConsumer output) {
-    return new SysIdRoutine(
-        new SysIdRoutine.Config(
-            Volts.of(kSysIdQuasistaticRampRateVoltsPerSec).per(Second),
-            Volts.of(kSysIdDynamicStepVoltageVolts),
-            Seconds.of(kSysIdTimeoutSecs),
-            (state) -> recordSysIdState(name, state)),
-        new SysIdRoutine.Mechanism(
-            (voltage) -> output.accept(voltage.in(Volts)), null, this, name));
-  }
-
-  private void recordSysIdState(String routineName, SysIdRoutine.State state) {
-    Logger.recordOutput("SysIdTestState", state.toString());
-    Logger.recordOutput("Flywheel/SysIdRoutine", routineName);
-    Logger.recordOutput("Flywheel/SysIdState", state.toString());
-  }
-
-  private static String directionLabel(SysIdRoutine.Direction direction) {
-    return direction == SysIdRoutine.Direction.kForward ? "Forward" : "Reverse";
   }
 }

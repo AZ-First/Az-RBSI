@@ -17,9 +17,6 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.commands.PathPlannerAuto;
-import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
@@ -31,11 +28,11 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
-import org.wpilib.command2.Command;
-import org.wpilib.command2.CommandScheduler;
+import org.wpilib.command3.Command;
+import org.wpilib.command3.Scheduler;
 import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.MatchState;
-import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.system.Threads;
 import org.wpilib.system.Timer;
 
@@ -140,7 +137,7 @@ public class Robot extends LoggedRobot {
     // finished or interrupted commands, and running subsystem periodic() methods.
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
-    CommandScheduler.getInstance().run();
+    Scheduler.getDefault().run();
     final long t3 = System.nanoTime();
 
     if (isReal()) {
@@ -160,6 +157,8 @@ public class Robot extends LoggedRobot {
   /** This function is called once when the robot is disabled. */
   @Override
   public void disabledInit() {
+    Scheduler.getDefault().cancelAll();
+    m_robotContainer.stopActuators();
     // Set the brakes to stop robot motion
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
@@ -182,37 +181,53 @@ public class Robot extends LoggedRobot {
   public void autonomousInit() {
 
     // Just in case, cancel all running commands
-    CommandScheduler.getInstance().cancelAll();
+    Scheduler.getDefault().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
 
-    // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
-    // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
     m_autonomousCommand =
         switch (Constants.getAutoType()) {
           case MANUAL -> m_robotContainer.getManualAuto();
-          case PATHPLANNER -> m_robotContainer.getAutonomousCommandPathPlanner();
-          case CHOREO -> m_robotContainer.getAutonomousCommandChoreo();
+          case PATHPLANNER, CHOREO -> {
+            DriverStationErrors.reportWarning(
+                "Selected autonomous framework is unavailable on the Commands V3 branch.", false);
+            yield null;
+          }
           default ->
               throw new RuntimeException(
                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
         };
 
-    if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
-      Pose2d startingPose = pathPlannerAuto.getStartingPose();
-      if (startingPose != null) {
-        if (AutoBuilder.shouldFlip()) {
-          startingPose = FlippingUtil.flipFieldPose(startingPose);
-        }
-        Logger.recordOutput("Auto/StartingPose", startingPose);
-        if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
-          m_autonomousCommand = null;
-        }
-      }
-    }
-
+    // Commands V3 deferred: PathPlanner and Choreo auto selection and PathPlanner preflight
+    //     // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...),
+    // which
+    //     // aligns the pose estimator to the selected auto's start while preserving the gyro
+    // reference.
+    //     m_autonomousCommand =
+    //         switch (Constants.getAutoType()) {
+    //           case MANUAL -> m_robotContainer.getManualAuto();
+    //           case PATHPLANNER -> m_robotContainer.getAutonomousCommandPathPlanner();
+    //           case CHOREO -> m_robotContainer.getAutonomousCommandChoreo();
+    //           default ->
+    //               throw new RuntimeException(
+    //                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+    //         };
+    //
+    //     if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
+    //       Pose2d startingPose = pathPlannerAuto.getStartingPose();
+    //       if (startingPose != null) {
+    //         if (AutoBuilder.shouldFlip()) {
+    //           startingPose = FlippingUtil.flipFieldPose(startingPose);
+    //         }
+    //         Logger.recordOutput("Auto/StartingPose", startingPose);
+    //         if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
+    //           m_autonomousCommand = null;
+    //         }
+    //       }
+    //     }
+    // End deferred integration.
     if (m_autonomousCommand != null) {
-      CommandScheduler.getInstance().schedule(m_autonomousCommand);
+      Scheduler.getDefault().schedule(m_autonomousCommand);
     }
   }
 
@@ -228,7 +243,7 @@ public class Robot extends LoggedRobot {
     // continue until interrupted by another command, remove
     // this line or comment it out.
     if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
+      Scheduler.getDefault().cancel(m_autonomousCommand);
       m_autonomousCommand = null;
     }
     m_robotContainer.getDrivebase().setMotorBrake(true);
@@ -268,7 +283,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void utilityInit() {
     // Cancels all running commands at the start of utility mode.
-    CommandScheduler.getInstance().cancelAll();
+    Scheduler.getDefault().cancelAll();
     m_robotContainer.getDrivebase().resetHeadingController();
   }
 

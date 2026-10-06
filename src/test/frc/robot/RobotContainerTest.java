@@ -12,6 +12,7 @@ package frc.robot;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import org.junit.jupiter.api.Test;
+import org.wpilib.command3.Scheduler;
 
 public class RobotContainerTest {
 
@@ -20,6 +21,7 @@ public class RobotContainerTest {
     // Instantiate RobotContainer
     try {
       new RobotContainer();
+      Scheduler.getDefault().run();
     } catch (Exception e) {
       fail("Failed to instantiate RobotContainer.", e);
     }

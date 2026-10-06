@@ -18,7 +18,7 @@
 
 package frc.robot.util;
 
-import org.wpilib.command2.button.Trigger;
+import org.wpilib.command3.Trigger;
 import org.wpilib.driverstation.GenericHID;
 import org.wpilib.driverstation.internal.DriverStationBackend;
 

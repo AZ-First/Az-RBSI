@@ -19,14 +19,10 @@ package frc.robot;
 
 import static org.wpilib.units.Units.*;
 
-import com.pathplanner.lib.config.ModuleConfig;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.config.RobotConfig;
 import com.therekrab.autopilot.APConstraints;
 import com.therekrab.autopilot.APProfile;
 import com.therekrab.autopilot.Autopilot;
 import frc.robot.FieldConstants.AprilTagLayoutType;
-import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
 import frc.robot.util.RBSIEnum.AutoType;
@@ -74,7 +70,7 @@ public final class Constants {
   //       via GitHub issues.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
   private static CTREPro phoenixPro = CTREPro.LICENSED; // LICENSED, UNLICENSED
-  private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
+  private static AutoType autoType = AutoType.MANUAL; // Commands V3 currently supports manual auto
   private static VisionType visionType = VisionType.PHOTON; // PHOTON, LIMELIGHT, NONE
 
   /** Enumerate the robot types (name your robots here) */
@@ -339,7 +335,7 @@ public final class Constants {
     public static final double kMaxLinearAccelMetersPerSecSq = 4.0;
 
     // For Profiled PID Motion -- NEED TUNING!
-    // Used in a variety of contexts, including PathPlanner and AutoPilot
+    // Used for drive control and AutoPilot
     // Chassis (not module) across-the-field strafing motion
     public static final double kStrafeP = 3.0;
     public static final double kStrafeI = 0.0;
@@ -352,12 +348,14 @@ public final class Constants {
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTimeSecs = 10;
 
-    // SysID characterization constants
-    public static final double kSysIdMaxVoltage = 12.0;
-    public static final double kSysIdDelaySecs = 3.0;
-    public static final double kSysIdQuasistaticTimeoutSecs = 5.0;
-    public static final double kSysIdDynamicTimeoutSecs = 3.0;
-    public static final double kSysIdPreRunStopSecs = 1.0;
+    // Commands V3 deferred: SysId drive constants
+    //     // SysID characterization constants
+    //     public static final double kSysIdMaxVoltage = 12.0;
+    //     public static final double kSysIdDelaySecs = 3.0;
+    //     public static final double kSysIdQuasistaticTimeoutSecs = 5.0;
+    //     public static final double kSysIdDynamicTimeoutSecs = 3.0;
+    //     public static final double kSysIdPreRunStopSecs = 1.0;
+    // End deferred integration.
     public static final double kFeedforwardCharacterizationStartDelaySecs = 2.0;
     public static final double kFeedforwardCharacterizationRampRateVoltsPerSec = 0.1;
     public static final double kWheelRadiusCharacterizationStartDelaySecs = 1.0;
@@ -388,8 +386,10 @@ public final class Constants {
 
     // Odometry-related constants ==================================
     public static final double kPoseBufferHistorySecs = 1.5;
-    public static final double kPathPlannerVisionFreshnessSec = 0.5;
-    public static final double kPathPlannerStartToleranceMeters = 0.5;
+    // Commands V3 deferred: PathPlanner start-pose thresholds
+    //     public static final double kPathPlannerVisionFreshnessSec = 0.5;
+    //     public static final double kPathPlannerStartToleranceMeters = 0.5;
+    // End deferred integration.
     // How aggressively to pull pose toward vision while DISABLED.
     // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
     public static final double kDisabledVisionBlendAlpha = 0.15;
@@ -426,11 +426,12 @@ public final class Constants {
     public static final double kClosedLoopRampPeriodSecs = 0.15;
     public static final double kOpenLoopRampPeriodSecs = 0.25;
 
-    // SysId characterization settings
-    public static final double kSysIdQuasistaticRampRateVoltsPerSec = 1.0;
-    public static final double kSysIdDynamicStepVoltageVolts = 7.0;
-    public static final double kSysIdTimeoutSecs = 10.0;
-
+    // Commands V3 deferred: SysId flywheel constants
+    //     // SysId characterization settings
+    //     public static final double kSysIdQuasistaticRampRateVoltsPerSec = 1.0;
+    //     public static final double kSysIdDynamicStepVoltageVolts = 7.0;
+    //     public static final double kSysIdTimeoutSecs = 10.0;
+    // End deferred integration.
     // CTRE Motion Magic Velocity settings
     public static final double kMotionMagicAccelerationRotPerSecSq = 400.0;
     public static final double kMotionMagicJerkRotPerSecCubed = 4000.0;
@@ -468,29 +469,30 @@ public final class Constants {
   /** (Semi-)Autonomous Action Constants *********************************** */
   public static final class AutoConstants {
 
-    // ********** PATHPLANNER CONSTANTS *******************
-    // PathPlanner Config constants
-    public static final RobotConfig kPathPlannerConfig =
-        new RobotConfig(
-            RobotConstants.kMass.in(Kilograms),
-            RobotConstants.kMomentOfInertiaKgMetersSq,
-            new ModuleConfig(
-                DrivebaseConstants.kWheelRadiusMeters,
-                DrivebaseConstants.kMaxLinearSpeedMetersPerSec,
-                RobotConstants.kWheelCoefficientOfFriction,
-                DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
-                DrivebaseConstants.kSlipCurrentAmps,
-                1),
-            Drive.getModuleTranslations());
-
-    // Alternatively, we can build this from the PathPlanner GUI:
-    // public static final RobotConfig kPathPlannerConfig = RobotConfig.fromGUISettings();
-
-    // ********** CHOREO CONSTANTS ************************
-    // Drive and Turn PID constants used for ChoreO
-    public static final PIDConstants kChoreoDrivePID = new PIDConstants(10.0, 0.0, 0.0);
-    public static final PIDConstants kChoreoSteerPID = new PIDConstants(7.5, 0.0, 0.0);
-
+    // Commands V3 deferred: PathPlanner and Choreo configuration
+    //     // ********** PATHPLANNER CONSTANTS *******************
+    //     // PathPlanner Config constants
+    //     public static final RobotConfig kPathPlannerConfig =
+    //         new RobotConfig(
+    //             RobotConstants.kMass.in(Kilograms),
+    //             RobotConstants.kMomentOfInertiaKgMetersSq,
+    //             new ModuleConfig(
+    //                 DrivebaseConstants.kWheelRadiusMeters,
+    //                 DrivebaseConstants.kMaxLinearSpeedMetersPerSec,
+    //                 RobotConstants.kWheelCoefficientOfFriction,
+    //                 DCMotor.getKrakenX60Foc(1).withReduction(SwerveConstants.kDriveGearRatio),
+    //                 DrivebaseConstants.kSlipCurrentAmps,
+    //                 1),
+    //             Drive.getModuleTranslations());
+    //
+    //     // Alternatively, we can build this from the PathPlanner GUI:
+    //     // public static final RobotConfig kPathPlannerConfig = RobotConfig.fromGUISettings();
+    //
+    //     // ********** CHOREO CONSTANTS ************************
+    //     // Drive and Turn PID constants used for ChoreO
+    //     public static final PIDConstants kChoreoDrivePID = new PIDConstants(10.0, 0.0, 0.0);
+    //     public static final PIDConstants kChoreoSteerPID = new PIDConstants(7.5, 0.0, 0.0);
+    // End deferred integration.
     // ********** AUTOPILOT CONSTANTS *********************
     // Autopilot (Drive to Pose in Teleop) Constraints
     // see https://therekrab.github.io/autopilot/usage.html
@@ -605,7 +607,9 @@ public final class Constants {
   public static final class DeployConstants {
     public static final String kAprilTagDir = "apriltags";
     public static final String kChoreoDir = "choreo";
-    public static final String kPathPlannerDir = "pathplanner";
+    // Commands V3 deferred: PathPlanner deploy directory
+    //     public static final String kPathPlannerDir = "pathplanner";
+    // End deferred integration.
     public static final String kYagslDir = "swerve";
   }
 

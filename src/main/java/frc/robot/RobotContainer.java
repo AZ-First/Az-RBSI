@@ -19,7 +19,6 @@
 
 package frc.robot;
 
-import com.pathplanner.lib.auto.AutoBuilder;
 import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
@@ -50,24 +49,22 @@ import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSICANHealth;
 import frc.robot.util.RBSIController;
-import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.DriveStyle;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIPowerMonitor;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.VisionSystemSim;
-import org.wpilib.command2.Command;
-import org.wpilib.command2.Commands;
-import org.wpilib.command2.button.CommandJoystick;
-import org.wpilib.command2.sysid.SysIdRoutine;
+import org.wpilib.command3.Command;
+import org.wpilib.command3.Trigger;
+import org.wpilib.command3.button.CommandJoystick;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.GenericHID;
 import org.wpilib.driverstation.NiDsXboxController;
+import org.wpilib.driverstation.RobotState;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.geometry.Transform2d;
@@ -87,6 +84,7 @@ public class RobotContainer {
   // These two are needed for the Sweep evaluator for camera FOV simulation
   final CommandJoystick joystick3 = new CommandJoystick(3); // Joystick for CameraSweepEvaluator
   private final CameraSweepEvaluator sweep;
+  private double lastSweepPressTime = Double.NEGATIVE_INFINITY;
 
   /** Declare the robot subsystems here ************************************ */
   // These are the "Active Subsystems" that the robot controls
@@ -113,13 +111,19 @@ public class RobotContainer {
   private List<RBSICANHealth> canHealth;
 
   /** Dashboard inputs ***************************************************** */
-  // AutoChoosers for both supported path planning types
-  private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+  // Manual autonomous and drivetrain characterization options
+  private final LoggedDashboardChooser<Command> autoChooser =
+      new LoggedDashboardChooser<>("Auto Choices");
 
-  // TODO(2027): Re-enable Choreo chooser/factory when ChoreoLib supports 2027 WPILib.
-  // private final LoggedDashboardChooser<Command> autoChooserChoreo;
-  // private final AutoFactory autoFactoryChoreo;
-
+  // Commands V3 deferred: PathPlanner and Choreo chooser fields
+  //   /** Dashboard inputs ***************************************************** */
+  //   // AutoChoosers for both supported path planning types
+  //   private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+  //
+  //   // TODO(2027): Re-enable Choreo chooser/factory when ChoreoLib supports 2027 WPILib.
+  //   // private final LoggedDashboardChooser<Command> autoChooserChoreo;
+  //   // private final AutoFactory autoFactoryChoreo;
+  // End deferred integration.
   private final LoggedDashboardChooser<DriveStyle> driveStyle =
       new LoggedDashboardChooser<>("Drive Style");
 
@@ -218,50 +222,60 @@ public class RobotContainer {
     // include ``m_drivebase``, as that is automatically monitored.
     m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
 
-    // Define PathPlanner named commands before any autos or paths are created.
-    defineAutoCommands();
-
-    // Set up the SmartDashboard Auto Chooser based on auto type
-    switch (Constants.getAutoType()) {
-      case MANUAL:
-        // This is where the "Leave Auto" will go
-        // ...
-        // Set the others to null
-        autoChooserPathPlanner = null;
-        // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
-        // autoChooserChoreo = null;
-        // autoFactoryChoreo = null;
-        break;
-
-      case PATHPLANNER:
-        autoChooserPathPlanner =
-            new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
-        // Set the others to null
-        // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
-        // autoChooserChoreo = null;
-        // autoFactoryChoreo = null;
-        break;
-
-      case CHOREO:
-        // TODO(2027): Re-enable this Choreo AutoFactory setup when ChoreoLib supports 2027 WPILib.
-        // autoFactoryChoreo =
-        //     new AutoFactory(
-        //         m_drivebase::getPose,
-        //         m_drivebase::resetPose,
-        //         m_drivebase::followTrajectory,
-        //         true,
-        //         m_drivebase);
-        // autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
-        // autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
-        // autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
-        autoChooserPathPlanner = null;
-        break;
-
-      default:
-        // Then, throw the error
-        throw new RuntimeException(
-            "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
-    }
+    // Commands V3 deferred: PathPlanner and Choreo chooser configuration
+    //     // Define PathPlanner named commands before any autos or paths are created.
+    //     defineAutoCommands();
+    //
+    //     // Set up the SmartDashboard Auto Chooser based on auto type
+    //     switch (Constants.getAutoType()) {
+    //       case MANUAL:
+    //         // This is where the "Leave Auto" will go
+    //         // ...
+    //         // Set the others to null
+    //         autoChooserPathPlanner = null;
+    //         // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
+    //         // autoChooserChoreo = null;
+    //         // autoFactoryChoreo = null;
+    //         break;
+    //
+    //       case PATHPLANNER:
+    //         autoChooserPathPlanner =
+    //             new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+    //         // Set the others to null
+    //         // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
+    //         // autoChooserChoreo = null;
+    //         // autoFactoryChoreo = null;
+    //         break;
+    //
+    //       case CHOREO:
+    //         // TODO(2027): Re-enable this Choreo AutoFactory setup when ChoreoLib supports 2027
+    // WPILib.
+    //         // autoFactoryChoreo =
+    //         //     new AutoFactory(
+    //         //         m_drivebase::getPose,
+    //         //         m_drivebase::resetPose,
+    //         //         m_drivebase::followTrajectory,
+    //         //         true,
+    //         //         m_drivebase);
+    //         // autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
+    //         // autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
+    //         // autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
+    //         autoChooserPathPlanner = null;
+    //         break;
+    //
+    //       default:
+    //         // Then, throw the error
+    //         throw new RuntimeException(
+    //             "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
+    //     }
+    // End deferred integration.
+    autoChooser.addDefaultOption(
+        "Do Nothing", Command.noRequirements(co -> {}).named("Do Nothing"));
+    autoChooser.addOption(
+        "Drive Wheel Radius Characterization",
+        DriveCommands.wheelRadiusCharacterization(m_drivebase));
+    autoChooser.addOption(
+        "Drive Simple FF Characterization", DriveCommands.feedforwardCharacterization(m_drivebase));
 
     // Get drive style from the Dashboard Chooser. The constant controls the boot default, and the
     // dashboard chooser lets teams swap stick layouts between drivers without recompiling.
@@ -273,23 +287,19 @@ public class RobotContainer {
       }
     }
 
-    // Define SysIs Routines
-    definesysIdRoutines();
+    // Commands V3 deferred: SysId chooser registration call
+    //     // Define SysIs Routines
+    //     definesysIdRoutines();
+    // End deferred integration.
     // Configure the button and trigger bindings
     configureBindings();
-  }
-
-  /** Use this method to define your Autonomous commands for use with PathPlanner / Choreo */
-  private void defineAutoCommands() {
-
-    // NamedCommands.registerCommand("Zero", Commands.runOnce(() -> m_drivebase.zero()));
   }
 
   /**
    * Use this method to define your button->command mappings. Buttons can be created by
    * instantiating a {@link GenericHID} or one of its subclasses ({@link
    * org.wpilib.driverstation.Joystick} or {@link NiDsXboxController}), and then passing it to a
-   * {@link org.wpilib.command2.button.JoystickButton}.
+   * {@link org.wpilib.command3.button.JoystickButton}.
    */
   private void configureBindings() {
 
@@ -300,8 +310,7 @@ public class RobotContainer {
 
     // ** Example Commands -- Remap, remove, or change as desired **
     // Press B / Circle button while driving --> ROBOT-CENTRIC
-    driverController
-        .eastFaceButton()
+    teleopTrigger(driverController.eastFaceButton())
         .whileTrue(
             DriveCommands.robotRelativeDrive(
                 m_drivebase,
@@ -313,64 +322,60 @@ public class RobotContainer {
     driverController.southFaceButton().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
 
     // Press X / Square button --> Stop with wheels in X-Lock position
-    driverController.westFaceButton().whileTrue(DriveCommands.stopWithX(m_drivebase));
+    teleopTrigger(driverController.westFaceButton())
+        .whileTrue(DriveCommands.stopWithX(m_drivebase));
 
     // Press Y / Triangle button --> Manually Re-Zero the Gyro
     driverController.northFaceButton().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
     // Press RIGHT BUMPER / R1 --> Run the example flywheel
-    driverController
-        .rightBumper()
+    teleopTrigger(driverController.rightBumper())
         .whileTrue(
-            Commands.startEnd(
-                () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
-                m_flywheel::stop,
-                m_flywheel));
+            m_flywheel
+                .runRepeatedly(() -> m_flywheel.runVelocity(flywheelSpeedInput.get()))
+                .whenCanceled(m_flywheel::stop)
+                .named("Run Flywheel"));
 
     // Press LEFT BUMPER / L1 --> Drive to a demo pose offset defined in OperatorConstants
-    driverController
-        .leftBumper()
+    teleopTrigger(driverController.leftBumper())
         .whileTrue(
-            Commands.defer(
-                () -> {
-                  // Demo target relative to the current pose.
-                  Pose2d pose =
-                      m_drivebase
-                          .getPose()
-                          .transformBy(
-                              new Transform2d(
-                                  OperatorConstants.kAutopilotDemoXOffsetMeters,
-                                  0.0,
-                                  Rotation2d.kZero));
+            Command.noRequirements(
+                    co -> {
+                      // Demo target relative to the current pose.
+                      Pose2d pose =
+                          m_drivebase
+                              .getPose()
+                              .transformBy(
+                                  new Transform2d(
+                                      OperatorConstants.kAutopilotDemoXOffsetMeters,
+                                      0.0,
+                                      Rotation2d.kZero));
 
-                  // Alternatively, you could define a pose in a separate module and call it here.
-                  //
-                  // Example from 2025 Reefscape:
-                  // --------
-                  // pose = ReefPoses.kBluePoleE;
+                      // Alternatively, you could define a pose in a separate module and call it
+                      // here.
+                      //
+                      // Example from 2025 Reefscape:
+                      // --------
+                      // pose = ReefPoses.kBluePoleE;
 
-                  return AutopilotCommands.runAutopilot(m_drivebase, pose);
-                },
-                Set.of(m_drivebase)));
+                      co.await(AutopilotCommands.runAutopilot(m_drivebase, pose));
+                    })
+                .named("Drive to Demo Pose"));
 
     // Press POV LEFT to nudge the robot left
-    driverController
-        .povLeft()
+    teleopTrigger(driverController.povLeft())
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
-    driverController
-        .povRight()
+    teleopTrigger(driverController.povRight())
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
-    driverController
-        .povUp()
+    teleopTrigger(driverController.povUp())
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
-    driverController
-        .povDown()
+    teleopTrigger(driverController.povDown())
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
@@ -378,23 +383,28 @@ public class RobotContainer {
     if (Constants.getMode() == Mode.SIM) {
       // IN SIMULATION ONLY:
       // Double-press the A button on Joystick3 to run the CameraSweepEvaluator
-      // Use WPILib's built-in double-press binding
       joystick3
           .button(1)
-          .multiPress(2, 0.2)
           .onTrue(
-              Commands.runOnce(
-                  () -> {
-                    try {
-                      sweep.runFullSweep(
-                          Filesystem.getOperatingDirectory()
-                              .toPath()
-                              .resolve("camera_sweep.csv")
-                              .toString());
-                    } catch (Exception e) {
-                      DriverStationErrors.reportError("Camera sweep failed", e.getStackTrace());
-                    }
-                  }));
+              Command.noRequirements(
+                      co -> {
+                        double now = org.wpilib.system.Timer.getTimestamp();
+                        if (now - lastSweepPressTime > 0.2) {
+                          lastSweepPressTime = now;
+                          return;
+                        }
+                        lastSweepPressTime = Double.NEGATIVE_INFINITY;
+                        try {
+                          sweep.runFullSweep(
+                              Filesystem.getOperatingDirectory()
+                                  .toPath()
+                                  .resolve("camera_sweep.csv")
+                                  .toString());
+                        } catch (Exception e) {
+                          DriverStationErrors.reportError("Camera sweep failed", e.getStackTrace());
+                        }
+                      })
+                  .named("Camera Sweep Double Press"));
     }
   }
 
@@ -410,30 +420,35 @@ public class RobotContainer {
     // into the HUB during AUTO.  Since shooters are beyond the scope of Az-RBSI, you will have to
     // write your own command and call it here.
 
-    // Replace Commands.none() with your command that shoots fuel into the HUB.
-    return Commands.none();
+    return autoChooser.get();
   }
 
-  /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
-   * @return the command to run in autonomous
-   */
-  public Command getAutonomousCommandPathPlanner() {
-    // Use the ``autoChooser`` to define your auto path from the SmartDashboard
-    return autoChooserPathPlanner.get();
-  }
-
-  /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
-   * @return the command to run in autonomous
-   */
-  public Command getAutonomousCommandChoreo() {
-    // TODO(2027): Return autoChooserChoreo.get() when ChoreoLib supports 2027 WPILib.
-    return Commands.none();
-  }
-
+  // Commands V3 deferred: PathPlanner named commands and autonomous getters
+  //   /** Use this method to define your Autonomous commands for use with PathPlanner / Choreo */
+  //   private void defineAutoCommands() {
+  //
+  //     // NamedCommands.registerCommand("Zero", Commands.runOnce(() -> m_drivebase.zero()));
+  //   }
+  //   /**
+  //    * Use this to pass the autonomous command to the main {@link Robot} class.
+  //    *
+  //    * @return the command to run in autonomous
+  //    */
+  //   public Command getAutonomousCommandPathPlanner() {
+  //     // Use the ``autoChooser`` to define your auto path from the SmartDashboard
+  //     return autoChooserPathPlanner.get();
+  //   }
+  //
+  //   /**
+  //    * Use this to pass the autonomous command to the main {@link Robot} class.
+  //    *
+  //    * @return the command to run in autonomous
+  //    */
+  //   public Command getAutonomousCommandChoreo() {
+  //     // TODO(2027): Return autoChooserChoreo.get() when ChoreoLib supports 2027 WPILib.
+  //     return Commands.none();
+  //   }
+  // End deferred integration.
   /** Updates the alerts. */
   public void updateAlerts() {
     // AprilTag layout alert
@@ -453,66 +468,77 @@ public class RobotContainer {
     return m_drivebase;
   }
 
+  /** Stops outputs when leaving an enabled mode. */
+  public void stopActuators() {
+    m_drivebase.stop();
+    m_flywheel.stop();
+  }
+
+  private static Trigger teleopTrigger(Trigger input) {
+    return input.and(RobotState::isTeleopEnabled);
+  }
+
   /** Vision getter method for use with Robot.java */
   public Vision getVision() {
     return m_vision;
   }
 
-  /**
-   * Set up the SysID routines from AdvantageKit
-   *
-   * <p>NOTE: These are currently only accessible with Constants.AutoType.PATHPLANNER
-   */
-  private void definesysIdRoutines() {
-    if (Constants.getAutoType() == AutoType.PATHPLANNER) {
-      // Drivebase characterization
-      autoChooserPathPlanner.addOption(
-          "Drive Wheel Radius Characterization",
-          DriveCommands.wheelRadiusCharacterization(m_drivebase));
-      autoChooserPathPlanner.addOption(
-          "Drive Simple FF Characterization",
-          DriveCommands.feedforwardCharacterization(m_drivebase));
-      autoChooserPathPlanner.addOption(
-          "Drive SysId (Quasistatic Forward)",
-          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Drive SysId (Quasistatic Reverse)",
-          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Drive SysId (Dynamic Forward)",
-          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Drive SysId (Dynamic Reverse)",
-          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-      // Example Flywheel SysId Characterization
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Quasistatic Forward)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Quasistatic Reverse)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Dynamic Forward)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Dynamic Reverse)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Quasistatic Forward)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Dynamic Forward)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Dynamic Reverse)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse));
-    }
-  }
-
+  // Commands V3 deferred: drive and flywheel SysId chooser options
+  //   /**
+  //    * Set up the SysID routines from AdvantageKit
+  //    *
+  //    * <p>NOTE: These are currently only accessible with Constants.AutoType.PATHPLANNER
+  //    */
+  //   private void definesysIdRoutines() {
+  //     if (Constants.getAutoType() == AutoType.PATHPLANNER) {
+  //       // Drivebase characterization
+  //       autoChooserPathPlanner.addOption(
+  //           "Drive Wheel Radius Characterization",
+  //           DriveCommands.wheelRadiusCharacterization(m_drivebase));
+  //       autoChooserPathPlanner.addOption(
+  //           "Drive Simple FF Characterization",
+  //           DriveCommands.feedforwardCharacterization(m_drivebase));
+  //       autoChooserPathPlanner.addOption(
+  //           "Drive SysId (Quasistatic Forward)",
+  //           m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+  //       autoChooserPathPlanner.addOption(
+  //           "Drive SysId (Quasistatic Reverse)",
+  //           m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+  //       autoChooserPathPlanner.addOption(
+  //           "Drive SysId (Dynamic Forward)",
+  //           m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kForward));
+  //       autoChooserPathPlanner.addOption(
+  //           "Drive SysId (Dynamic Reverse)",
+  //           m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+  //
+  //       // Example Flywheel SysId Characterization
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Voltage (Quasistatic Forward)",
+  //           m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Voltage (Quasistatic Reverse)",
+  //           m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kReverse));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Voltage (Dynamic Forward)",
+  //           m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kForward));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Voltage (Dynamic Reverse)",
+  //           m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Duty Cycle (Quasistatic Forward)",
+  //           m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
+  //           m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kReverse));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Duty Cycle (Dynamic Forward)",
+  //           m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kForward));
+  //       autoChooserPathPlanner.addOption(
+  //           "Flywheel SysId Duty Cycle (Dynamic Reverse)",
+  //           m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse));
+  //     }
+  //   }
+  // End deferred integration.
   // Vision Factories
   // Vision Factories (REAL)
   private VisionIO[] buildVisionIOsReal(Drive drive) {
@@ -570,16 +596,18 @@ public class RobotContainer {
     return ios;
   }
 
-  // TODO(2027): Re-enable this example Choreo auto when ChoreoLib supports 2027 WPILib.
-  // private AutoRoutine twoPieceAuto() {
-  //   AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
-  //   AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
-  //   AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
-  //   routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
-  //   pickupTraj.done().onTrue(scoreTraj.cmd());
-  //   return routine;
-  // }
-
+  // Commands V3 deferred: example Choreo routine
+  //   // TODO(2027): Re-enable this example Choreo auto when ChoreoLib supports 2027 WPILib.
+  //   // private AutoRoutine twoPieceAuto() {
+  //   //   AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
+  //   //   AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
+  //   //   AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
+  //   //   routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(),
+  // pickupTraj.cmd()));
+  //   //   pickupTraj.done().onTrue(scoreTraj.cmd());
+  //   //   return routine;
+  //   // }
+  // End deferred integration.
   private DriveStyle getSelectedDriveStyle() {
     DriveStyle selected = driveStyle.get();
     return selected != null ? selected : OperatorConstants.kDriveStyle;

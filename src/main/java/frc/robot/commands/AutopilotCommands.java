@@ -24,8 +24,7 @@ import com.therekrab.autopilot.Autopilot.APResult;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.drive.Drive;
 import org.littletonrobotics.junction.Logger;
-import org.wpilib.command2.Command;
-import org.wpilib.command2.Commands;
+import org.wpilib.command3.Command;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.kinematics.ChassisVelocities;
@@ -176,49 +175,52 @@ public final class AutopilotCommands {
    */
   private static Command autopilotToTarget(Drive drive, APTarget target) {
 
-    return Commands.run(
-            () -> {
-              ChassisVelocities robotRelativeSpeeds = drive.getChassisSpeeds();
-              Pose2d pose = drive.getPose();
-              boolean atTarget = AutoConstants.kAutopilot.atTarget(pose, target);
+    return drive
+        .run(
+            co -> {
+              drive.resetHeadingController();
+              while (!AutoConstants.kAutopilot.atTarget(drive.getPose(), target)) {
+                ChassisVelocities robotRelativeSpeeds = drive.getChassisSpeeds();
+                Pose2d pose = drive.getPose();
+                boolean atTarget = AutoConstants.kAutopilot.atTarget(pose, target);
 
-              Logger.recordOutput("Autopilot/CurrentPose", pose);
-              Logger.recordOutput("Autopilot/FinalPose", target.getReference());
-              Logger.recordOutput("Autopilot/RobotSpeeds", robotRelativeSpeeds);
+                Logger.recordOutput("Autopilot/CurrentPose", pose);
+                Logger.recordOutput("Autopilot/FinalPose", target.getReference());
+                Logger.recordOutput("Autopilot/RobotSpeeds", robotRelativeSpeeds);
 
-              // Compute the needed output control transform to move the robot to the desired
-              // position
-              APResult output =
-                  AutoConstants.kAutopilot.calculate(pose, robotRelativeSpeeds, target);
+                // Compute the needed output control transform to move the robot to the desired
+                // position
+                APResult output =
+                    AutoConstants.kAutopilot.calculate(pose, robotRelativeSpeeds, target);
 
-              Logger.recordOutput("Autopilot/outputVx", output.vx());
-              Logger.recordOutput("Autopilot/outputVy", output.vy());
-              Logger.recordOutput("Autopilot/targetAngle", output.targetAngle());
-              Logger.recordOutput("Autopilot/atTarget", atTarget);
+                Logger.recordOutput("Autopilot/outputVx", output.vx());
+                Logger.recordOutput("Autopilot/outputVy", output.vy());
+                Logger.recordOutput("Autopilot/targetAngle", output.targetAngle());
+                Logger.recordOutput("Autopilot/atTarget", atTarget);
 
-              // Output is field relative
-              ChassisVelocities speeds =
-                  new ChassisVelocities(
-                      output.vx(),
-                      output.vy(),
-                      RadiansPerSecond.of(
-                          drive
-                              .getAngleController()
-                              .calculate(
-                                  drive.getHeading().getRadians(),
-                                  output.targetAngle().getRadians())));
+                // Output is field relative
+                ChassisVelocities speeds =
+                    new ChassisVelocities(
+                        output.vx(),
+                        output.vy(),
+                        RadiansPerSecond.of(
+                            drive
+                                .getAngleController()
+                                .calculate(
+                                    drive.getHeading().getRadians(),
+                                    output.targetAngle().getRadians())));
 
-              drive.runVelocity(speeds.toRobotRelative(drive.getHeading()));
-            },
-            drive)
-
-        // Reset PID controller when command starts & ends; run until we're at target
-        .beforeStarting(() -> drive.resetHeadingController())
-        .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target))
-        .finallyDo(
+                drive.runVelocity(speeds.toRobotRelative(drive.getHeading()));
+                co.yield();
+              }
+              drive.stop();
+              drive.resetHeadingController();
+            })
+        .whenCanceled(
             () -> {
               drive.stop();
               drive.resetHeadingController();
-            });
+            })
+        .named("Autopilot to Target");
   }
 }

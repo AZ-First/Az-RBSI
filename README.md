@@ -8,8 +8,12 @@ Arizona's Reference Build and Software Implementation for FRC robots, read as
 "A-Z-ribsy".
 
 Az-RBSI is a robot-code template for teams that want a reliable swerve,
-odometry, vision, autonomous, logging, and tuning baseline without starting from
-an empty project.
+odometry, vision, logging, and tuning baseline without starting from an empty
+project. This branch includes a manual autonomous scaffold.
+
+This `sc2027_cv3` branch uses WPILib Commands V3. See the
+[V3 branch notes](doc/Commands-V3-Branch.md) before using the autonomous or
+SysId guides below; those guides still describe the V2 branch.
 
 ## 2027 CANOPY/BIOCORE
 
@@ -40,8 +44,8 @@ Quick links:
 - [Constants guide](doc/RBSI-Constants.md)
 - [Drive subsystem and Phoenix/YAGSL setup](doc/RBSI-Drive.md)
 - [Vision setup and troubleshooting](doc/RBSI-Vision.md)
-- [Autonomous setup](doc/RBSI-Autonomous.md)
-- [SysId guide](doc/RBSI-SysId.md)
+- [Autonomous setup (V2 branch)](doc/RBSI-Autonomous.md)
+- [SysId guide (V2 branch)](doc/RBSI-SysId.md)
 - [Pose buffer design notes](doc/RBSI-PoseBuffer.md)
 - [AdvantageScope layout guide](doc/RBSI-AdvantageScope.md)
 
@@ -52,17 +56,15 @@ Quick links:
 3. Configure `Constants.java` with [RBSI-Constants.md](doc/RBSI-Constants.md).
 4. Configure the drivetrain with [RBSI-Drive.md](doc/RBSI-Drive.md).
 5. Bring up cameras with [RBSI-Vision.md](doc/RBSI-Vision.md).
-6. Add autonomous paths with [RBSI-Autonomous.md](doc/RBSI-Autonomous.md).
+6. Add a manual V3 autonomous command in `RobotContainer` if needed.
 7. Open the standard layout with [RBSI-AdvantageScope.md](doc/RBSI-AdvantageScope.md).
-8. Characterize mechanisms with [RBSI-SysId.md](doc/RBSI-SysId.md).
+8. Use the remaining wheel-radius or simple drive feedforward characterization chooser options.
 
 ## Experienced User Shortcuts
 
 - Phoenix Tuner X generated constants:
   [RBSI-Drive.md](doc/RBSI-Drive.md#phoenix-tuner-x-constants) and
   [`src/main/java/frc/robot/generated/README`](src/main/java/frc/robot/generated/README)
-- PathPlanner and Choreo lifecycle:
-  [RBSI-Autonomous.md](doc/RBSI-Autonomous.md#match-execution-flow)
 - Disabled odometry and vision behavior:
   [RBSI-PoseBuffer.md](doc/RBSI-PoseBuffer.md)
 - Camera transforms, filtering, and simulation:
@@ -97,7 +99,7 @@ from real match data.
 - [WPILib](https://docs.wpilib.org/en/stable/index.html): FIRST robot libraries
 - [AdvantageKit](https://docs.advantagekit.org/getting-started/what-is-advantagekit/): logging
 - [CTRE Phoenix 6](https://v6.docs.ctr-electronics.com/en/stable/docs/api-reference/mechanisms/swerve/swerve-overview.html): CTRE swerve
-- [PathPlanner](https://pathplanner.dev/home.html): autonomous path planning
+- [Commands V3](https://github.wpilib.org/allwpilib/docs/2027/java/org/wpilib/command3/package-summary.html): robot commands and scheduling
 - [PhotonVision](https://docs.photonvision.org/en/latest/) and
   [Limelight](https://docs.limelightvision.io/docs/docs-limelight/getting-started/summary):
   robot vision
