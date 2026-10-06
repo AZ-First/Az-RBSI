@@ -128,13 +128,11 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    String driveBus = SwerveConstants.driveCANBus(module);
-    String steerBus = SwerveConstants.steerCANBus(module);
-    String encoderBus = SwerveConstants.encoderCANBus(module);
-    SwerveConstants.requireSameBusForRemoteEncoder(module, steerBus, encoderBus);
-    driveTalon = new TalonFX(constants.DriveMotorId, RBSICANBusRegistry.getBus(driveBus));
-    turnTalon = new TalonFX(constants.SteerMotorId, RBSICANBusRegistry.getBus(steerBus));
-    cancoder = new CANcoder(constants.EncoderId, RBSICANBusRegistry.getBus(encoderBus));
+    String moduleBus = SwerveConstants.moduleCANBus(module);
+    var canBus = RBSICANBusRegistry.getBus(moduleBus);
+    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
+    turnTalon = new TalonFX(constants.SteerMotorId, canBus);
+    cancoder = new CANcoder(constants.EncoderId, canBus);
 
     Logger.recordOutput("Drive/EncoderOffsets/Module" + module, constants.EncoderOffset);
 
@@ -216,7 +214,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     drivePosition = driveTalon.getPosition();
     drivePositionOdom = drivePosition.clone(); // NEW
     drivePositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(driveBus, drivePositionOdom);
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, drivePositionOdom);
 
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
@@ -226,7 +224,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     turnPosition = turnTalon.getPosition();
     turnPositionOdom = turnPosition.clone(); // NEW
     turnPositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(steerBus, turnPositionOdom);
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, turnPositionOdom);
 
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnVelocity = turnTalon.getVelocity();

@@ -130,9 +130,9 @@ public class SwerveConstants {
         kFLDriveMotorId = tuner.frontLeft().DriveMotorId;
         kFLSteerMotorId = tuner.frontLeft().SteerMotorId;
         kFLEncoderId = tuner.frontLeft().EncoderId;
-        kFLDriveCanbus = DrivebaseConstants.kFLDriveCANBus;
-        kFLSteerCanbus = DrivebaseConstants.kFLSteerCANBus;
-        kFLEncoderCanbus = DrivebaseConstants.kFLEncoderCANBus;
+        kFLDriveCanbus = DrivebaseConstants.kFLCANBus;
+        kFLSteerCanbus = DrivebaseConstants.kFLCANBus;
+        kFLEncoderCanbus = DrivebaseConstants.kFLCANBus;
         kFLDriveType = "kraken";
         kFLSteerType = "kraken";
         kFLEncoderType = "cancoder";
@@ -146,9 +146,9 @@ public class SwerveConstants {
         kFRDriveMotorId = tuner.frontRight().DriveMotorId;
         kFRSteerMotorId = tuner.frontRight().SteerMotorId;
         kFREncoderId = tuner.frontRight().EncoderId;
-        kFRDriveCanbus = DrivebaseConstants.kFRDriveCANBus;
-        kFRSteerCanbus = DrivebaseConstants.kFRSteerCANBus;
-        kFREncoderCanbus = DrivebaseConstants.kFREncoderCANBus;
+        kFRDriveCanbus = DrivebaseConstants.kFRCANBus;
+        kFRSteerCanbus = DrivebaseConstants.kFRCANBus;
+        kFREncoderCanbus = DrivebaseConstants.kFRCANBus;
         kFRDriveType = "kraken";
         kFRSteerType = "kraken";
         kFREncoderType = "cancoder";
@@ -162,9 +162,9 @@ public class SwerveConstants {
         kBLDriveMotorId = tuner.backLeft().DriveMotorId;
         kBLSteerMotorId = tuner.backLeft().SteerMotorId;
         kBLEncoderId = tuner.backLeft().EncoderId;
-        kBLDriveCanbus = DrivebaseConstants.kBLDriveCANBus;
-        kBLSteerCanbus = DrivebaseConstants.kBLSteerCANBus;
-        kBLEncoderCanbus = DrivebaseConstants.kBLEncoderCANBus;
+        kBLDriveCanbus = DrivebaseConstants.kBLCANBus;
+        kBLSteerCanbus = DrivebaseConstants.kBLCANBus;
+        kBLEncoderCanbus = DrivebaseConstants.kBLCANBus;
         kBLDriveType = "kraken";
         kBLSteerType = "kraken";
         kBLEncoderType = "cancoder";
@@ -178,9 +178,9 @@ public class SwerveConstants {
         kBRDriveMotorId = tuner.backRight().DriveMotorId;
         kBRSteerMotorId = tuner.backRight().SteerMotorId;
         kBREncoderId = tuner.backRight().EncoderId;
-        kBRDriveCanbus = DrivebaseConstants.kBRDriveCANBus;
-        kBRSteerCanbus = DrivebaseConstants.kBRSteerCANBus;
-        kBREncoderCanbus = DrivebaseConstants.kBREncoderCANBus;
+        kBRDriveCanbus = DrivebaseConstants.kBRCANBus;
+        kBRSteerCanbus = DrivebaseConstants.kBRCANBus;
+        kBREncoderCanbus = DrivebaseConstants.kBRCANBus;
         kBRDriveType = "kraken";
         kBRSteerType = "kraken";
         kBREncoderType = "cancoder";
@@ -225,23 +225,11 @@ public class SwerveConstants {
       configuredCANBuses().allMatch(bus -> new CANBus(bus).isNetworkFD()) ? 250.0 : 100.0;
 
   private static Stream<String> configuredCANBuses() {
-    return Stream.of(
-        kPigeonCanbus,
-        kFLDriveCanbus,
-        kFLSteerCanbus,
-        kFLEncoderCanbus,
-        kFRDriveCanbus,
-        kFRSteerCanbus,
-        kFREncoderCanbus,
-        kBLDriveCanbus,
-        kBLSteerCanbus,
-        kBLEncoderCanbus,
-        kBRDriveCanbus,
-        kBRSteerCanbus,
-        kBREncoderCanbus);
+    return Stream.of(kPigeonCanbus, kFLDriveCanbus, kFRDriveCanbus, kBLDriveCanbus, kBRDriveCanbus);
   }
 
-  public static String driveCANBus(int module) {
+  /** Returns the single bus shared by every device in a module. */
+  public static String moduleCANBus(int module) {
     return switch (module) {
       case 0 -> kFLDriveCanbus;
       case 1 -> kFRDriveCanbus;
@@ -249,40 +237,6 @@ public class SwerveConstants {
       case 3 -> kBRDriveCanbus;
       default -> throw new IllegalArgumentException("Invalid module index: " + module);
     };
-  }
-
-  public static String steerCANBus(int module) {
-    return switch (module) {
-      case 0 -> kFLSteerCanbus;
-      case 1 -> kFRSteerCanbus;
-      case 2 -> kBLSteerCanbus;
-      case 3 -> kBRSteerCanbus;
-      default -> throw new IllegalArgumentException("Invalid module index: " + module);
-    };
-  }
-
-  public static String encoderCANBus(int module) {
-    return switch (module) {
-      case 0 -> kFLEncoderCanbus;
-      case 1 -> kFREncoderCanbus;
-      case 2 -> kBLEncoderCanbus;
-      case 3 -> kBREncoderCanbus;
-      default -> throw new IllegalArgumentException("Invalid module index: " + module);
-    };
-  }
-
-  /** Phoenix remote feedback cannot cross a CAN bus boundary. */
-  public static void requireSameBusForRemoteEncoder(
-      int module, String steerBus, String encoderBus) {
-    if (!steerBus.equals(encoderBus)) {
-      throw new IllegalArgumentException(
-          "Module "
-              + module
-              + " steer TalonFX and CANcoder must share a CAN bus: "
-              + steerBus
-              + " != "
-              + encoderBus);
-    }
   }
 
   // SPARK Drive encoder configuration

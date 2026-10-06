@@ -181,15 +181,13 @@ public class ModuleIOBlended implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    String driveBus = SwerveConstants.driveCANBus(module);
-    String encoderBus = SwerveConstants.encoderCANBus(module);
-    driveTalon = new TalonFX(constants.DriveMotorId, RBSICANBusRegistry.getBus(driveBus));
+    String moduleBus = SwerveConstants.moduleCANBus(module);
+    var canBus = RBSICANBusRegistry.getBus(moduleBus);
+    driveTalon = new TalonFX(constants.DriveMotorId, canBus);
     turnSpark =
         new SparkMax(
-            Constants.CANBuses.revPort(SwerveConstants.steerCANBus(module)),
-            constants.SteerMotorId,
-            MotorType.kBrushless);
-    cancoder = new CANcoder(constants.EncoderId, RBSICANBusRegistry.getBus(encoderBus));
+            Constants.CANBuses.revPort(moduleBus), constants.SteerMotorId, MotorType.kBrushless);
+    cancoder = new CANcoder(constants.EncoderId, canBus);
 
     turnController = turnSpark.getClosedLoopController();
 
@@ -288,7 +286,7 @@ public class ModuleIOBlended implements ModuleIO {
     drivePosition = driveTalon.getPosition();
     drivePositionOdom = drivePosition.clone(); // NEW
     drivePositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(driveBus, drivePositionOdom);
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, drivePositionOdom);
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
@@ -298,7 +296,7 @@ public class ModuleIOBlended implements ModuleIO {
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = cancoder.getPosition();
     turnPositionQueue =
-        PhoenixOdometryThread.getInstance().registerSignal(encoderBus, cancoder.getPosition());
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, cancoder.getPosition());
 
     bulkRefreshSignals =
         new BaseStatusSignal[] {

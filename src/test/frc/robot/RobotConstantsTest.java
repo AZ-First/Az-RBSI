@@ -31,30 +31,47 @@ class RobotConstantsTest {
   }
 
   @Test
-  void driveCANAssignmentsAreRegisteredAndMappedToDevices() {
+  void eachModuleHasOneRegisteredCANBusForAllThreeDevices() {
     for (int module = 0; module < 4; module++) {
-      String driveBus = SwerveConstants.driveCANBus(module);
-      String steerBus = SwerveConstants.steerCANBus(module);
-      String encoderBus = SwerveConstants.encoderCANBus(module);
-      assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(driveBus));
-      assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(steerBus));
-      assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(encoderBus));
+      String moduleBus = SwerveConstants.moduleCANBus(module);
+      assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(moduleBus));
+      switch (module) {
+        case 0 -> {
+          assertEquals(Constants.DrivebaseConstants.kFLCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kFLDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFLSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFLEncoderCanbus);
+        }
+        case 1 -> {
+          assertEquals(Constants.DrivebaseConstants.kFRCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kFRDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFRSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFREncoderCanbus);
+        }
+        case 2 -> {
+          assertEquals(Constants.DrivebaseConstants.kBLCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kBLDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBLSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBLEncoderCanbus);
+        }
+        case 3 -> {
+          assertEquals(Constants.DrivebaseConstants.kBRCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kBRDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBRSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBREncoderCanbus);
+        }
+        default -> throw new AssertionError();
+      }
     }
     assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(SwerveConstants.kPigeonCanbus));
-    assertEquals(Constants.DrivebaseConstants.kFLDriveCANBus, SwerveConstants.driveCANBus(0));
-    assertEquals(Constants.DrivebaseConstants.kBRSteerCANBus, SwerveConstants.steerCANBus(3));
-    assertEquals(Constants.DrivebaseConstants.kBREncoderCANBus, SwerveConstants.encoderCANBus(3));
+    assertThrows(IllegalArgumentException.class, () -> SwerveConstants.moduleCANBus(4));
   }
 
   @Test
-  void systemcorePortsAndRemoteFeedbackBusConstraintsAreExplicit() {
+  void systemcorePortsAreExplicit() {
     assertEquals(0, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_0));
     assertEquals(4, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_4));
     assertThrows(IllegalArgumentException.class, () -> Constants.CANBuses.revPort("DriveTrain"));
-    SwerveConstants.requireSameBusForRemoteEncoder(0, "can_s1", "can_s1");
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> SwerveConstants.requireSameBusForRemoteEncoder(0, "can_s1", "can_s2"));
   }
 
   @Test

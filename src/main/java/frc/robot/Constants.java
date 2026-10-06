@@ -181,18 +181,10 @@ public final class Constants {
         Stream.of(
                 RIO,
                 DrivebaseConstants.kPigeonCANBus,
-                DrivebaseConstants.kFLDriveCANBus,
-                DrivebaseConstants.kFLSteerCANBus,
-                DrivebaseConstants.kFLEncoderCANBus,
-                DrivebaseConstants.kFRDriveCANBus,
-                DrivebaseConstants.kFRSteerCANBus,
-                DrivebaseConstants.kFREncoderCANBus,
-                DrivebaseConstants.kBLDriveCANBus,
-                DrivebaseConstants.kBLSteerCANBus,
-                DrivebaseConstants.kBLEncoderCANBus,
-                DrivebaseConstants.kBRDriveCANBus,
-                DrivebaseConstants.kBRSteerCANBus,
-                DrivebaseConstants.kBREncoderCANBus)
+                DrivebaseConstants.kFLCANBus,
+                DrivebaseConstants.kFRCANBus,
+                DrivebaseConstants.kBLCANBus,
+                DrivebaseConstants.kBRCANBus)
             .distinct()
             .toArray(String[]::new);
 
@@ -321,22 +313,14 @@ public final class Constants {
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
 
-    // Assign each drive device to a registered CAN bus. Defaults preserve the old single-bus
-    // layout. Use CANBuses.SYSTEMCORE_0 through SYSTEMCORE_4 to split the drive on SystemCore.
-    // A Phoenix steer TalonFX and its remote CANcoder MUST share a bus for fused feedback.
+    // Assign one bus per complete swerve module (drive motor, steer motor, and encoder). Defaults
+    // preserve the old single-bus layout; use SYSTEMCORE_0 through SYSTEMCORE_4 to split modules.
+    // The Pigeon can be assigned independently.
     public static final String kPigeonCANBus = CANBuses.DRIVE;
-    public static final String kFLDriveCANBus = CANBuses.DRIVE;
-    public static final String kFLSteerCANBus = CANBuses.DRIVE;
-    public static final String kFLEncoderCANBus = CANBuses.DRIVE;
-    public static final String kFRDriveCANBus = CANBuses.DRIVE;
-    public static final String kFRSteerCANBus = CANBuses.DRIVE;
-    public static final String kFREncoderCANBus = CANBuses.DRIVE;
-    public static final String kBLDriveCANBus = CANBuses.DRIVE;
-    public static final String kBLSteerCANBus = CANBuses.DRIVE;
-    public static final String kBLEncoderCANBus = CANBuses.DRIVE;
-    public static final String kBRDriveCANBus = CANBuses.DRIVE;
-    public static final String kBRSteerCANBus = CANBuses.DRIVE;
-    public static final String kBREncoderCANBus = CANBuses.DRIVE;
+    public static final String kFLCANBus = CANBuses.DRIVE;
+    public static final String kFRCANBus = CANBuses.DRIVE;
+    public static final String kBLCANBus = CANBuses.DRIVE;
+    public static final String kBRCANBus = CANBuses.DRIVE;
 
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed
