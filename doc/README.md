@@ -25,6 +25,7 @@ project front door; this page is the working table of contents.
 | [recommendations/FRC-Product-Watch-2026-2027.md](recommendations/FRC-Product-Watch-2026-2027.md) | Purchasing and evaluation recommendations for notable REBUILT products and BIOCORE-era technology. |
 | [recommendations/Pose-Odometry-Vision-Integration.md](recommendations/Pose-Odometry-Vision-Integration.md) | Architecture review and migration recommendations for precise, reliable, efficient localization. |
 | [recommendations/Top-Team-Common-Practices.md](recommendations/Top-Team-Common-Practices.md) | Evidence-backed engineering, software, practice, scouting, and competition routines common to high-performing teams. |
+| [recommendations/PhotonVision-Camera-Selection.md](recommendations/PhotonVision-Camera-Selection.md) | Camera, connector, mounting, and test recommendations for reliable PhotonVision input. |
 
 ## New User Bring-Up Path
 
@@ -63,6 +64,8 @@ project front door; this page is the working table of contents.
   [recommendations/Pose-Odometry-Vision-Integration.md](recommendations/Pose-Odometry-Vision-Integration.md)
 - Common practices of high-performing teams:
   [recommendations/Top-Team-Common-Practices.md](recommendations/Top-Team-Common-Practices.md)
+- PhotonVision camera selection and connection reliability:
+  [recommendations/PhotonVision-Camera-Selection.md](recommendations/PhotonVision-Camera-Selection.md)
 - Pose buffer internals:
   [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md)
 - AdvantageScope pit-debug layout:
