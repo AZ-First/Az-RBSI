@@ -15,7 +15,6 @@ package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.CANBus;
 import frc.robot.Constants;
-import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerFactory;
 import frc.robot.subsystems.imu.ImuIO;
@@ -37,7 +36,6 @@ public class SwerveConstants {
   public static final double kCoupleRatio;
   public static final double kDriveGearRatio;
   public static final double kSteerGearRatio;
-  public static final String kCANbusName;
   public static final String kPigeonCanbus;
   public static final int kPigeonId;
   public static final double kSteerInertia;
@@ -117,7 +115,6 @@ public class SwerveConstants {
         kCoupleRatio = tuner.frontLeft().CouplingGearRatio;
         kDriveGearRatio = tuner.frontLeft().DriveMotorGearRatio;
         kSteerGearRatio = tuner.frontLeft().SteerMotorGearRatio;
-        kCANbusName = CANBuses.DRIVE;
         kPigeonCanbus = DrivebaseConstants.kPigeonCANBus;
         kPigeonId = tuner.drivetrain().Pigeon2Id;
         kSteerInertia = tuner.frontLeft().SteerInertia;

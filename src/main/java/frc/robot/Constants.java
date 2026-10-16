@@ -167,14 +167,14 @@ public final class Constants {
   /************************************************************************* */
   /** List of Robot CAN Busses ********************************************* */
   public static final class CANBuses {
-    public static final String RIO = "rio";
-    public static final String DRIVE = "DriveTrain";
     // SystemCore's five native CAN interfaces, ordered left to right.
     public static final String SYSTEMCORE_0 = "can_s0";
     public static final String SYSTEMCORE_1 = "can_s1";
     public static final String SYSTEMCORE_2 = "can_s2";
     public static final String SYSTEMCORE_3 = "can_s3";
     public static final String SYSTEMCORE_4 = "can_s4";
+    // The default mechanism bus. This is a SystemCore port, not a roboRIO CAN bus.
+    public static final String RIO = SYSTEMCORE_1;
 
     // Register and health-monitor every bus actually selected below.
     public static final String[] ALL =
@@ -191,7 +191,7 @@ public final class Constants {
     /** REV's 2027 constructors use a numbered SystemCore port rather than a Phoenix bus name. */
     public static int revPort(String bus) {
       return switch (bus) {
-        case RIO, SYSTEMCORE_0 -> 0;
+        case SYSTEMCORE_0 -> 0;
         case SYSTEMCORE_1 -> 1;
         case SYSTEMCORE_2 -> 2;
         case SYSTEMCORE_3 -> 3;
@@ -313,14 +313,14 @@ public final class Constants {
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
 
-    // Assign one bus per complete swerve module (drive motor, steer motor, and encoder). Defaults
-    // preserve the old single-bus layout; use SYSTEMCORE_0 through SYSTEMCORE_4 to split modules.
-    // The Pigeon can be assigned independently.
-    public static final String kPigeonCANBus = CANBuses.DRIVE;
-    public static final String kFLCANBus = CANBuses.DRIVE;
-    public static final String kFRCANBus = CANBuses.DRIVE;
-    public static final String kBLCANBus = CANBuses.DRIVE;
-    public static final String kBRCANBus = CANBuses.DRIVE;
+    // One bus per complete module (drive, steer, encoder), plus an independent Pigeon bus.
+    // Default: front on port 2, back on port 3, Pigeon on port 4, mechanisms on port 1.
+    // Assign any of these five values to another SYSTEMCORE_* bus to change the split.
+    public static final String kPigeonCANBus = CANBuses.SYSTEMCORE_4;
+    public static final String kFLCANBus = CANBuses.SYSTEMCORE_2;
+    public static final String kFRCANBus = CANBuses.SYSTEMCORE_2;
+    public static final String kBLCANBus = CANBuses.SYSTEMCORE_3;
+    public static final String kBRCANBus = CANBuses.SYSTEMCORE_3;
 
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed

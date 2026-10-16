@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import frc.robot.Constants;
 import java.util.NavigableMap;
 import org.junit.jupiter.api.Test;
 import org.wpilib.hardware.hal.HAL;
@@ -25,9 +26,9 @@ class UtilTests {
 
   @Test
   void robotDeviceIdUsesValueEqualityAndHandlesMissingPowerPort() {
-    RobotDeviceId first = new RobotDeviceId(7, "rio", null);
-    RobotDeviceId second = new RobotDeviceId(7, new String("rio"), null);
-    RobotDeviceId differentBus = new RobotDeviceId(7, "DriveTrain", null);
+    RobotDeviceId first = new RobotDeviceId(7, Constants.CANBuses.RIO, null);
+    RobotDeviceId second = new RobotDeviceId(7, new String(Constants.CANBuses.RIO), null);
+    RobotDeviceId differentBus = new RobotDeviceId(7, Constants.CANBuses.SYSTEMCORE_2, null);
 
     assertEquals(first, second);
     assertEquals(first.hashCode(), second.hashCode());
@@ -38,8 +39,8 @@ class UtilTests {
 
   @Test
   void robotDeviceIdLooksUpCanBusThroughRegistry() {
-    RBSICANBusRegistry.initSim("rio");
-    RobotDeviceId device = new RobotDeviceId(1, "rio", 0);
+    RBSICANBusRegistry.initSim(Constants.CANBuses.RIO);
+    RobotDeviceId device = new RobotDeviceId(1, Constants.CANBuses.RIO, 0);
 
     assertThrows(IllegalStateException.class, device::getCANBus);
   }

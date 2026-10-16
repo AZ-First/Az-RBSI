@@ -69,9 +69,24 @@ class RobotConstantsTest {
 
   @Test
   void systemcorePortsAreExplicit() {
+    assertEquals("can_s1", Constants.CANBuses.RIO);
     assertEquals(0, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_0));
     assertEquals(4, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_4));
+    assertEquals(1, Constants.CANBuses.revPort(Constants.CANBuses.RIO));
     assertThrows(IllegalArgumentException.class, () -> Constants.CANBuses.revPort("DriveTrain"));
+  }
+
+  @Test
+  void defaultDriveUsesThreeSystemcoreBuses() {
+    assertEquals(Constants.CANBuses.SYSTEMCORE_2, Constants.DrivebaseConstants.kFLCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_2, Constants.DrivebaseConstants.kFRCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_3, Constants.DrivebaseConstants.kBLCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_3, Constants.DrivebaseConstants.kBRCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_4, Constants.DrivebaseConstants.kPigeonCANBus);
+    assertEquals(
+        4,
+        Arrays.stream(Constants.CANBuses.ALL).distinct().count()); // mechanisms + three drive buses
+    assertTrue(SwerveConstants.kDrivebaseHasMultipleCANBuses);
   }
 
   @Test
