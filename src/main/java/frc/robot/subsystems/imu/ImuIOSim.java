@@ -17,10 +17,10 @@
 
 package frc.robot.subsystems.imu;
 
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.util.Units;
 import frc.robot.util.TimeUtil;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.geometry.Translation3d;
+import org.wpilib.math.util.Units;
 
 /** Simulated IMU for full robot simulation & replay logging */
 public class ImuIOSim implements ImuIO {

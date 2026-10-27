@@ -1,6 +1,6 @@
 package frc.robot.generated;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.configs.*;
@@ -8,10 +8,10 @@ import com.ctre.phoenix6.hardware.*;
 import com.ctre.phoenix6.signals.*;
 import com.ctre.phoenix6.swerve.*;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.*;
-import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.units.measure.*;
+import org.wpilib.math.linalg.Matrix;
+import org.wpilib.math.numbers.N1;
+import org.wpilib.math.numbers.N3;
+import org.wpilib.units.measure.*;
 
 // import frc.robot.subsystems.CommandSwerveDrivetrain;
 
@@ -74,9 +74,8 @@ public class COMPBOTTunerConstants {
   // Configs for the Pigeon 2; leave this null to skip applying Pigeon 2 configs
   private static final Pigeon2Configuration pigeonConfigs = null;
 
-  // CAN bus that the devices are located on;
-  // All swerve devices must share the same CAN bus
-  public static final CANBus kCANBus = new CANBus("DriveTrain", "./logs/example.hoot");
+  // Phoenix Tuner generation bus. Runtime wiring is selected in Constants.DrivebaseConstants.
+  public static final CANBus kCANBus = new CANBus("can_s2", "./logs/example.hoot");
 
   // Theoretical free speed (m/s) at 12 V applied output;
   // This needs to be tuned to your individual robot

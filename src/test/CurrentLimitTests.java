@@ -13,21 +13,22 @@
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.driverstation.RobotState;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.simulation.DriverStationSim;
+import org.wpilib.system.Timer;
+import org.wpilib.units.measure.Current;
 
 public class CurrentLimitTests implements AutoCloseable {
   final int CONFIG_RETRY_COUNT = 5;
@@ -44,7 +45,7 @@ public class CurrentLimitTests implements AutoCloseable {
   public void constructDevices() {
     assert HAL.initialize(500, 0);
 
-    talon = new TalonFX(0);
+    talon = new TalonFX(0, new CANBus(""));
 
     /* enable the robot */
     DriverStationSim.setEnabled(true);
@@ -62,7 +63,7 @@ public class CurrentLimitTests implements AutoCloseable {
   @Test
   public void robotIsEnabled() {
     /* verify that the robot is enabled */
-    assertTrue(DriverStation.isEnabled());
+    assertTrue(RobotState.isEnabled());
   }
 
   @Test
@@ -85,7 +86,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for stator current */
     double initialCurrent = waitForCurrentAbove(statorCurrent, 100.0, 1.0);
 
-    System.out.println("Stator current is " + initialCurrent + " A");
     assertTrue(initialCurrent > 100); // Stator current should be in excess of 100 amps
 
     /* Now apply the stator current limit */
@@ -98,7 +98,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for stator current */
     statorCurrent.waitForUpdate(1);
 
-    System.out.println("Stator current is " + statorCurrent);
     assertTrue(statorCurrent.getValueAsDouble() < 25); // Give some wiggle room
   }
 
@@ -124,7 +123,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for supply current */
     supplyCurrent.waitForUpdate(1);
 
-    System.out.println("Supply current is " + supplyCurrent);
     assertTrue(
         supplyCurrent.getValueAsDouble() > 25); // Supply current should be high before limiting
 
@@ -138,7 +136,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for supply current */
     supplyCurrent.waitForUpdate(1);
 
-    System.out.println("Supply current is " + supplyCurrent);
     assertTrue(
         supplyCurrent.getValueAsDouble() <= 15
             && supplyCurrent.getValueAsDouble()
@@ -150,7 +147,6 @@ public class CurrentLimitTests implements AutoCloseable {
     /* Get the next update for supply current */
     supplyCurrent.waitForUpdate(1);
 
-    System.out.println("Supply current is " + supplyCurrent);
     assertTrue(supplyCurrent.getValueAsDouble() < 10); // Give some wiggle room
   }
 
@@ -166,8 +162,8 @@ public class CurrentLimitTests implements AutoCloseable {
   private double waitForCurrentAbove(
       StatusSignal<Current> currentSignal, double threshold, double timeoutSec) {
     double current = currentSignal.getValueAsDouble();
-    double startTime = Timer.getFPGATimestamp();
-    while (current <= threshold && Timer.getFPGATimestamp() - startTime < timeoutSec) {
+    double startTime = Timer.getTimestamp();
+    while (current <= threshold && Timer.getTimestamp() - startTime < timeoutSec) {
       currentSignal.waitForUpdate(0.100);
       current = currentSignal.getValueAsDouble();
     }

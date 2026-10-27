@@ -13,12 +13,12 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
 import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.system.RobotController;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each
@@ -35,7 +35,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private final LoggedTunableNumber batteryCapacityAh;
   private double totalAmpHours = 0.0;
   private double totalEnergyJoules = 0.0;
-  private long lastTimestampUs = RobotController.getFPGATime(); // In microseconds
+  private long lastTimestampUs = RobotController.getTime(); // In microseconds
   private double lastVoltage = 0.0;
   private double lastTotalCurrent = 0.0;
   private boolean totalCurrentOverLimit = false;
@@ -61,6 +61,7 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private final Alert lowVoltageAlert = new Alert("Low battery voltage!", AlertType.WARNING);
   private final Alert criticalVoltageAlert =
       new Alert("Critical battery voltage!", AlertType.ERROR);
+  private final double[] channelCurrents = new double[24];
 
   private long loops = 0;
 
@@ -100,13 +101,14 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     Logger.recordOutput("Power/TotalCurrent", totalCurrent);
     Logger.recordOutput("Power/TotalCurrentOverLimit", totalCurrentOverLimit);
 
-    for (int ch = 0; ch < Math.min(conduit.getPDPChannelCount(), portAlerts.length); ch++) {
-      portAlerts[ch].set(
-          conduit.getPDPChannelCurrent(ch) > PowerConstants.kMotorPortMaxCurrentAmps);
+    int channelCount = Math.min(channelCurrents.length, conduit.getPDPChannelCount());
+    for (int ch = 0; ch < channelCount; ch++) {
+      channelCurrents[ch] = conduit.getPDPChannelCurrent(ch);
+      portAlerts[ch].set(channelCurrents[ch] > PowerConstants.kMotorPortMaxCurrentAmps);
     }
 
     // --- Battery estimation ---
-    long nowUs = RobotController.getFPGATime();
+    long nowUs = RobotController.getTime();
     double dtSec = (nowUs - lastTimestampUs) / 1e6;
     lastTimestampUs = nowUs;
 
@@ -142,8 +144,8 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   private void logGroupCurrent(String name, int[] ports) {
     double sum = 0.0;
     for (int port : ports) {
-      if (port >= 0 && port < conduit.getPDPChannelCount()) {
-        sum += conduit.getPDPChannelCurrent(port);
+      if (port >= 0 && port < channelCurrents.length) {
+        sum += channelCurrents[port];
       }
     }
     Logger.recordOutput("Power/Subsystems/" + name + "_Current", sum);

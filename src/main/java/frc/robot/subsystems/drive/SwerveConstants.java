@@ -14,15 +14,14 @@
 package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.CANBus;
-import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
-import frc.robot.Constants.CANBuses;
+import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerFactory;
 import frc.robot.subsystems.imu.ImuIO;
-import frc.robot.subsystems.imu.ImuIONavX;
 import frc.robot.subsystems.imu.ImuIOPigeon2;
-import frc.robot.util.YagslConstants;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import org.wpilib.math.util.Units;
 
 /**
  * Holds the proper set of drive constants given the type of drive
@@ -37,7 +36,7 @@ public class SwerveConstants {
   public static final double kCoupleRatio;
   public static final double kDriveGearRatio;
   public static final double kSteerGearRatio;
-  public static final String kCANbusName;
+  public static final String kPigeonCanbus;
   public static final int kPigeonId;
   public static final double kSteerInertia;
   public static final double kDriveInertia;
@@ -116,7 +115,7 @@ public class SwerveConstants {
         kCoupleRatio = tuner.frontLeft().CouplingGearRatio;
         kDriveGearRatio = tuner.frontLeft().DriveMotorGearRatio;
         kSteerGearRatio = tuner.frontLeft().SteerMotorGearRatio;
-        kCANbusName = CANBuses.DRIVE;
+        kPigeonCanbus = DrivebaseConstants.kPigeonCANBus;
         kPigeonId = tuner.drivetrain().Pigeon2Id;
         kSteerInertia = tuner.frontLeft().SteerInertia;
         kDriveInertia = tuner.frontLeft().DriveInertia;
@@ -128,9 +127,9 @@ public class SwerveConstants {
         kFLDriveMotorId = tuner.frontLeft().DriveMotorId;
         kFLSteerMotorId = tuner.frontLeft().SteerMotorId;
         kFLEncoderId = tuner.frontLeft().EncoderId;
-        kFLDriveCanbus = kCANbusName;
-        kFLSteerCanbus = kCANbusName;
-        kFLEncoderCanbus = kCANbusName;
+        kFLDriveCanbus = DrivebaseConstants.kFLCANBus;
+        kFLSteerCanbus = DrivebaseConstants.kFLCANBus;
+        kFLEncoderCanbus = DrivebaseConstants.kFLCANBus;
         kFLDriveType = "kraken";
         kFLSteerType = "kraken";
         kFLEncoderType = "cancoder";
@@ -144,9 +143,9 @@ public class SwerveConstants {
         kFRDriveMotorId = tuner.frontRight().DriveMotorId;
         kFRSteerMotorId = tuner.frontRight().SteerMotorId;
         kFREncoderId = tuner.frontRight().EncoderId;
-        kFRDriveCanbus = kCANbusName;
-        kFRSteerCanbus = kCANbusName;
-        kFREncoderCanbus = kCANbusName;
+        kFRDriveCanbus = DrivebaseConstants.kFRCANBus;
+        kFRSteerCanbus = DrivebaseConstants.kFRCANBus;
+        kFREncoderCanbus = DrivebaseConstants.kFRCANBus;
         kFRDriveType = "kraken";
         kFRSteerType = "kraken";
         kFREncoderType = "cancoder";
@@ -160,9 +159,9 @@ public class SwerveConstants {
         kBLDriveMotorId = tuner.backLeft().DriveMotorId;
         kBLSteerMotorId = tuner.backLeft().SteerMotorId;
         kBLEncoderId = tuner.backLeft().EncoderId;
-        kBLDriveCanbus = kCANbusName;
-        kBLSteerCanbus = kCANbusName;
-        kBLEncoderCanbus = kCANbusName;
+        kBLDriveCanbus = DrivebaseConstants.kBLCANBus;
+        kBLSteerCanbus = DrivebaseConstants.kBLCANBus;
+        kBLEncoderCanbus = DrivebaseConstants.kBLCANBus;
         kBLDriveType = "kraken";
         kBLSteerType = "kraken";
         kBLEncoderType = "cancoder";
@@ -176,9 +175,9 @@ public class SwerveConstants {
         kBRDriveMotorId = tuner.backRight().DriveMotorId;
         kBRSteerMotorId = tuner.backRight().SteerMotorId;
         kBREncoderId = tuner.backRight().EncoderId;
-        kBRDriveCanbus = kCANbusName;
-        kBRSteerCanbus = kCANbusName;
-        kBREncoderCanbus = kCANbusName;
+        kBRDriveCanbus = DrivebaseConstants.kBRCANBus;
+        kBRSteerCanbus = DrivebaseConstants.kBRCANBus;
+        kBREncoderCanbus = DrivebaseConstants.kBRCANBus;
         kBRDriveType = "kraken";
         kBRSteerType = "kraken";
         kBREncoderType = "cancoder";
@@ -191,83 +190,11 @@ public class SwerveConstants {
         break;
 
       case YAGSL:
-        kImuType = YagslConstants.swerveDriveJson.imu.type;
-        kCoupleRatio = YagslConstants.kCoupleRatio;
-        kDriveGearRatio = YagslConstants.kDriveGearRatio;
-        kSteerGearRatio = YagslConstants.kSteerGearRatio;
-        kCANbusName = YagslConstants.kCANbusName;
-        kPigeonId = YagslConstants.kPigeonId;
-        kSteerInertia = YagslConstants.kSteerInertia;
-        kDriveInertia = YagslConstants.kDriveInertia;
-        kSteerFrictionVoltage = YagslConstants.kSteerFrictionVoltage;
-        kDriveFrictionVoltage = YagslConstants.kDriveFrictionVoltage;
-        kSteerCurrentLimit = YagslConstants.kSteerCurrentLimit;
-        kDriveCurrentLimit = YagslConstants.kDriveCurrentLimit;
-        // Front Left
-        kFLDriveMotorId = YagslConstants.kFrontLeftDriveMotorId;
-        kFLSteerMotorId = YagslConstants.kFrontLeftSteerMotorId;
-        kFLEncoderId = YagslConstants.kFrontLeftEncoderId;
-        kFLDriveCanbus = YagslConstants.kFrontLeftDriveCanbus;
-        kFLSteerCanbus = YagslConstants.kFrontLeftSteerCanbus;
-        kFLEncoderCanbus = YagslConstants.kFrontLeftEncoderCanbus;
-        kFLDriveType = YagslConstants.kFrontLeftDriveType.toLowerCase();
-        kFLSteerType = YagslConstants.kFrontLeftSteerType.toLowerCase();
-        kFLEncoderType = YagslConstants.kFrontLeftEncoderType.toLowerCase();
-        kFLEncoderOffset = Units.degreesToRadians(YagslConstants.kFrontLeftEncoderOffset);
-        kFLDriveInvert = YagslConstants.kFrontLeftDriveInvert;
-        kFLSteerInvert = YagslConstants.kFrontLeftSteerInvert;
-        kFLEncoderInvert = YagslConstants.kFrontLeftEncoderInvert;
-        kFLXPosMeters = Units.inchesToMeters(YagslConstants.kFrontLeftXPosInches);
-        kFLYPosMeters = Units.inchesToMeters(YagslConstants.kFrontLeftYPosInches);
-        // Front Right
-        kFRDriveMotorId = YagslConstants.kFrontRightDriveMotorId;
-        kFRSteerMotorId = YagslConstants.kFrontRightSteerMotorId;
-        kFREncoderId = YagslConstants.kFrontRightEncoderId;
-        kFRDriveCanbus = YagslConstants.kFrontRightDriveCanbus;
-        kFRSteerCanbus = YagslConstants.kFrontRightSteerCanbus;
-        kFREncoderCanbus = YagslConstants.kFrontRightEncoderCanbus;
-        kFRDriveType = YagslConstants.kFrontRightDriveType.toLowerCase();
-        kFRSteerType = YagslConstants.kFrontRightSteerType.toLowerCase();
-        kFREncoderType = YagslConstants.kFrontRightEncoderType.toLowerCase();
-        kFREncoderOffset = Units.degreesToRadians(YagslConstants.kFrontRightEncoderOffset);
-        kFRDriveInvert = YagslConstants.kFrontRightDriveInvert;
-        kFRSteerInvert = YagslConstants.kFrontRightSteerInvert;
-        kFREncoderInvert = YagslConstants.kFrontRightEncoderInvert;
-        kFRXPosMeters = Units.inchesToMeters(YagslConstants.kFrontRightXPosInches);
-        kFRYPosMeters = Units.inchesToMeters(YagslConstants.kFrontRightYPosInches);
-        // Back Left
-        kBLDriveMotorId = YagslConstants.kBackLeftDriveMotorId;
-        kBLSteerMotorId = YagslConstants.kBackLeftSteerMotorId;
-        kBLEncoderId = YagslConstants.kBackLeftEncoderId;
-        kBLDriveCanbus = YagslConstants.kBackLeftDriveCanbus;
-        kBLSteerCanbus = YagslConstants.kBackLeftSteerCanbus;
-        kBLEncoderCanbus = YagslConstants.kBackLeftEncoderCanbus;
-        kBLDriveType = YagslConstants.kBackLeftDriveType.toLowerCase();
-        kBLSteerType = YagslConstants.kBackLeftSteerType.toLowerCase();
-        kBLEncoderType = YagslConstants.kBackLeftEncoderType.toLowerCase();
-        kBLEncoderOffset = Units.degreesToRadians(YagslConstants.kBackLeftEncoderOffset);
-        kBLDriveInvert = YagslConstants.kBackLeftDriveInvert;
-        kBLSteerInvert = YagslConstants.kBackLeftSteerInvert;
-        kBLEncoderInvert = YagslConstants.kBackLeftEncoderInvert;
-        kBLXPosMeters = Units.inchesToMeters(YagslConstants.kBackLeftXPosInches);
-        kBLYPosMeters = Units.inchesToMeters(YagslConstants.kBackLeftYPosInches);
-        // Back Right
-        kBRDriveMotorId = YagslConstants.kBackRightDriveMotorId;
-        kBRSteerMotorId = YagslConstants.kBackRightSteerMotorId;
-        kBREncoderId = YagslConstants.kBackRightEncoderId;
-        kBRDriveCanbus = YagslConstants.kBackRightDriveCanbus;
-        kBRSteerCanbus = YagslConstants.kBackRightSteerCanbus;
-        kBREncoderCanbus = YagslConstants.kBackRightEncoderCanbus;
-        kBRDriveType = YagslConstants.kBackRightDriveType.toLowerCase();
-        kBRSteerType = YagslConstants.kBackRightSteerType.toLowerCase();
-        kBREncoderType = YagslConstants.kBackRightEncoderType.toLowerCase();
-        kBREncoderOffset = Units.degreesToRadians(YagslConstants.kBackRightEncoderOffset);
-        kBRDriveInvert = YagslConstants.kBackRightDriveInvert;
-        kBRSteerInvert = YagslConstants.kBackRightSteerInvert;
-        kBREncoderInvert = YagslConstants.kBackRightEncoderInvert;
-        kBRXPosMeters = Units.inchesToMeters(YagslConstants.kBackRightXPosInches);
-        kBRYPosMeters = Units.inchesToMeters(YagslConstants.kBackRightYPosInches);
-        break;
+        // TODO(2027): Re-enable the YagslConstants-backed mapping when YAGSL and its
+        // required vendordeps publish 2027/SystemCore-compatible releases. Restore
+        // the previous assignments for IMU type, gear ratios, CAN bus, module IDs,
+        // encoder offsets, inversion flags, and module positions.
+        throw new UnsupportedOperationException("YAGSL is disabled pending 2027-compatible deps");
 
       default:
         throw new RuntimeException("Invalid Swerve Drive Type");
@@ -286,9 +213,28 @@ public class SwerveConstants {
               Math.hypot(kBLXPosMeters, kBLYPosMeters), Math.hypot(kBRXPosMeters, kBRYPosMeters)));
   public static final double kDriveBaseRadiusInches = Units.metersToInches(kDriveBaseRadiusMeters);
 
-  // Are we on the CANivore or not?
+  /** True when Phoenix signals must be refreshed separately for multiple networks. */
+  public static final boolean kDrivebaseHasMultipleCANBuses =
+      configuredCANBuses().distinct().count() > 1;
+
+  /** The slowest configured bus determines the common odometry sampling rate. */
   public static final double kOdometryFrequency =
-      new CANBus(kCANbusName).isNetworkFD() ? 250.0 : 100.0;
+      configuredCANBuses().allMatch(bus -> new CANBus(bus).isNetworkFD()) ? 250.0 : 100.0;
+
+  private static Stream<String> configuredCANBuses() {
+    return Stream.of(kPigeonCanbus, kFLDriveCanbus, kFRDriveCanbus, kBLDriveCanbus, kBRDriveCanbus);
+  }
+
+  /** Returns the single bus shared by every device in a module. */
+  public static String moduleCANBus(int module) {
+    return switch (module) {
+      case 0 -> kFLDriveCanbus;
+      case 1 -> kFRDriveCanbus;
+      case 2 -> kBLDriveCanbus;
+      case 3 -> kBRDriveCanbus;
+      default -> throw new IllegalArgumentException("Invalid module index: " + module);
+    };
+  }
 
   // SPARK Drive encoder configuration
   // Rotor Rotations -> Wheel Radians
@@ -308,7 +254,14 @@ public class SwerveConstants {
   /** IMU Type enum */
   public enum ImuType {
     PIGEON(new String[] {"pigeon", "pigeon2"}, ImuIOPigeon2::new),
-    NAVX(new String[] {"navx", "navx_spi"}, ImuIONavX::new);
+    // TODO(2027): Re-enable ImuIONavX::new when Studica/NavX supports 2027 WPILib.
+    // NAVX(new String[] {"navx", "navx_spi"}, ImuIONavX::new);
+    NAVX(
+        new String[] {"navx", "navx_spi"},
+        () -> {
+          throw new UnsupportedOperationException(
+              "NavX is disabled pending 2027-compatible Studica/NavX deps");
+        });
 
     private final String[] keys;
     public final Supplier<ImuIO> factory;

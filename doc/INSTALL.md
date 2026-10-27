@@ -10,7 +10,8 @@ following components on your laptop and devices.
 * Driver Station `Version 26.0` (comes with the FRC Game Tools from National
   Instruments)
 * CTRE Tuner X `26.2.4.0`, with all devices running firmware `26.0` or newer.
-  This includes all motors, CANivore, Pigeon 2.0, and all CANcoders.
+  This includes all motors, Pigeon 2.0, and all CANcoders. The 2027 SystemCore
+  template uses native `can_s*` ports for its recommended drive layout.
 * REV Hardware Client `2.0`, with the PDH, all SPARK MAXs, and other devices
   running firmware `26.1` or newer.
 * Vivid Hosting Radio firmware `2.0.1` or newer is required for competition this
@@ -159,7 +160,11 @@ steps you need to complete:
 10. Open [RBSI-Constants.md](RBSI-Constants.md) and work through the sections
    that match your robot. At minimum, verify `RobotDevices`,
    `DrivebaseConstants`, `OperatorConstants`, `AutoConstants`, and
-   `VisionConstants` before your first serious drive test.
+   `VisionConstants` before your first serious drive test. Set the five
+   `DrivebaseConstants` bus assignments to match the physical SystemCore ports;
+   see [CAN bus assignments](RBSI-Constants.md#canbuses). The default places
+   front modules on `can_s2`, back modules on `can_s3`, the Pigeon on `can_s4`,
+   and mechanisms on `can_s1`.
 
 
 **NOTE:** If you have any other combination of hardware (including REV NEOs,

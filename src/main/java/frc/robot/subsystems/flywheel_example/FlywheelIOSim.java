@@ -9,25 +9,25 @@
 
 package frc.robot.subsystems.flywheel_example;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.system.LinearSystem;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.system.plant.LinearSystemId;
-import edu.wpi.first.wpilibj.RobotController;
-import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 import frc.robot.Constants;
 import frc.robot.Constants.FlywheelConstants;
+import frc.robot.util.MathUtil;
+import org.wpilib.math.controller.PIDController;
+import org.wpilib.math.controller.SimpleMotorFeedforward;
+import org.wpilib.math.numbers.N1;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.math.system.LinearSystem;
+import org.wpilib.math.system.Models;
+import org.wpilib.simulation.FlywheelSim;
+import org.wpilib.system.RobotController;
 
 public class FlywheelIOSim implements FlywheelIO {
   private final DCMotor m_gearbox = DCMotor.getNEO(1);
   private final LinearSystem<N1, N1, N1> m_plant =
-      LinearSystemId.createFlywheelSystem(
+      Models.flywheelFromPhysicalConstants(
           m_gearbox,
-          FlywheelConstants.kSimGearing,
-          FlywheelConstants.kSimMomentOfInertiaKgMetersSq);
+          FlywheelConstants.kSimMomentOfInertiaKgMetersSq,
+          FlywheelConstants.kSimGearing);
 
   private final FlywheelSim sim = new FlywheelSim(m_plant, m_gearbox);
   private PIDController pid = new PIDController(0.0, 0.0, 0.0);
@@ -42,7 +42,7 @@ public class FlywheelIOSim implements FlywheelIO {
     if (closedLoop) {
       appliedVolts =
           MathUtil.clamp(
-              pid.calculate(sim.getAngularVelocityRadPerSec()) + ffVolts,
+              pid.calculate(sim.getAngularVelocity()) + ffVolts,
               -FlywheelConstants.kMaxVoltage,
               FlywheelConstants.kMaxVoltage);
       sim.setInputVoltage(appliedVolts);
@@ -51,9 +51,9 @@ public class FlywheelIOSim implements FlywheelIO {
     sim.update(Constants.kLoopPeriodSecs);
 
     inputs.positionRad = 0.0;
-    inputs.velocityRadPerSec = sim.getAngularVelocityRadPerSec();
+    inputs.velocityRadPerSec = sim.getAngularVelocity();
     inputs.appliedVolts = appliedVolts;
-    inputs.currentAmps = new double[] {sim.getCurrentDrawAmps()};
+    inputs.currentAmps = new double[] {sim.getCurrentDraw()};
   }
 
   @Override

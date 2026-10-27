@@ -15,13 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.wpilibj.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.system.Timer;
 
 public class LatencyCompensationTests {
   final double DOUBLE_DELTA = 0.01;
@@ -33,8 +34,8 @@ public class LatencyCompensationTests {
   public void constructDevices() {
     assert HAL.initialize(500, 0);
 
-    talonfx = new TalonFX(0);
-    cancoder = new CANcoder(0);
+    talonfx = new TalonFX(0, new CANBus(""));
+    cancoder = new CANcoder(0, new CANBus(""));
   }
 
   @Test
@@ -61,7 +62,6 @@ public class LatencyCompensationTests {
     /* Wait for an update on all of them so they're synchronized */
     StatusCode status = StatusCode.OK;
     for (int i = 0; i < 5; ++i) {
-      System.out.println("Waiting on signals");
       status = BaseStatusSignal.waitForAll(1, talonPos, talonVel, cancoderPos, cancoderVel);
       if (status.isOK()) break;
     }
@@ -83,10 +83,6 @@ public class LatencyCompensationTests {
     double functionCompensatedCANcoder =
         BaseStatusSignal.getLatencyCompensatedValueAsDouble(cancoderPos, cancoderVel);
 
-    /* Assert the two methods match */
-    System.out.println("Talon Pos: " + compensatedTalonPos + " - " + functionCompensatedTalon);
-    System.out.println(
-        "CANcoder Pos: " + compensatedCANcoderPos + " - " + functionCompensatedCANcoder);
     assertEquals(compensatedTalonPos, functionCompensatedTalon, DOUBLE_DELTA);
     assertEquals(compensatedCANcoderPos, functionCompensatedCANcoder, DOUBLE_DELTA);
   }

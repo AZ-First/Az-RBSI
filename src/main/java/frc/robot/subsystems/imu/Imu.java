@@ -17,9 +17,9 @@
 
 package frc.robot.subsystems.imu;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.util.VirtualSubsystem;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation3d;
 
 public class Imu extends VirtualSubsystem {
 

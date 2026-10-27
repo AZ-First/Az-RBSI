@@ -17,7 +17,7 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
@@ -25,21 +25,10 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.therekrab.autopilot.APConstraints;
 import com.therekrab.autopilot.APProfile;
 import com.therekrab.autopilot.Autopilot;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.Mass;
-import edu.wpi.first.wpilibj.PowerDistribution;
-import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.util.Alert;
-import frc.robot.util.RBSIController.Axis;
-import frc.robot.util.RBSIController.Button;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.RBSIEnum.DriveStyle;
@@ -49,9 +38,17 @@ import frc.robot.util.RBSIEnum.SwerveType;
 import frc.robot.util.RBSIEnum.VisionType;
 import frc.robot.util.RobotDeviceId;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.littletonrobotics.junction.Logger;
 import org.photonvision.simulation.SimCameraProperties;
-import swervelib.math.Matter;
+import org.wpilib.framework.RobotBase;
+import org.wpilib.hardware.power.PowerDistribution;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Rotation3d;
+import org.wpilib.math.geometry.Transform3d;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.math.util.Units;
+import org.wpilib.units.measure.Mass;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -118,8 +115,6 @@ public final class Constants {
   public static final class RobotConstants {
 
     public static final Mass kMass = Pounds.of(100.);
-    public static final Matter kChassisMatter =
-        new Matter(new Translation3d(0, 0, Inches.of(8).in(Meters)), kMass.in(Kilograms));
     // Robot moment of inertia; this can be obtained from a CAD model of your drivetrain. Usually,
     // this is between 3 and 8 kg*m^2.
     public static final double kMomentOfInertiaKgMetersSq = 6.8;
@@ -154,8 +149,9 @@ public final class Constants {
   public static final class PowerConstants {
 
     // Power Distribution Module Configuration
-    public static final PowerDistribution.ModuleType kPdmType = PowerDistribution.ModuleType.kRev;
+    public static final PowerDistribution.ModuleType kPdmType = PowerDistribution.ModuleType.REV;
     public static final int kPdmCanId = 1;
+    public static final int kPdmChannelCount = 24;
 
     // Current Limits
     public static final double kTotalMaxCurrentAmps = 120.;
@@ -171,10 +167,39 @@ public final class Constants {
   /************************************************************************* */
   /** List of Robot CAN Busses ********************************************* */
   public static final class CANBuses {
-    public static final String RIO = "rio";
-    public static final String DRIVE = "DriveTrain";
+    // SystemCore's five native CAN interfaces, ordered left to right.
+    public static final String SYSTEMCORE_0 = "can_s0";
+    public static final String SYSTEMCORE_1 = "can_s1";
+    public static final String SYSTEMCORE_2 = "can_s2";
+    public static final String SYSTEMCORE_3 = "can_s3";
+    public static final String SYSTEMCORE_4 = "can_s4";
+    // The default mechanism bus. This is a SystemCore port, not a roboRIO CAN bus.
+    public static final String RIO = SYSTEMCORE_1;
 
-    public static final String[] ALL = {RIO, DRIVE};
+    // Register and health-monitor every bus actually selected below.
+    public static final String[] ALL =
+        Stream.of(
+                RIO,
+                DrivebaseConstants.kPigeonCANBus,
+                DrivebaseConstants.kFLCANBus,
+                DrivebaseConstants.kFRCANBus,
+                DrivebaseConstants.kBLCANBus,
+                DrivebaseConstants.kBRCANBus)
+            .distinct()
+            .toArray(String[]::new);
+
+    /** REV's 2027 constructors use a numbered SystemCore port rather than a Phoenix bus name. */
+    public static int revPort(String bus) {
+      return switch (bus) {
+        case SYSTEMCORE_0 -> 0;
+        case SYSTEMCORE_1 -> 1;
+        case SYSTEMCORE_2 -> 2;
+        case SYSTEMCORE_3 -> 3;
+        case SYSTEMCORE_4 -> 4;
+        default ->
+            throw new IllegalArgumentException("REV device requires a SystemCore CAN bus: " + bus);
+      };
+    }
   }
 
   /************************************************************************* */
@@ -215,7 +240,7 @@ public final class Constants {
         new RobotDeviceId(SwerveConstants.kBREncoderId, SwerveConstants.kBREncoderCanbus, null);
     // Pigeon
     public static final RobotDeviceId PIGEON =
-        new RobotDeviceId(SwerveConstants.kPigeonId, SwerveConstants.kCANbusName, null);
+        new RobotDeviceId(SwerveConstants.kPigeonId, SwerveConstants.kPigeonCanbus, null);
 
     /* SUBSYSTEM CAN DEVICE IDS */
     // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
@@ -284,41 +309,18 @@ public final class Constants {
   }
 
   /************************************************************************* */
-  /** Driver Controller Button Constants *********************************** */
-  public static final class ControllerButtonConstants {
-    // Face buttons are named by physical position. RBSIController maps these to Xbox, PS4, or PS5
-    // names for the detected controller.
-
-    // DRIVER BUTTONS
-    public static final Button ROBOT_RELATIVE = Button.EAST_FACE; // Xbox B / PS Circle
-    public static final Button BRAKE = Button.SOUTH_FACE; // Xbox A / PS Cross
-    public static final Button X_LOCK = Button.WEST_FACE; // Xbox X / PS Square
-    public static final Button ZERO_GYRO = Button.NORTH_FACE; // Xbox Y / PS Triangle
-
-    // Bumpers
-    public static final Button RUN_FLYWHEEL = Button.RIGHT_BUMPER; // Xbox RB / PS R1
-    public static final Button AUTOPILOT_DEMO = Button.LEFT_BUMPER; // Xbox LB / PS L1
-
-    // Triggers
-    public static final Axis LEFT_TRIGGER = Axis.LEFT_TRIGGER;
-    public static final Axis RIGHT_TRIGGER = Axis.RIGHT_TRIGGER;
-
-    // D-PAD POV Buttons
-    public static final Button NUDGE_LEFT = Button.POV_LEFT;
-    public static final Button NUDGE_RIGHT = Button.POV_RIGHT;
-    public static final Button NUDGE_FORWARD = Button.POV_UP;
-    public static final Button NUDGE_BACK = Button.POV_DOWN;
-
-    // Pressing the joysticks
-    public static final Button LEFT_STICK_BUTTON = Button.LEFT_STICK;
-    public static final Button RIGHT_STICK_BUTTON = Button.RIGHT_STICK;
-
-    public static final double kTriggerPressedThreshold = 0.5;
-  }
-
   /************************************************************************* */
   /** Drive Base Constants ************************************************* */
   public static final class DrivebaseConstants {
+
+    // One bus per complete module (drive, steer, encoder), plus an independent Pigeon bus.
+    // Default: front on port 2, back on port 3, Pigeon on port 4, mechanisms on port 1.
+    // Assign any of these five values to another SYSTEMCORE_* bus to change the split.
+    public static final String kPigeonCANBus = CANBuses.SYSTEMCORE_4;
+    public static final String kFLCANBus = CANBuses.SYSTEMCORE_2;
+    public static final String kFRCANBus = CANBuses.SYSTEMCORE_2;
+    public static final String kBLCANBus = CANBuses.SYSTEMCORE_3;
+    public static final String kBRCANBus = CANBuses.SYSTEMCORE_3;
 
     // Theoretical free speed (m/s) at 12v applied output;
     // IMPORTANT: Follow the AdvantageKit instructions for measuring the ACTUAL maximum linear speed
@@ -339,7 +341,7 @@ public final class Constants {
     // For Profiled PID Motion -- NEED TUNING!
     // Used in a variety of contexts, including PathPlanner and AutoPilot
     // Chassis (not module) across-the-field strafing motion
-    public static final double kStrafeP = 5.0;
+    public static final double kStrafeP = 3.0;
     public static final double kStrafeI = 0.0;
     public static final double kStrafeD = 0.0;
     // Chassis (not module) solid-body rotation
@@ -379,13 +381,15 @@ public final class Constants {
     public static final double kDriveA = 0.0;
     public static final double kDriveS = 0.20;
     public static final double kDriveT =
-        SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).KtNMPerAmp;
+        SwerveConstants.kDriveGearRatio / DCMotor.getKrakenX60Foc(1).Kt;
     public static final double kSteerP = 100.0;
     public static final double kSteerD = 0.5;
     public static final double kSteerS = 0.1;
 
     // Odometry-related constants ==================================
     public static final double kPoseBufferHistorySecs = 1.5;
+    public static final double kPathPlannerVisionFreshnessSec = 0.5;
+    public static final double kPathPlannerStartToleranceMeters = 0.5;
     // How aggressively to pull pose toward vision while DISABLED.
     // 0.10 = gentle, 0.25 = fairly quick, 1.0 = full snap.
     public static final double kDisabledVisionBlendAlpha = 0.15;

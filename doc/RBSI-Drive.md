@@ -75,6 +75,12 @@ Check these first:
 - Pigeon/NavX configuration,
 - PDH/PDP power ports.
 
+For SystemCore wiring, select one bus per complete module with `kFLCANBus`, `kFRCANBus`,
+`kBLCANBus`, and `kBRCANBus` in `Constants.DrivebaseConstants`; the Pigeon has a separate
+`kPigeonCANBus`. A module's drive, steer, and encoder must all be wired to its selected bus. The
+default uses front / back / IMU on `can_s2` / `can_s3` / `can_s4`, with mechanisms on `can_s1`.
+See [CAN bus assignments](RBSI-Constants.md#canbuses) for one, two, and three bus layouts.
+
 The power-port mapping does not control motors, but it affects current logging
 and subsystem power monitoring. Bad power-port maps make electrical debugging
 much harder.
@@ -87,6 +93,7 @@ Important values in `DrivebaseConstants`:
 - `kMaxLinearAccelMetersPerSecSq`
 - `kWheelRadiusMeters`
 - `kSlipCurrentAmps`
+- `kPigeonCANBus` and the four module CAN bus assignments
 - `kDriveP`, `kDriveD`, `kDriveS`, `kDriveV`, `kDriveA`, `kDriveT`
 - `kSteerP`, `kSteerD`, `kSteerS`
 - `kStrafeP`, `kStrafeI`, `kStrafeD`

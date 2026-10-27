@@ -5,15 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.wpilibj.simulation.DriverStationSim;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIOSim;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.simulation.DriverStationSim;
 
 class DriveSubsystemTests {
   private static final double EPSILON = 1e-9;
@@ -97,5 +97,32 @@ class DriveSubsystemTests {
 
     drive.updateDisabledCoastState(false, true, 1.50, 0.0, stationaryPositions);
     assertFalse(drive.isDisabledCoast(1.50));
+  }
+
+  @Test
+  void pathPlannerStartResetsWhenVisionIsMissingOrEstimatorIsUninitialized() {
+    Pose2d pathStart = new Pose2d(4.0, 6.0, Rotation2d.kZero);
+
+    assertEquals(
+        Drive.PathPlannerStartAction.RESET_TO_PATH_START,
+        Drive.determinePathPlannerStartAction(
+            new Pose2d(6.0, 6.0, Rotation2d.kZero), pathStart, false, 0.5));
+    assertEquals(
+        Drive.PathPlannerStartAction.RESET_TO_PATH_START,
+        Drive.determinePathPlannerStartAction(Pose2d.kZero, pathStart, true, 0.5));
+  }
+
+  @Test
+  void pathPlannerStartUsesNearbyVisionAndBlocksDistantVision() {
+    Pose2d pathStart = new Pose2d(4.0, 6.0, Rotation2d.kZero);
+
+    assertEquals(
+        Drive.PathPlannerStartAction.USE_VISION_POSE,
+        Drive.determinePathPlannerStartAction(
+            new Pose2d(4.4, 6.0, Rotation2d.kZero), pathStart, true, 0.5));
+    assertEquals(
+        Drive.PathPlannerStartAction.BLOCK_AUTO,
+        Drive.determinePathPlannerStartAction(
+            new Pose2d(4.6, 6.0, Rotation2d.kZero), pathStart, true, 0.5));
   }
 }

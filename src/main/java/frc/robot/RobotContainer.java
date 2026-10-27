@@ -19,23 +19,7 @@
 
 package frc.robot;
 
-import static frc.robot.Constants.ControllerButtonConstants.*;
-
-import choreo.auto.AutoFactory;
-import choreo.auto.AutoRoutine;
-import choreo.auto.AutoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.GenericHID;
-import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
@@ -77,6 +61,17 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.VisionSystemSim;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.command2.button.CommandJoystick;
+import org.wpilib.command2.sysid.SysIdRoutine;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.driverstation.GenericHID;
+import org.wpilib.driverstation.NiDsXboxController;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Transform2d;
+import org.wpilib.system.Filesystem;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
 public class RobotContainer {
@@ -90,7 +85,7 @@ public class RobotContainer {
   final OverrideSwitches overrides = new OverrideSwitches(2); // Console toggle switches
 
   // These two are needed for the Sweep evaluator for camera FOV simulation
-  final CommandJoystick joystick3 = new CommandJoystick(3); //  Joystick for CamersSweepEvaluator
+  final CommandJoystick joystick3 = new CommandJoystick(3); // Joystick for CameraSweepEvaluator
   private final CameraSweepEvaluator sweep;
 
   /** Declare the robot subsystems here ************************************ */
@@ -121,8 +116,9 @@ public class RobotContainer {
   // AutoChoosers for both supported path planning types
   private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
 
-  private final LoggedDashboardChooser<Command> autoChooserChoreo;
-  private final AutoFactory autoFactoryChoreo;
+  // TODO(2027): Re-enable Choreo chooser/factory when ChoreoLib supports 2027 WPILib.
+  // private final LoggedDashboardChooser<Command> autoChooserChoreo;
+  // private final AutoFactory autoFactoryChoreo;
 
   private final LoggedDashboardChooser<DriveStyle> driveStyle =
       new LoggedDashboardChooser<>("Drive Style");
@@ -138,7 +134,7 @@ public class RobotContainer {
   private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
 
   /**
-   * Constructor for the Robot Container. This container holds subsystems, opertator interface
+   * Constructor for the Robot Container. This container holds subsystems, operator interface
    * devices, and commands.
    */
   public RobotContainer() {
@@ -149,7 +145,7 @@ public class RobotContainer {
         // Real robot, instantiate hardware IO implementations
 
         // Register the CANBus
-        RBSICANBusRegistry.initReal(CANBuses.RIO, CANBuses.DRIVE);
+        RBSICANBusRegistry.initReal(CANBuses.ALL);
 
         // YAGSL drivebase, get config from deploy directory
         // Get the IMU instance
@@ -166,7 +162,7 @@ public class RobotContainer {
         break;
 
       case SIM:
-        RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
+        RBSICANBusRegistry.initSim(CANBuses.ALL);
 
         m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
@@ -200,7 +196,7 @@ public class RobotContainer {
 
       default:
         // Replayed robot, disable IO implementations
-        RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
+        RBSICANBusRegistry.initSim(CANBuses.ALL);
         m_imu = new Imu(new ImuIO() {});
         m_drivebase = new Drive(m_imu);
         m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
@@ -217,7 +213,7 @@ public class RobotContainer {
     // Init all CAN busses specified in the `Constants.CANBuses` class
     canHealth = Arrays.stream(Constants.CANBuses.ALL).map(RBSICANHealth::new).toList();
 
-    // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
+    // In addition to the initial battery capacity from the dashboard, ``RBSIPowerMonitor`` takes
     // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
     // include ``m_drivebase``, as that is automatically monitored.
     m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
@@ -232,32 +228,32 @@ public class RobotContainer {
         // ...
         // Set the others to null
         autoChooserPathPlanner = null;
-        autoChooserChoreo = null;
-        autoFactoryChoreo = null;
+        // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
+        // autoChooserChoreo = null;
+        // autoFactoryChoreo = null;
         break;
 
       case PATHPLANNER:
         autoChooserPathPlanner =
             new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
         // Set the others to null
-        autoChooserChoreo = null;
-        autoFactoryChoreo = null;
+        // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
+        // autoChooserChoreo = null;
+        // autoFactoryChoreo = null;
         break;
 
       case CHOREO:
-        autoFactoryChoreo =
-            new AutoFactory(
-                m_drivebase::getPose, // A function that returns the current robot pose
-                m_drivebase::resetPose, // A function that resets the current robot pose to the
-                // provided Pose2d
-                m_drivebase::followTrajectory, // The drive subsystem trajectory follower
-                true, // If alliance flipping should be enabled
-                m_drivebase // The drive subsystem
-                );
-        autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
-        autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
-        autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
-        // Set the others to null
+        // TODO(2027): Re-enable this Choreo AutoFactory setup when ChoreoLib supports 2027 WPILib.
+        // autoFactoryChoreo =
+        //     new AutoFactory(
+        //         m_drivebase::getPose,
+        //         m_drivebase::resetPose,
+        //         m_drivebase::followTrajectory,
+        //         true,
+        //         m_drivebase);
+        // autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
+        // autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
+        // autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
         autoChooserPathPlanner = null;
         break;
 
@@ -292,8 +288,8 @@ public class RobotContainer {
   /**
    * Use this method to define your button->command mappings. Buttons can be created by
    * instantiating a {@link GenericHID} or one of its subclasses ({@link
-   * edu.wpi.first.wpilibj.Joystick} or {@link XboxController}), and then passing it to a {@link
-   * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
+   * org.wpilib.driverstation.Joystick} or {@link NiDsXboxController}), and then passing it to a
+   * {@link org.wpilib.command2.button.JoystickButton}.
    */
   private void configureBindings() {
 
@@ -305,7 +301,7 @@ public class RobotContainer {
     // ** Example Commands -- Remap, remove, or change as desired **
     // Press B / Circle button while driving --> ROBOT-CENTRIC
     driverController
-        .button(ROBOT_RELATIVE)
+        .eastFaceButton()
         .whileTrue(
             DriveCommands.robotRelativeDrive(
                 m_drivebase,
@@ -314,17 +310,17 @@ public class RobotContainer {
                 () -> -getTurnStickX()));
 
     // Press A / Cross button -> BRAKE
-    driverController.button(BRAKE).onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
+    driverController.southFaceButton().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
 
     // Press X / Square button --> Stop with wheels in X-Lock position
-    driverController.button(X_LOCK).whileTrue(DriveCommands.stopWithX(m_drivebase));
+    driverController.westFaceButton().whileTrue(DriveCommands.stopWithX(m_drivebase));
 
     // Press Y / Triangle button --> Manually Re-Zero the Gyro
-    driverController.button(ZERO_GYRO).onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
+    driverController.northFaceButton().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
     // Press RIGHT BUMPER / R1 --> Run the example flywheel
     driverController
-        .button(RUN_FLYWHEEL)
+        .rightBumper()
         .whileTrue(
             Commands.startEnd(
                 () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
@@ -333,7 +329,7 @@ public class RobotContainer {
 
     // Press LEFT BUMPER / L1 --> Drive to a demo pose offset defined in OperatorConstants
     driverController
-        .button(AUTOPILOT_DEMO)
+        .leftBumper()
         .whileTrue(
             Commands.defer(
                 () -> {
@@ -359,22 +355,22 @@ public class RobotContainer {
 
     // Press POV LEFT to nudge the robot left
     driverController
-        .button(NUDGE_LEFT)
+        .povLeft()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
     driverController
-        .button(NUDGE_RIGHT)
+        .povRight()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
     driverController
-        .button(NUDGE_FORWARD)
+        .povUp()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
     driverController
-        .button(NUDGE_BACK)
+        .povDown()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
@@ -396,7 +392,7 @@ public class RobotContainer {
                               .resolve("camera_sweep.csv")
                               .toString());
                     } catch (Exception e) {
-                      DriverStation.reportError("Camera sweep failed", e.getStackTrace());
+                      DriverStationErrors.reportError("Camera sweep failed", e.getStackTrace());
                     }
                   }));
     }
@@ -434,7 +430,8 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommandChoreo() {
-    return autoChooserChoreo.get();
+    // TODO(2027): Return autoChooserChoreo.get() when ChoreoLib supports 2027 WPILib.
+    return Commands.none();
   }
 
   /** Updates the alerts. */
@@ -573,35 +570,15 @@ public class RobotContainer {
     return ios;
   }
 
-  /**
-   * Example Choreo auto command
-   *
-   * <p>NOTE: This would normally be in a spearate file.
-   */
-  private AutoRoutine twoPieceAuto() {
-    AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
-
-    // Load the routine's trajectories
-    AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
-    AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
-
-    // When the routine begins, reset odometry and start the first trajectory
-    routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
-
-    // Starting at the event marker named "intake", run the intake
-    // pickupTraj.atTime("intake").onTrue(intakeSubsystem.intake());
-
-    // When the trajectory is done, start the next trajectory
-    pickupTraj.done().onTrue(scoreTraj.cmd());
-
-    // While the trajectory is active, prepare the scoring subsystem
-    // scoreTraj.active().whileTrue(scoringSubsystem.getReady());
-
-    // When the trajectory is done, score
-    // scoreTraj.done().onTrue(scoringSubsystem.score());
-
-    return routine;
-  }
+  // TODO(2027): Re-enable this example Choreo auto when ChoreoLib supports 2027 WPILib.
+  // private AutoRoutine twoPieceAuto() {
+  //   AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
+  //   AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
+  //   AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
+  //   routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
+  //   pickupTraj.done().onTrue(scoreTraj.cmd());
+  //   return routine;
+  // }
 
   private DriveStyle getSelectedDriveStyle() {
     DriveStyle selected = driveStyle.get();

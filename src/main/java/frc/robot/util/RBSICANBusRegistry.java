@@ -15,7 +15,6 @@ package frc.robot.util;
 
 import com.ctre.phoenix6.CANBus;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Centralized CAN bus singleton registry */
@@ -63,9 +62,7 @@ public final class RBSICANBusRegistry {
     if (sim) {
       throw new IllegalStateException("No real CANBus in SIM. Use getLike() or skip CTRE devices.");
     }
-    CANBus bus = realBuses.get(name);
-    if (bus == null) throwUnknown(name, realBuses.keySet());
-    return bus;
+    return getRegisteredBus(name, realBuses);
   }
 
   /**
@@ -76,9 +73,7 @@ public final class RBSICANBusRegistry {
    */
   public static CANBusLike getLike(String name) {
     checkInit();
-    CANBusLike bus = likeBuses.get(name);
-    if (bus == null) throwUnknown(name, likeBuses.keySet());
-    return bus;
+    return getRegisteredBus(name, likeBuses);
   }
 
   /** Check that the Registry is initialized */
@@ -86,9 +81,13 @@ public final class RBSICANBusRegistry {
     if (!initialized) throw new IllegalStateException("RBSICANBusRegistry not initialized.");
   }
 
-  /** Throw exception if the CAN bus name is not in the Registry */
-  private static void throwUnknown(String name, Set<String> known) {
-    throw new IllegalArgumentException("Unknown CAN bus '" + name + "'. Known: " + known);
+  private static <T> T getRegisteredBus(String name, Map<String, T> buses) {
+    T bus = buses.get(name);
+    if (bus == null) {
+      throw new IllegalArgumentException(
+          "Unknown CAN bus '" + name + "'. Known: " + buses.keySet());
+    }
+    return bus;
   }
 
   /** Nested types for Registry Function *********************************** */

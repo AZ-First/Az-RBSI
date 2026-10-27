@@ -9,22 +9,22 @@
 
 package frc.robot.subsystems.vision;
 
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.DoubleArrayPublisher;
-import edu.wpi.first.networktables.DoubleArraySubscriber;
-import edu.wpi.first.networktables.DoubleSubscriber;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.TimestampedDoubleArray;
-import edu.wpi.first.wpilibj.RobotController;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.wpilib.math.geometry.Pose3d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Rotation3d;
+import org.wpilib.math.util.Units;
+import org.wpilib.networktables.DoubleArrayPublisher;
+import org.wpilib.networktables.DoubleArraySubscriber;
+import org.wpilib.networktables.DoubleSubscriber;
+import org.wpilib.networktables.NetworkTableInstance;
+import org.wpilib.networktables.TimestampedDoubleArray;
+import org.wpilib.system.RobotController;
 
 /** IO implementation for real Limelight hardware. */
 public class VisionIOLimelight implements VisionIO {
@@ -69,7 +69,7 @@ public class VisionIOLimelight implements VisionIO {
   public void updateInputs(VisionIOInputs inputs) {
     // Update connection status based on whether an update has been seen in the last 250ms
     inputs.connected =
-        ((RobotController.getFPGATime() - heartbeatSubscriber.getLastChange()) / 1000) < 250;
+        ((RobotController.getTime() - heartbeatSubscriber.getLastChange()) / 1000) < 250;
 
     // Update target observation
     inputs.latestTargetObservation =
@@ -85,7 +85,11 @@ public class VisionIOLimelight implements VisionIO {
     Set<Integer> unionTagIds = new HashSet<>();
     List<PoseObservation> poseObservations = new ArrayList<>();
 
-    for (var rawSample : megatag1Subscriber.readQueue()) {
+    var megatag1Samples = megatag1Subscriber.readQueue();
+    for (int sampleIndex = Math.max(0, megatag1Samples.length - 1);
+        sampleIndex < megatag1Samples.length;
+        sampleIndex++) {
+      var rawSample = megatag1Samples[sampleIndex];
       if (!isValidBotPoseSample(rawSample.value)) continue;
 
       int tagCount = getTagCount(rawSample.value);
@@ -118,7 +122,11 @@ public class VisionIOLimelight implements VisionIO {
               used));
     }
 
-    for (var rawSample : megatag2Subscriber.readQueue()) {
+    var megatag2Samples = megatag2Subscriber.readQueue();
+    for (int sampleIndex = Math.max(0, megatag2Samples.length - 1);
+        sampleIndex < megatag2Samples.length;
+        sampleIndex++) {
+      var rawSample = megatag2Samples[sampleIndex];
       if (!isValidBotPoseSample(rawSample.value)) continue;
 
       int tagCount = getTagCount(rawSample.value);
@@ -210,7 +218,7 @@ public class VisionIOLimelight implements VisionIO {
   }
 
   private static void flushOrientationIfDue() {
-    long nowUs = RobotController.getFPGATime();
+    long nowUs = RobotController.getTime();
     if (nowUs - lastOrientationFlushUs < ORIENTATION_FLUSH_PERIOD_US) return;
 
     NetworkTableInstance.getDefault().flush();

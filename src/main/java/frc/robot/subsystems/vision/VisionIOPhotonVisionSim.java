@@ -9,14 +9,14 @@
 
 package frc.robot.subsystems.vision;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.FieldConstants;
 import java.util.function.Supplier;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.SimCameraProperties;
 import org.photonvision.simulation.VisionSystemSim;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Transform3d;
+import org.wpilib.system.RobotController;
 
 /** IO implementation for physics sim using PhotonVision simulator. */
 public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
@@ -73,7 +73,7 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   }
 
   private void updateVisionSimOncePerLoop() {
-    long nowUs = RobotController.getFPGATime();
+    long nowUs = RobotController.getTime();
     if (nowUs - lastUpdateUs < MIN_UPDATE_PERIOD_US) return;
 
     visionSim.update(poseSupplier.get());
