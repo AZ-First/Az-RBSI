@@ -10,7 +10,6 @@ jobs:
   # ------------------------------------------------------------
   build:
     runs-on: ubuntu-latest
-    container: wpilib/roborio-cross-ubuntu:2024-22.04
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request == null }}
 
     steps:
@@ -40,7 +39,6 @@ jobs:
   # ------------------------------------------------------------
   spotless:
     runs-on: ubuntu-latest
-    container: wpilib/roborio-cross-ubuntu:2024-22.04
     # Only run for PRs or pushes targeting main/develop
     if: github.base_ref == 'main' || github.base_ref == 'develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
