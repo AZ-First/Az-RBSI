@@ -3,13 +3,16 @@ package frc.robot;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import frc.robot.subsystems.drive.SwerveConstants;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 class RobotConstantsTest {
   @Test
   void robotDeviceCanBusesMatchSwerveConstants() {
+    assertEquals(SwerveConstants.kPigeonCanbus, Constants.RobotDevices.PIGEON.getBus());
     assertEquals(SwerveConstants.kFLDriveCanbus, Constants.RobotDevices.FL_DRIVE.getBus());
     assertEquals(SwerveConstants.kFLSteerCanbus, Constants.RobotDevices.FL_ROTATION.getBus());
     assertEquals(SwerveConstants.kFLEncoderCanbus, Constants.RobotDevices.FL_CANCODER.getBus());
@@ -25,6 +28,65 @@ class RobotConstantsTest {
     assertEquals(SwerveConstants.kBRDriveCanbus, Constants.RobotDevices.BR_DRIVE.getBus());
     assertEquals(SwerveConstants.kBRSteerCanbus, Constants.RobotDevices.BR_ROTATION.getBus());
     assertEquals(SwerveConstants.kBREncoderCanbus, Constants.RobotDevices.BR_CANCODER.getBus());
+  }
+
+  @Test
+  void eachModuleHasOneRegisteredCANBusForAllThreeDevices() {
+    for (int module = 0; module < 4; module++) {
+      String moduleBus = SwerveConstants.moduleCANBus(module);
+      assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(moduleBus));
+      switch (module) {
+        case 0 -> {
+          assertEquals(Constants.DrivebaseConstants.kFLCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kFLDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFLSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFLEncoderCanbus);
+        }
+        case 1 -> {
+          assertEquals(Constants.DrivebaseConstants.kFRCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kFRDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFRSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kFREncoderCanbus);
+        }
+        case 2 -> {
+          assertEquals(Constants.DrivebaseConstants.kBLCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kBLDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBLSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBLEncoderCanbus);
+        }
+        case 3 -> {
+          assertEquals(Constants.DrivebaseConstants.kBRCANBus, moduleBus);
+          assertEquals(moduleBus, SwerveConstants.kBRDriveCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBRSteerCanbus);
+          assertEquals(moduleBus, SwerveConstants.kBREncoderCanbus);
+        }
+        default -> throw new AssertionError();
+      }
+    }
+    assertTrue(Arrays.asList(Constants.CANBuses.ALL).contains(SwerveConstants.kPigeonCanbus));
+    assertThrows(IllegalArgumentException.class, () -> SwerveConstants.moduleCANBus(4));
+  }
+
+  @Test
+  void systemcorePortsAreExplicit() {
+    assertEquals("can_s1", Constants.CANBuses.RIO);
+    assertEquals(0, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_0));
+    assertEquals(4, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_4));
+    assertEquals(1, Constants.CANBuses.revPort(Constants.CANBuses.RIO));
+    assertThrows(IllegalArgumentException.class, () -> Constants.CANBuses.revPort("DriveTrain"));
+  }
+
+  @Test
+  void defaultDriveUsesThreeSystemcoreBuses() {
+    assertEquals(Constants.CANBuses.SYSTEMCORE_2, Constants.DrivebaseConstants.kFLCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_2, Constants.DrivebaseConstants.kFRCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_3, Constants.DrivebaseConstants.kBLCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_3, Constants.DrivebaseConstants.kBRCANBus);
+    assertEquals(Constants.CANBuses.SYSTEMCORE_4, Constants.DrivebaseConstants.kPigeonCANBus);
+    assertEquals(
+        4,
+        Arrays.stream(Constants.CANBuses.ALL).distinct().count()); // mechanisms + three drive buses
+    assertTrue(SwerveConstants.kDrivebaseHasMultipleCANBuses);
   }
 
   @Test

@@ -98,11 +98,44 @@ Tune these early for the real robot:
 `CANBuses` names the robot CAN networks:
 
 - `RIO`
-- `DRIVE`
-- `ALL`
+- `SYSTEMCORE_0` through `SYSTEMCORE_4` (`can_s0` through `can_s4`)
+- `ALL`, built from the buses actually selected for drive devices plus `RIO`
 
-These names must match CTRE, REV, and generated swerve configuration expectations. Add any
-additional CANivore or vendor buses here and include them in `ALL` so health monitoring sees them.
+The five SystemCore names are its native interfaces, ordered left to right. `RIO` is a historical
+name for the mechanism bus; it now aliases `SYSTEMCORE_1` (`can_s1`), not a roboRIO CAN network.
+The registry initializes and health-monitors every bus in `ALL`. Add other mechanism buses to
+`ALL` if you assign devices outside the drivebase to them.
+
+`DrivebaseConstants` has one CAN assignment for each complete module (`kFLCANBus`, `kFRCANBus`,
+`kBLCANBus`, and `kBRCANBus`) plus an independent `kPigeonCANBus`. A module's drive motor, steer
+motor, and encoder always use its single selected bus; they cannot be split through these
+constants. `RobotDevices` inherits these assignments through `SwerveConstants`, so CAN identity
+and power monitoring stay consistent. The default follows FRC-2026: front modules on `can_s2`, back
+modules on `can_s3`, Pigeon on `can_s4`, and mechanisms on `can_s1`. Port `can_s0` is available.
+
+Change the five `DrivebaseConstants` assignments to match your wiring. These are useful layouts;
+each row lists the front-left, front-right, back-left, back-right, and Pigeon buses in that order:
+
+| Drive buses | FL | FR | BL | BR | Pigeon |
+| --- | --- | --- | --- | --- | --- |
+| One | `can_s2` | `can_s2` | `can_s2` | `can_s2` | `can_s2` |
+| Two, front + IMU / back | `can_s2` | `can_s2` | `can_s3` | `can_s3` | `can_s2` |
+| Two, left + IMU / right | `can_s2` | `can_s3` | `can_s2` | `can_s3` | `can_s2` |
+| Three, front / back / IMU (default) | `can_s2` | `can_s2` | `can_s3` | `can_s3` | `can_s4` |
+| Three, left / right / IMU | `can_s2` | `can_s3` | `can_s2` | `can_s3` | `can_s4` |
+
+The five assignments can also use any other `SYSTEMCORE_*` port independently, up to five drive
+buses. Keep all three devices of a module together. Assign the Pigeon to the desired bus, and
+check that each assigned physical port and CAN ID match the hardware. `ALL` follows these values
+automatically; add separately assigned mechanism buses manually.
+REV's 2027 motor constructors use numbered native SystemCore CAN ports; this project maps the
+`SYSTEMCORE_*` names to those ports and rejects an external named bus for a REV motor. Generated
+Phoenix Tuner constants may still contain a single-bus name; the runtime device constructors use
+the assignments above. Keep generated files as calibration inputs and configure the bus split here.
+
+Placing modules on separate buses limits the scope of a bus failure, but does not itself implement
+three-module fault-tolerant swerve control. Validate the wiring and loss-of-device behavior on
+hardware before relying on device-out operation.
 
 ## RobotDevices
 

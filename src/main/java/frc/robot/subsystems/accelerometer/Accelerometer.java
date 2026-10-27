@@ -13,7 +13,6 @@
 
 package frc.robot.subsystems.accelerometer;
 
-import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.Constants;
 import frc.robot.Constants.RobotConstants;
 import frc.robot.Constants.SensorConstants;
@@ -21,6 +20,7 @@ import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.geometry.Translation3d;
 
 /**
  * Accelerometer subsystem (VirtualSubsystem)

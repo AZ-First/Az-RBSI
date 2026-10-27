@@ -10,7 +10,7 @@
 package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -32,23 +32,15 @@ import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkBase;
-import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkLowLevel.ControlType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.util.MathUtil;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSIEnum.CTREPro;
@@ -56,6 +48,14 @@ import frc.robot.util.SparkUtil;
 import java.util.Arrays;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.filter.Debouncer;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.util.Units;
+import org.wpilib.system.RobotController;
+import org.wpilib.units.measure.Angle;
+import org.wpilib.units.measure.AngularVelocity;
+import org.wpilib.units.measure.Current;
+import org.wpilib.units.measure.Voltage;
 
 /**
  * Module IO implementation for blended TalonFX drive motor controller, SparkMax turn motor
@@ -104,6 +104,8 @@ public class ModuleIOBlended implements ModuleIO {
   private final StatusSignal<Angle> turnPosition;
   private final Queue<Double> turnPositionQueue;
   private final StatusSignal<AngularVelocity> turnVelocity;
+  private final BaseStatusSignal[] bulkRefreshSignals;
+  private StatusCode bulkRefreshStatus = StatusCode.OK;
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
@@ -179,9 +181,12 @@ public class ModuleIOBlended implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
+    String moduleBus = SwerveConstants.moduleCANBus(module);
+    var canBus = RBSICANBusRegistry.getBus(moduleBus);
     driveTalon = new TalonFX(constants.DriveMotorId, canBus);
-    turnSpark = new SparkMax(constants.SteerMotorId, MotorType.kBrushless);
+    turnSpark =
+        new SparkMax(
+            Constants.CANBuses.revPort(moduleBus), constants.SteerMotorId, MotorType.kBrushless);
     cancoder = new CANcoder(constants.EncoderId, canBus);
 
     turnController = turnSpark.getClosedLoopController();
@@ -199,7 +204,7 @@ public class ModuleIOBlended implements ModuleIO {
     driveConfig.Feedback.SensorToMechanismRatio = SwerveConstants.kDriveGearRatio;
     driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DrivebaseConstants.kSlipCurrentAmps;
     driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DrivebaseConstants.kSlipCurrentAmps;
-    driveConfig.CurrentLimits.StatorCurrentLimit = SwerveConstants.kDriveCurrentLimit;
+    driveConfig.CurrentLimits.StatorCurrentLimit = DrivebaseConstants.kSlipCurrentAmps;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
     OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
@@ -280,7 +285,8 @@ public class ModuleIOBlended implements ModuleIO {
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
     drivePositionOdom = drivePosition.clone(); // NEW
-    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+    drivePositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, drivePositionOdom);
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
     driveCurrent = driveTalon.getStatorCurrent();
@@ -289,7 +295,19 @@ public class ModuleIOBlended implements ModuleIO {
     turnVelocity = cancoder.getVelocity();
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnPosition = cancoder.getPosition();
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(cancoder.getPosition());
+    turnPositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, cancoder.getPosition());
+
+    bulkRefreshSignals =
+        new BaseStatusSignal[] {
+          drivePosition,
+          driveVelocity,
+          driveAppliedVolts,
+          driveCurrent,
+          turnAbsolutePosition,
+          turnPosition,
+          turnVelocity
+        };
 
     // Configure periodic frames
     BaseStatusSignal.setUpdateFrequencyForAll(
@@ -301,21 +319,33 @@ public class ModuleIOBlended implements ModuleIO {
   }
 
   @Override
-  public void updateInputs(ModuleIOInputs inputs) {
-    // Refresh signals
-    var driveStatus =
-        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+  public BaseStatusSignal[] getBulkRefreshSignals() {
+    return bulkRefreshSignals;
+  }
 
-    if (!driveStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+  @Override
+  public void setBulkRefreshStatus(StatusCode status) {
+    bulkRefreshStatus = status;
+  }
+
+  @Override
+  public void updateInputs(ModuleIOInputs inputs) {
+    boolean driveStatus =
+        BaseStatusSignal.isAllGood(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+    boolean encStatus =
+        BaseStatusSignal.isAllGood(turnAbsolutePosition, turnPosition, turnVelocity);
+
+    if (!driveStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/DriveRefreshStatus", bulkRefreshStatus.toString());
     }
-    if (!encStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    if (!encStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/EncRefreshStatus", bulkRefreshStatus.toString());
     }
 
     // Drive inputs
-    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
+    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus);
     inputs.drivePositionRad = Units.rotationsToRadians(drivePosition.getValueAsDouble());
     inputs.driveVelocityRadPerSec = Units.rotationsToRadians(driveVelocity.getValueAsDouble());
     inputs.driveAppliedVolts = driveAppliedVolts.getValueAsDouble();
@@ -323,7 +353,7 @@ public class ModuleIOBlended implements ModuleIO {
 
     // Turn inputs (Spark for turn motor, CANcoder for absolute)
     SparkUtil.sparkStickyFault = false;
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus);
     inputs.turnAbsolutePosition = Rotation2d.fromRotations(turnAbsolutePosition.getValueAsDouble());
     inputs.turnPosition = Rotation2d.fromRotations(turnPosition.getValueAsDouble());
     inputs.turnVelocityRadPerSec = Units.rotationsToRadians(turnVelocity.getValueAsDouble());

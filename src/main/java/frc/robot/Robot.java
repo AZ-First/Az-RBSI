@@ -17,14 +17,11 @@
 
 package frc.robot;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.commands.PathPlannerAuto;
+import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Threads;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.PowerConstants;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
@@ -34,6 +31,13 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.CommandScheduler;
+import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.MatchState;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.system.Threads;
+import org.wpilib.system.Timer;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -96,7 +100,8 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    LoggedPowerDistribution.getInstance(PowerConstants.kPdmCanId, PowerConstants.kPdmType);
+    LoggedPowerDistribution.getInstance(
+        PowerConstants.kPdmCanId, PowerConstants.kPdmChannelCount, PowerConstants.kPdmType);
 
     // Start AdvantageKit logger
     Logger.start();
@@ -111,7 +116,7 @@ public class Robot extends LoggedRobot {
 
     // Switch thread to high priority to improve loop timing
     if (isReal()) {
-      Threads.setCurrentThreadPriority(true, 99);
+      setCurrentThreadPriorityFor2027Migration(99);
     }
   }
 
@@ -122,7 +127,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // Switch thread to high priority to improve loop timing
-      Threads.setCurrentThreadPriority(true, 99);
+      setCurrentThreadPriorityFor2027Migration(99);
     }
     final long t1 = System.nanoTime();
 
@@ -140,7 +145,7 @@ public class Robot extends LoggedRobot {
 
     if (isReal()) {
       // Return thread to normal priority
-      Threads.setCurrentThreadPriority(false, 10);
+      setCurrentThreadPriorityFor2027Migration(10);
     }
     final long t4 = System.nanoTime();
 
@@ -180,7 +185,6 @@ public class Robot extends LoggedRobot {
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
-    m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
     // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
     // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
@@ -193,6 +197,19 @@ public class Robot extends LoggedRobot {
               throw new RuntimeException(
                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
         };
+
+    if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
+      Pose2d startingPose = pathPlannerAuto.getStartingPose();
+      if (startingPose != null) {
+        if (AutoBuilder.shouldFlip()) {
+          startingPose = FlippingUtil.flipFieldPose(startingPose);
+        }
+        Logger.recordOutput("Auto/StartingPose", startingPose);
+        if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
+          m_autonomousCommand = null;
+        }
+      }
+    }
 
     if (m_autonomousCommand != null) {
       CommandScheduler.getInstance().schedule(m_autonomousCommand);
@@ -232,37 +249,38 @@ public class Robot extends LoggedRobot {
     //
     // https://docs.wpilib.org/en/stable/docs/yearly-overview/2026-game-data.html
     if (FieldState.wonAuto == null) {
-      // Only call this code block if the signal from FMS has not yet arrived
-      String gameData = DriverStation.getGameSpecificMessage();
-      if (gameData.length() > 0) {
-        switch (gameData.charAt(0)) {
-          case 'B':
-            // Blue case code
-            FieldState.wonAuto = DriverStation.Alliance.Blue;
-            break;
-          case 'R':
-            // Red case code
-            FieldState.wonAuto = DriverStation.Alliance.Red;
-            break;
-          default:
-            // This is corrupt data, do nothing
-            break;
-        }
-      }
+      FieldState.wonAuto = parseAutoWinner(MatchState.getGameData().orElse(""));
     }
-    // Anything else for the teleopPeriodic() function
-
   }
 
-  /** This function is called once when test mode is enabled. */
+  private static Alliance parseAutoWinner(String gameData) {
+    if (gameData.isEmpty()) {
+      return null;
+    }
+    return switch (gameData.charAt(0)) {
+      case 'B' -> Alliance.BLUE;
+      case 'R' -> Alliance.RED;
+      default -> null;
+    };
+  }
+
+  /** This function is called once when utility mode is enabled. */
   @Override
-  public void testInit() {
-    // Cancels all running commands at the start of test mode.
+  public void utilityInit() {
+    // Cancels all running commands at the start of utility mode.
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().resetHeadingController();
   }
 
-  /** This function is called periodically during test mode. */
+  /** This function is called periodically during utility mode. */
   @Override
-  public void testPeriodic() {}
+  public void utilityPeriodic() {}
+
+  @SuppressWarnings("deprecation")
+  private static void setCurrentThreadPriorityFor2027Migration(int priority) {
+    // TODO(2027): Revisit this as WPILib 2027 moves through beta and release. The current
+    // Threads API still works in alpha-6, but is deprecated because real-time priority misuse can
+    // lock up the system. Replace with the final WPILib guidance or remove the priority adjustment.
+    Threads.setCurrentThreadPriority(priority);
+  }
 }

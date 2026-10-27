@@ -17,19 +17,19 @@
 
 package frc.robot.commands;
 
-import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static org.wpilib.units.Units.RadiansPerSecond;
 
 import com.therekrab.autopilot.APTarget;
 import com.therekrab.autopilot.Autopilot.APResult;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.subsystems.drive.Drive;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.units.measure.Distance;
 
 public final class AutopilotCommands {
   private AutopilotCommands() {}
@@ -178,7 +178,7 @@ public final class AutopilotCommands {
 
     return Commands.run(
             () -> {
-              ChassisSpeeds robotRelativeSpeeds = drive.getChassisSpeeds();
+              ChassisVelocities robotRelativeSpeeds = drive.getChassisSpeeds();
               Pose2d pose = drive.getPose();
               boolean atTarget = AutoConstants.kAutopilot.atTarget(pose, target);
 
@@ -197,8 +197,8 @@ public final class AutopilotCommands {
               Logger.recordOutput("Autopilot/atTarget", atTarget);
 
               // Output is field relative
-              ChassisSpeeds speeds =
-                  new ChassisSpeeds(
+              ChassisVelocities speeds =
+                  new ChassisVelocities(
                       output.vx(),
                       output.vy(),
                       RadiansPerSecond.of(
@@ -208,7 +208,7 @@ public final class AutopilotCommands {
                                   drive.getHeading().getRadians(),
                                   output.targetAngle().getRadians())));
 
-              drive.runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(speeds, drive.getHeading()));
+              drive.runVelocity(speeds.toRobotRelative(drive.getHeading()));
             },
             drive)
 

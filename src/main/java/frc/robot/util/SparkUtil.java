@@ -11,6 +11,7 @@ package frc.robot.util;
 
 import com.revrobotics.REVLibError;
 import com.revrobotics.spark.SparkBase;
+import com.revrobotics.util.Signal;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
@@ -25,6 +26,17 @@ public class SparkUtil {
     double value = supplier.getAsDouble();
     if (spark.getLastError() == REVLibError.kOk) {
       consumer.accept(value);
+    } else {
+      sparkStickyFault = true;
+    }
+  }
+
+  /** Processes a signal from a Spark only if the signal is valid. */
+  public static void ifOk(
+      SparkBase spark, Supplier<Signal<Double>> supplier, DoubleConsumer consumer) {
+    Signal<Double> signal = supplier.get();
+    if (signal.isValid() && signal.getError() == REVLibError.kOk) {
+      consumer.accept(signal.get(0.0));
     } else {
       sparkStickyFault = true;
     }

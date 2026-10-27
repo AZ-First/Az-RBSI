@@ -10,7 +10,7 @@
 package frc.robot.subsystems.drive;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.ClosedLoopRampsConfigs;
@@ -21,7 +21,6 @@ import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
-import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -30,14 +29,6 @@ import com.ctre.phoenix6.signals.SensorDirectionValue;
 import com.ctre.phoenix6.signals.StaticFeedforwardSignValue;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.ClosedLoopOutputType;
-import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.RobotController;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.generated.TunerFactory;
@@ -47,6 +38,14 @@ import frc.robot.util.RBSIEnum.CTREPro;
 import java.util.Arrays;
 import java.util.Queue;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.filter.Debouncer;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.util.Units;
+import org.wpilib.system.RobotController;
+import org.wpilib.units.measure.Angle;
+import org.wpilib.units.measure.AngularVelocity;
+import org.wpilib.units.measure.Current;
+import org.wpilib.units.measure.Voltage;
 
 /**
  * Module IO implementation for Talon FX drive motor controller, Talon FX turn motor controller, and
@@ -94,6 +93,8 @@ public class ModuleIOTalonFX implements ModuleIO {
   private final StatusSignal<AngularVelocity> turnVelocity;
   private final StatusSignal<Voltage> turnAppliedVolts;
   private final StatusSignal<Current> turnCurrent;
+  private final BaseStatusSignal[] bulkRefreshSignals;
+  private StatusCode bulkRefreshStatus = StatusCode.OK;
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
@@ -127,7 +128,8 @@ public class ModuleIOTalonFX implements ModuleIO {
           default -> throw new IllegalArgumentException("Invalid module index");
         };
 
-    CANBus canBus = RBSICANBusRegistry.getBus(SwerveConstants.kCANbusName);
+    String moduleBus = SwerveConstants.moduleCANBus(module);
+    var canBus = RBSICANBusRegistry.getBus(moduleBus);
     driveTalon = new TalonFX(constants.DriveMotorId, canBus);
     turnTalon = new TalonFX(constants.SteerMotorId, canBus);
     cancoder = new CANcoder(constants.EncoderId, canBus);
@@ -147,7 +149,7 @@ public class ModuleIOTalonFX implements ModuleIO {
     driveConfig.Feedback.SensorToMechanismRatio = SwerveConstants.kDriveGearRatio;
     driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DrivebaseConstants.kSlipCurrentAmps;
     driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DrivebaseConstants.kSlipCurrentAmps;
-    driveConfig.CurrentLimits.StatorCurrentLimit = SwerveConstants.kDriveCurrentLimit;
+    driveConfig.CurrentLimits.StatorCurrentLimit = DrivebaseConstants.kSlipCurrentAmps;
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     // Build the OpenLoopRampsConfigs and ClosedLoopRampsConfigs for current smoothing
     OpenLoopRampsConfigs openRamps = new OpenLoopRampsConfigs();
@@ -211,7 +213,8 @@ public class ModuleIOTalonFX implements ModuleIO {
     // Create drive status signals
     drivePosition = driveTalon.getPosition();
     drivePositionOdom = drivePosition.clone(); // NEW
-    drivePositionQueue = PhoenixOdometryThread.getInstance().registerSignal(drivePositionOdom);
+    drivePositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, drivePositionOdom);
 
     driveVelocity = driveTalon.getVelocity();
     driveAppliedVolts = driveTalon.getMotorVoltage();
@@ -220,57 +223,76 @@ public class ModuleIOTalonFX implements ModuleIO {
     // Create turn status signals
     turnPosition = turnTalon.getPosition();
     turnPositionOdom = turnPosition.clone(); // NEW
-    turnPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(turnPositionOdom);
+    turnPositionQueue =
+        PhoenixOdometryThread.getInstance().registerSignal(moduleBus, turnPositionOdom);
 
     turnAbsolutePosition = cancoder.getAbsolutePosition();
     turnVelocity = turnTalon.getVelocity();
     turnAppliedVolts = turnTalon.getMotorVoltage();
     turnCurrent = turnTalon.getStatorCurrent();
 
-    // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
-    BaseStatusSignal.setUpdateFrequencyForAll(
-        SwerveConstants.kOdometryFrequency, drivePositionOdom, turnPositionOdom);
-    BaseStatusSignal.setUpdateFrequencyForAll(
-        50.0,
-        drivePosition,
-        turnPosition,
-        driveVelocity,
-        driveAppliedVolts,
-        driveCurrent,
-        turnAbsolutePosition,
-        turnVelocity,
-        turnAppliedVolts,
-        turnCurrent);
+    bulkRefreshSignals =
+        new BaseStatusSignal[] {
+          drivePosition,
+          driveVelocity,
+          driveAppliedVolts,
+          driveCurrent,
+          turnPosition,
+          turnVelocity,
+          turnAppliedVolts,
+          turnCurrent,
+          turnAbsolutePosition
+        };
 
-    ParentDevice.optimizeBusUtilizationForAll(driveTalon, turnTalon);
+    // Configure periodic frames (IMPORTANT: apply odometry rate to the *odom clones*)
+    drivePositionOdom.setUpdateFrequency(SwerveConstants.kOdometryFrequency);
+    turnPositionOdom.setUpdateFrequency(SwerveConstants.kOdometryFrequency);
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        50.0, drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        50.0, turnPosition, turnVelocity, turnAppliedVolts, turnCurrent, turnAbsolutePosition);
+
+    driveTalon.optimizeBusUtilization();
+    turnTalon.optimizeBusUtilization();
   }
 
   /** Input Updating Loop ************************************************** */
   @Override
-  public void updateInputs(ModuleIOInputs inputs) {
+  public BaseStatusSignal[] getBulkRefreshSignals() {
+    return bulkRefreshSignals;
+  }
 
-    // Refresh Phoenix signals
-    var driveStatus =
-        BaseStatusSignal.refreshAll(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
-    var turnStatus =
-        BaseStatusSignal.refreshAll(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
-    var encStatus = BaseStatusSignal.refreshAll(turnAbsolutePosition);
+  @Override
+  public void setBulkRefreshStatus(StatusCode status) {
+    bulkRefreshStatus = status;
+  }
+
+  @Override
+  public void updateInputs(ModuleIOInputs inputs) {
+    boolean driveStatus =
+        BaseStatusSignal.isAllGood(drivePosition, driveVelocity, driveAppliedVolts, driveCurrent);
+    boolean turnStatus =
+        BaseStatusSignal.isAllGood(turnPosition, turnVelocity, turnAppliedVolts, turnCurrent);
+    boolean encStatus = BaseStatusSignal.isAllGood(turnAbsolutePosition);
 
     // Log *which* groups are failing and what the code is
-    if (!driveStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/DriveRefreshStatus", driveStatus.toString());
+    if (!driveStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/DriveRefreshStatus", bulkRefreshStatus.toString());
     }
-    if (!turnStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/TurnRefreshStatus", turnStatus.toString());
+    if (!turnStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/TurnRefreshStatus", bulkRefreshStatus.toString());
     }
-    if (!encStatus.isOK()) {
-      Logger.recordOutput("CAN/Module" + module + "/EncRefreshStatus", encStatus.toString());
+    if (!encStatus) {
+      Logger.recordOutput(
+          "CAN/Module" + module + "/EncRefreshStatus", bulkRefreshStatus.toString());
     }
 
     // Connectivity flags
-    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus.isOK());
-    inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus.isOK());
-    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus.isOK());
+    inputs.driveConnected = driveConnectedDebounce.calculate(driveStatus);
+    inputs.turnConnected = turnConnectedDebounce.calculate(turnStatus);
+    inputs.turnEncoderConnected = turnEncoderConnectedDebounce.calculate(encStatus);
 
     // Update drive inputs
     inputs.drivePositionRad = Units.rotationsToRadians(drivePosition.getValueAsDouble());

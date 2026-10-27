@@ -9,14 +9,16 @@
 
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.Alert;
-import edu.wpi.first.wpilibj.Alert.AlertType;
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
 import frc.robot.Constants.DrivebaseConstants;
+import frc.robot.util.Alert;
+import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.math.kinematics.SwerveModuleVelocity;
+import org.wpilib.math.util.Units;
 
 /**
  * Module API Class
@@ -45,15 +47,14 @@ public class Module {
     this.index = index;
     driveDisconnectedAlert =
         new Alert(
-            "Disconnected drive motor on module " + Integer.toString(index) + ".",
-            AlertType.kError);
+            "Disconnected drive motor on module " + Integer.toString(index) + ".", AlertType.ERROR);
     turnDisconnectedAlert =
         new Alert(
-            "Disconnected turn motor on module " + Integer.toString(index) + ".", AlertType.kError);
+            "Disconnected turn motor on module " + Integer.toString(index) + ".", AlertType.ERROR);
     turnEncoderDisconnectedAlert =
         new Alert(
             "Disconnected turn encoder on module " + Integer.toString(index) + ".",
-            AlertType.kError);
+            AlertType.ERROR);
   }
 
   /************************************************************************* */
@@ -88,6 +89,16 @@ public class Module {
     turnEncoderDisconnectedAlert.set(!inputs.turnEncoderConnected);
   }
 
+  /** Returns this module's CTRE telemetry signals for drivetrain-wide refresh. */
+  BaseStatusSignal[] getBulkRefreshSignals() {
+    return io.getBulkRefreshSignals();
+  }
+
+  /** Supplies the result of the drivetrain-wide telemetry refresh. */
+  void setBulkRefreshStatus(StatusCode status) {
+    io.setBulkRefreshStatus(status);
+  }
+
   /** Forwards the simulation periodic call to the IO layer */
   public void simulationPeriodic() {
     io.simulationPeriodic();
@@ -101,13 +112,13 @@ public class Module {
    *
    * @param state The requested Swerve Modeule State
    */
-  public void runSetpoint(SwerveModuleState state) {
+  public void runSetpoint(SwerveModuleVelocity state) {
     // Optimize velocity setpoint
-    state.optimize(getAngle());
-    state.cosineScale(inputs.turnPosition);
+    state = state.optimize(getAngle());
+    state = state.cosineScale(inputs.turnPosition);
 
     // Apply setpoints
-    io.setDriveVelocity(state.speedMetersPerSecond / DrivebaseConstants.kWheelRadiusMeters);
+    io.setDriveVelocity(state.velocity / DrivebaseConstants.kWheelRadiusMeters);
     io.setTurnPosition(state.angle);
   }
 
@@ -155,8 +166,8 @@ public class Module {
   }
 
   /** Returns the module state (turn angle and drive velocity). */
-  public SwerveModuleState getState() {
-    return new SwerveModuleState(getVelocityMetersPerSec(), getAngle());
+  public SwerveModuleVelocity getState() {
+    return new SwerveModuleVelocity(getVelocityMetersPerSec(), getAngle());
   }
 
   /** Returns the module positions received this cycle. */

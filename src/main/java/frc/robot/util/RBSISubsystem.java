@@ -12,8 +12,8 @@
 // GNU General Public License for more details.
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.command2.SubsystemBase;
 
 /**
  * This class is designed to include Az-RBSI specific methods on top of the standard WPILib

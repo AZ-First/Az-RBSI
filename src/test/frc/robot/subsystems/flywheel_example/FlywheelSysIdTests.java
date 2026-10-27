@@ -2,9 +2,9 @@ package frc.robot.subsystems.flywheel_example;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import org.junit.jupiter.api.Test;
+import org.wpilib.command2.sysid.SysIdRoutine;
+import org.wpilib.math.util.Units;
 
 class FlywheelSysIdTests {
 
