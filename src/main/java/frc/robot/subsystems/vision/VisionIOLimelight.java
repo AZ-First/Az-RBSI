@@ -86,9 +86,7 @@ public class VisionIOLimelight implements VisionIO {
     List<PoseObservation> poseObservations = new ArrayList<>();
 
     var megatag1Samples = megatag1Subscriber.readQueue();
-    for (int sampleIndex = Math.max(0, megatag1Samples.length - 1);
-        sampleIndex < megatag1Samples.length;
-        sampleIndex++) {
+    for (int sampleIndex = megatag1Samples.length - 1; sampleIndex >= 0; sampleIndex--) {
       var rawSample = megatag1Samples[sampleIndex];
       if (!isValidBotPoseSample(rawSample.value)) continue;
 
@@ -120,12 +118,11 @@ public class VisionIOLimelight implements VisionIO {
 
               // Used tag IDs
               used));
+      break;
     }
 
     var megatag2Samples = megatag2Subscriber.readQueue();
-    for (int sampleIndex = Math.max(0, megatag2Samples.length - 1);
-        sampleIndex < megatag2Samples.length;
-        sampleIndex++) {
+    for (int sampleIndex = megatag2Samples.length - 1; sampleIndex >= 0; sampleIndex--) {
       var rawSample = megatag2Samples[sampleIndex];
       if (!isValidBotPoseSample(rawSample.value)) continue;
 
@@ -153,6 +150,7 @@ public class VisionIOLimelight implements VisionIO {
               // Observation type
               PoseObservationType.MEGATAG_2,
               used));
+      break;
     }
 
     // Save pose observations to inputs object
