@@ -3,8 +3,8 @@ plugins {
     id "org.wpilib.GradleRIO" version "2027.0.0-alpha-6"
     id "com.gradleup.shadow" version "9.3.0"
     id "com.peterabeles.gversion" version "1.11.0"
-    id "com.diffplug.spotless" version "8.6.0"
-    id "io.freefair.lombok" version "9.5.0"
+    id "com.diffplug.spotless" version "8.10.4"
+    id "io.freefair.lombok" version "9.8.2"
     id "com.google.protobuf" version "0.10.0"
 }
 
@@ -87,7 +87,7 @@ dependencies {
     nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
     simulationRelease wpi.sim.enableRelease()
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.3'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.6'
@@ -132,16 +132,18 @@ tasks.withType(JavaCompile) {
 // Create version file
 project.compileJava.dependsOn(createVersionFile)
 gversion {
-    srcDir       = "src/main/java/"
+    srcDir = "src/main/java/"
     classPackage = "frc.robot"
-    className    = "BuildConstants"
-    dateFormat   = "yyyy-MM-dd HH:mm:ss z"
-    timeZone     = "America/Phoenix"
-    indent       = "  "
+    className = "BuildConstants"
+    dateFormat = "yyyy-MM-dd HH:mm:ss z"
+    timeZone = "America/Phoenix"
+    indent = "  "
 }
 
 // Create commit with working changes on event branches
-def deployRequested = gradle.startParameter.taskNames.any({ it.toLowerCase().contains("deploy") })
+def deployRequested = gradle.startParameter.taskNames.any({
+    it.toLowerCase().contains("deploy")
+})
 task(eventDeploy) {
     doLast {
         if (deployRequested) {
