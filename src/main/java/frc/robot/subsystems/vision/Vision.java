@@ -313,18 +313,18 @@ public class Vision extends VirtualSubsystem {
       } else {
         final Pose3d[] tagsSeen = new Pose3d[tagIdsSeenThisLoop.size()];
         final int[] tagIdsSeen = new int[tagIdsSeenThisLoop.size()];
-        int tagCount = 0;
+        int poseCount = 0;
+        int idCount = 0;
         for (int tagId : tagIdsSeenThisLoop) {
-          tagIdsSeen[tagCount] = tagId;
+          tagIdsSeen[idCount++] = tagId;
           Optional<Pose3d> tagPose = FieldConstants.aprilTagLayout.getTagPose(tagId);
           if (tagPose.isPresent()) {
-            tagsSeen[tagCount] = tagPose.get();
-            tagCount++;
+            tagsSeen[poseCount++] = tagPose.get();
           }
         }
         Logger.recordOutput(
             "Vision/TagsSeenThisLoop",
-            tagCount == tagsSeen.length ? tagsSeen : Arrays.copyOf(tagsSeen, tagCount));
+            poseCount == tagsSeen.length ? tagsSeen : Arrays.copyOf(tagsSeen, poseCount));
         Logger.recordOutput("Vision/TagIdsSeenThisLoop", tagIdsSeen);
       }
     }
