@@ -17,10 +17,10 @@ import frc.robot.Constants;
 import frc.robot.Constants.RobotConstants;
 import frc.robot.Constants.SensorConstants;
 import frc.robot.subsystems.imu.Imu;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.math.geometry.Translation3d;
+import org.wpilib.system.Timer;
 
 /**
  * Accelerometer subsystem (VirtualSubsystem)
@@ -104,7 +104,7 @@ public class Accelerometer extends VirtualSubsystem {
 
       final double[] ts = imuInputs.odometryYawTimestamps;
       if (ts.length > 0) {
-        Logger.recordOutput("Odometry/IMULatencySec", TimeUtil.now() - ts[ts.length - 1]);
+        Logger.recordOutput("Odometry/IMULatencySec", Timer.getTimestamp() - ts[ts.length - 1]);
       }
     }
   }

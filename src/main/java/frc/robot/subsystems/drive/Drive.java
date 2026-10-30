@@ -32,11 +32,9 @@ import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
 import frc.robot.util.LocalADStarAK;
-import frc.robot.util.MathUtil;
 import frc.robot.util.RBSIEnum.Mode;
 import frc.robot.util.RBSIParsing;
 import frc.robot.util.RBSISubsystem;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.TimedPose;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -63,7 +61,9 @@ import org.wpilib.math.kinematics.SwerveDriveKinematics;
 import org.wpilib.math.kinematics.SwerveModulePosition;
 import org.wpilib.math.kinematics.SwerveModuleVelocity;
 import org.wpilib.math.trajectory.TrapezoidProfile;
+import org.wpilib.math.util.MathUtil;
 import org.wpilib.smartdashboard.Field2d;
+import org.wpilib.system.Timer;
 import org.wpilib.telemetry.Telemetry;
 import org.wpilib.util.Alert;
 import org.wpilib.util.Alert.Level;
@@ -731,7 +731,7 @@ public class Drive extends RBSISubsystem {
 
   /** Returns whether the robot is currently in the DISABLED_COAST state */
   public boolean isDisabledCoast() {
-    return isDisabledCoast(TimeUtil.now());
+    return isDisabledCoast(Timer.getTimestamp());
   }
 
   /** Returns whether the robot was in the DISABLED_COAST state at time `timestamp` */
@@ -771,7 +771,7 @@ public class Drive extends RBSISubsystem {
    * @param pose The specified pose to which to reset the pose estimator
    */
   public void resetPose(Pose2d pose) {
-    final double now = TimeUtil.now();
+    final double now = Timer.getTimestamp();
     m_PoseEstimator.resetPosition(getRawGyroHeading(), getModulePositions(), pose);
     lastAcceptedVisionReceiptTimestamp = Double.NEGATIVE_INFINITY;
     markPoseReset(now);
@@ -786,7 +786,7 @@ public class Drive extends RBSISubsystem {
   }
 
   private PathPlannerStartAction evaluatePathPlannerStart(Pose2d pathStartPose) {
-    final double now = TimeUtil.now();
+    final double now = Timer.getTimestamp();
     final double visionAge = now - lastAcceptedVisionReceiptTimestamp;
     final boolean hasRecentVision =
         Double.isFinite(visionAge)
@@ -875,14 +875,14 @@ public class Drive extends RBSISubsystem {
             ? Rotation2d.ZERO
             : Rotation2d.k180deg);
     resetHeadingController();
-    markPoseReset(TimeUtil.now());
+    markPoseReset(Timer.getTimestamp());
   }
 
   /** Zeros the gyro regardless of the alliance */
   public void zeroHeading() {
     imu.zeroYaw(Rotation2d.ZERO);
     resetHeadingController();
-    markPoseReset(TimeUtil.now());
+    markPoseReset(Timer.getTimestamp());
   }
 
   /**
@@ -997,7 +997,7 @@ public class Drive extends RBSISubsystem {
 
   private void markVisionMeasurementAccepted(double measurementTimestamp) {
     lastAcceptedVisionMeasurementTimestamp = measurementTimestamp;
-    lastAcceptedVisionReceiptTimestamp = TimeUtil.now();
+    lastAcceptedVisionReceiptTimestamp = Timer.getTimestamp();
   }
 
   /**

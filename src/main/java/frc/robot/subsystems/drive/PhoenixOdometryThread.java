@@ -22,7 +22,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.driverstation.DriverStationErrors;
-import org.wpilib.system.RobotController;
+import org.wpilib.system.Timer;
 import org.wpilib.units.measure.Angle;
 
 /**
@@ -157,7 +157,7 @@ public class PhoenixOdometryThread extends Thread {
         // Sample timestamp is current FPGA time minus average CAN latency
         //     Default timestamps from Phoenix are NOT compatible with
         //     FPGA timestamps, this solution is imperfect but close
-        double timestamp = RobotController.getTime() / 1e6;
+        double timestamp = Timer.getTimestamp();
         double totalLatency = 0.0;
         for (BaseStatusSignal signal : phoenixSignals) {
           totalLatency += signal.getTimestamp().getLatency();

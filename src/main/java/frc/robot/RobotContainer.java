@@ -43,7 +43,6 @@ import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
-import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSICANHealth;
@@ -55,7 +54,9 @@ import frc.robot.util.RBSIPowerMonitor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.networktables.LoggedNetworkChooser;
+import org.littletonrobotics.junction.networktables.LoggedNetworkNumber;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.VisionSystemSim;
@@ -124,11 +125,16 @@ public class RobotContainer {
       new LoggedNetworkChooser<>("Drive Style");
 
   // Input estimated battery capacity (if full, use printed value)
-  private final LoggedTunableNumber batteryCapacity =
-      new LoggedTunableNumber("Battery Amp-Hours", 18.0);
+  // AdvantageKit's logged input preserves the selected value during replay.
+  private final DoubleSupplier batteryCapacity =
+      Constants.isTuningMode()
+          ? new LoggedNetworkNumber("/Tuning/Battery Amp-Hours", 18.0)
+          : () -> 18.0;
   // EXAMPLE TUNABLE FLYWHEEL SPEED INPUT FROM DASHBOARD
-  private final LoggedTunableNumber flywheelSpeedInput =
-      new LoggedTunableNumber("Flywheel Speed", 1500.0);
+  private final DoubleSupplier flywheelSpeedInput =
+      Constants.isTuningMode()
+          ? new LoggedNetworkNumber("/Tuning/Flywheel Speed", 1500.0)
+          : () -> 1500.0;
 
   // Alerts
   private final Alert aprilTagLayoutAlert = new Alert("aprilTagLayout", "", Level.LOW);
@@ -162,7 +168,7 @@ public class RobotContainer {
         break;
 
       case SIM:
-        RBSICANBusRegistry.initSim(CANBuses.ALL);
+        RBSICANBusRegistry.initSim();
 
         m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
@@ -196,7 +202,7 @@ public class RobotContainer {
 
       default:
         // Replayed robot, disable IO implementations
-        RBSICANBusRegistry.initSim(CANBuses.ALL);
+        RBSICANBusRegistry.initSim();
         m_imu = new Imu(new ImuIO() {});
         m_drivebase = new Drive(m_imu);
         m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
@@ -322,7 +328,7 @@ public class RobotContainer {
         .rightBumper()
         .whileTrue(
             Commands.startEnd(
-                () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
+                () -> m_flywheel.runVelocity(flywheelSpeedInput.getAsDouble()),
                 m_flywheel::stop,
                 m_flywheel));
 

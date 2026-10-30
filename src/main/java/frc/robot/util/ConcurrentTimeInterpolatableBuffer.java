@@ -28,10 +28,14 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.wpilib.math.interpolation.Interpolatable;
 import org.wpilib.math.interpolation.Interpolator;
+import org.wpilib.math.util.MathUtil;
 
 /**
- * A concurrent version of WPIlib's TimeInterpolatableBuffer class to avoid the need for explicit
+ * A concurrent version of WPILib's TimeInterpolatableBuffer class to avoid the need for explicit
  * synchronization in our robot code.
+ *
+ * <p>TODO: Revisit whether this wrapper is still needed when WPILib provides safe concurrent access
+ * and the oldest/newest/range queries used by Drive.
  *
  * @param <T> The type stored in this buffer.
  */
@@ -80,7 +84,7 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    */
   public static ConcurrentTimeInterpolatableBuffer<Double> createDoubleBuffer(
       double historySizeSeconds) {
-    return new ConcurrentTimeInterpolatableBuffer<>(MathUtil::interpolate, historySizeSeconds);
+    return new ConcurrentTimeInterpolatableBuffer<>(MathUtil::lerp, historySizeSeconds);
   }
 
   /**

@@ -1,7 +1,7 @@
 package frc.robot.subsystems.drive;
 
-import frc.robot.util.MathUtil;
 import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.util.MathUtil;
 
 /** Unit conversions for REVLib 2027 SPARK encoders and closed-loop controllers. */
 final class SparkSwerveUnits {

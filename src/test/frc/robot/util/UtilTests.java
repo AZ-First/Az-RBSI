@@ -1,5 +1,6 @@
 package frc.robot.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,21 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import frc.robot.Constants;
 import java.util.NavigableMap;
 import org.junit.jupiter.api.Test;
-import org.wpilib.hardware.hal.HAL;
-import org.wpilib.system.RobotController;
 
 class UtilTests {
   private static final double EPSILON = 1e-9;
-
-  @Test
-  void timeUtilReturnsSecondsFromAdvantageKitMicrosecondTimestamp() {
-    assertTrue(HAL.initialize());
-
-    double expectedSeconds = RobotController.getTime() * 1.0e-6;
-    double actualSeconds = TimeUtil.now();
-
-    assertEquals(expectedSeconds, actualSeconds, 0.050);
-  }
 
   @Test
   void robotDeviceIdUsesValueEqualityAndHandlesMissingPowerPort() {
@@ -39,10 +28,17 @@ class UtilTests {
 
   @Test
   void robotDeviceIdLooksUpCanBusThroughRegistry() {
-    RBSICANBusRegistry.initSim(Constants.CANBuses.RIO);
+    RBSICANBusRegistry.initSim();
     RobotDeviceId device = new RobotDeviceId(1, Constants.CANBuses.RIO, 0);
 
     assertThrows(IllegalStateException.class, device::getCANBus);
+  }
+
+  @Test
+  void canHealthCanPollSystemcorePortInSimulation() {
+    RBSICANHealth health = new RBSICANHealth(Constants.CANBuses.RIO);
+
+    assertDoesNotThrow(health::rbsiPeriodic);
   }
 
   @Test

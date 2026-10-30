@@ -13,7 +13,10 @@
 
 package frc.robot.util;
 
+import frc.robot.Constants.CANBuses;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.hardware.bus.CANPort;
+import org.wpilib.system.RobotController;
 
 /**
  * Virtual subsystem to monitor CAN health
@@ -22,11 +25,13 @@ import org.littletonrobotics.junction.Logger;
  */
 public class RBSICANHealth extends VirtualSubsystem {
   private long loops = 0;
-  private final RBSICANBusRegistry.CANBusLike bus;
+  private final String busName;
+  private final CANPort port;
 
-  /** Constructur */
+  /** Constructor */
   public RBSICANHealth(String busName) {
-    bus = RBSICANBusRegistry.getLike(busName);
+    this.busName = busName;
+    port = CANBuses.revPort(busName);
   }
 
   @Override
@@ -41,11 +46,11 @@ public class RBSICANHealth extends VirtualSubsystem {
     if ((loops++ % 5) != 0) return;
 
     // Get status and log
-    var status = bus.getStatus();
-    Logger.recordOutput("CAN/" + bus.getName() + "/Utilization", status.BusUtilization);
-    Logger.recordOutput("CAN/" + bus.getName() + "/TxFullCount", status.TxFullCount);
-    Logger.recordOutput("CAN/" + bus.getName() + "/RxErrorCount", status.REC);
-    Logger.recordOutput("CAN/" + bus.getName() + "/TxErrorCount", status.TEC);
-    Logger.recordOutput("CAN/" + bus.getName() + "/BusOffCount", status.BusOffCount);
+    var status = RobotController.getCANStatus(port);
+    Logger.recordOutput("CAN/" + busName + "/Utilization", status.percentBusUtilization);
+    Logger.recordOutput("CAN/" + busName + "/TxFullCount", status.txFullCount);
+    Logger.recordOutput("CAN/" + busName + "/RxErrorCount", status.receiveErrorCount);
+    Logger.recordOutput("CAN/" + busName + "/TxErrorCount", status.transmitErrorCount);
+    Logger.recordOutput("CAN/" + busName + "/BusOffCount", status.busOffCount);
   }
 }

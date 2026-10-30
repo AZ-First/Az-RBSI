@@ -22,13 +22,13 @@ import com.ctre.phoenix6.StatusCode;
 import frc.robot.Constants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.RBSIEnum.Mode;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
 import java.util.ArrayList;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.driverstation.RobotState;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.system.Timer;
 
 public final class DriveOdometry extends VirtualSubsystem {
   private static final int MAX_VISION_MEASUREMENTS_PER_LOOP = 2;
@@ -124,7 +124,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       // Pure SIM (not replaying a log): use sim pose/yaw
       // ----------------------------------------------------------------------
       if (Constants.isPureSim()) {
-        final double now = TimeUtil.now();
+        final double now = Timer.getTimestamp();
 
         // Keep buffers alive
         drive.poseBufferAddSample(now, drive.getSimPose());
@@ -146,7 +146,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       // measurements can still be applied while the robot is carried or repositioned.
       // ----------------------------------------------------------------------
       if (RobotState.isDisabled() && !isReplayActive) {
-        final double now = TimeUtil.now();
+        final double now = Timer.getTimestamp();
 
         // keep yaw buffers alive
         if (imuInputs.connected) {
@@ -182,7 +182,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       // Always keep yaw buffers “alive” even if no samples
       if (n == 0) {
         if (Constants.getMode() != Mode.REPLAY) {
-          final double now = TimeUtil.now();
+          final double now = Timer.getTimestamp();
           drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
 
           // Coast state update (no per-sample positions available; use current)
@@ -233,7 +233,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       if (hasYawQueue && !yawIndexAligned) {
         drive.yawBuffersFillFromQueue(yawTs, yawPos);
       } else if (!hasYawQueue) {
-        final double now = TimeUtil.now();
+        final double now = Timer.getTimestamp();
         drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
       }
 
@@ -282,7 +282,7 @@ public final class DriveOdometry extends VirtualSubsystem {
 
         if (logDebug && i == n - 1) {
           Logger.recordOutput("Odometry/Debug/timestamp", t);
-          Logger.recordOutput("Odometry/Debug/now", TimeUtil.now());
+          Logger.recordOutput("Odometry/Debug/now", Timer.getTimestamp());
           if (i > 0) {
             Logger.recordOutput("Odometry/Debug/timeNowDiff", t - ts[i - 1]);
           }

@@ -17,7 +17,7 @@ import java.util.Queue;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.system.Notifier;
-import org.wpilib.system.RobotController;
+import org.wpilib.system.Timer;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -101,7 +101,7 @@ public class SparkOdometryThread {
     Drive.odometryLock.lock();
     try {
       // Get sample timestamp
-      double timestamp = RobotController.getTime() / 1e6;
+      double timestamp = Timer.getTimestamp();
 
       // Read Spark values, mark invalid in case of error
       double[] sparkValues = new double[sparkSignals.size()];
