@@ -9,8 +9,8 @@ resulting data with WPILib SysId, AdvantageKit, CTRE Phoenix 6, and REVLib.
   https://docs.wpilib.org/en/stable/docs/software/advanced-controls/system-identification/creating-routine.html
 - WPILib SysId data loading:
   https://docs.wpilib.org/en/stable/docs/software/advanced-controls/system-identification/loading-data.html
-- WPILib 2026 `SysIdRoutine.Config` API:
-  https://github.wpilib.org/allwpilib/docs/release/java/edu/wpi/first/wpilibj2/command/sysid/SysIdRoutine.Config.html
+- WPILib 2027 Commands V3 `SysIdRoutine` addition:
+  https://github.com/wpilibsuite/allwpilib/pull/8304
 - AdvantageKit SysId compatibility:
   https://docs.advantagekit.org/data-flow/sysid-compatibility
 - CTRE Phoenix 6 SysId integration:
@@ -30,7 +30,7 @@ RBSI exposes two SysId routine families for the example flywheel:
 
 - `FlywheelVoltage`: direct voltage control.
 - `FlywheelDutyCycle`: duty-cycle control, where the SysId requested voltage is converted to a
-  percent output using the current roboRIO battery voltage.
+  percent output using the current robot battery voltage.
 
 The voltage routine is the primary routine for identifying feedforward constants. It uses the
 vendor voltage APIs directly:
@@ -63,10 +63,9 @@ controllers.
 
 ## Chooser Entries
 
-The routines are published in the PathPlanner auto chooser when `Constants.getAutoType()` is
-`PATHPLANNER` and the example flywheel is enabled for simulation or real hardware. Real hardware
-defaults to `DISABLED` in `Constants.kExampleFlywheelHardware`; see
-`SUPPORTED-CONFIGURATIONS.md` before selecting a physical IO.
+On the Commands V3 branch, the routines are published in the manual autonomous
+chooser when `Constants.getAutoType()` is `MANUAL`. The chooser also offers four
+drive SysId tests, with a one-second zero-output settling period before each test.
 
 Run all four voltage routines:
 
@@ -88,7 +87,7 @@ Optional comparison routines:
    mechanism that is not safe in reverse.
 2. Put the robot in a safe open area, with the flywheel pointed away from people and loose objects.
 3. Use a charged battery.
-4. Confirm the example flywheel hardware selected in `Constants` matches the hardware being tested.
+4. Confirm the example flywheel IO selected in `RobotContainer` matches the hardware being tested.
 5. Confirm gear ratio and encoder units in `Constants.FlywheelConstants.kGearRatio`.
 6. Confirm the follower motor is physically and logically correct. A missing or inverted follower
    will poison the characterization data.
@@ -117,7 +116,7 @@ step voltage, or timeout.
 
 RBSI follows the AdvantageKit SysId workflow:
 
-- The SysId `Mechanism` log callback is `null`.
+- The SysId `SysIdMechanism` log callback is `null`.
 - Flywheel inputs are logged through the `FlywheelIOInputsAutoLogged` object.
 - The SysId test state is recorded with `Logger.recordOutput("SysIdTestState", ...)`.
 - RBSI also records `Flywheel/SysIdRoutine` and `Flywheel/SysIdState` for easier filtering.

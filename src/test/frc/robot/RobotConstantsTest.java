@@ -111,7 +111,7 @@ class RobotConstantsTest {
   void selectedTunableConstantsAreInUsableRanges() {
     assertPositive(Constants.OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec);
 
-    // Commands V3 deferred: assertPositive(Constants.DrivebaseConstants.kSysIdPreRunStopSecs);
+    assertPositive(Constants.DrivebaseConstants.kSysIdPreRunStopSecs);
     assertPositive(Constants.DrivebaseConstants.kFeedforwardCharacterizationStartDelaySecs);
     assertPositive(Constants.DrivebaseConstants.kFeedforwardCharacterizationRampRateVoltsPerSec);
     assertPositive(Constants.DrivebaseConstants.kWheelRadiusCharacterizationStartDelaySecs);
@@ -121,6 +121,9 @@ class RobotConstantsTest {
     assertPositive(Constants.DrivebaseConstants.kDisabledVisionCoastBlendAlpha);
 
     assertPositive(Constants.FlywheelConstants.kMaxVoltage);
+    assertPositive(Constants.FlywheelConstants.kSysIdQuasistaticRampRateVoltsPerSec);
+    assertPositive(Constants.FlywheelConstants.kSysIdDynamicStepVoltageVolts);
+    assertPositive(Constants.FlywheelConstants.kSysIdTimeoutSecs);
     assertPositive(Constants.FlywheelConstants.kMotionMagicAccelerationRotPerSecSq);
     assertPositive(Constants.FlywheelConstants.kMotionMagicJerkRotPerSecCubed);
     assertPositive(Constants.FlywheelConstants.kSimGearing);

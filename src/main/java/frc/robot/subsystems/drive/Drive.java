@@ -18,6 +18,8 @@
 package frc.robot.subsystems.drive;
 
 import static frc.robot.subsystems.drive.SwerveConstants.*;
+import static org.wpilib.units.Units.Seconds;
+import static org.wpilib.units.Units.Volts;
 
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
@@ -35,6 +37,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.command3.Command;
+import org.wpilib.command3.sysid.SysIdRoutine;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
@@ -70,9 +74,7 @@ public class Drive extends RBSISubsystem {
   private final Imu imu;
   private final Module[] modules = new Module[4]; // FL, FR, BL, BR
 
-  // Commands V3 deferred: SysId field
-  //   private final SysIdRoutine sysId;
-  // End deferred integration.
+  private final SysIdRoutine sysId;
   // Pose Buffer Declarations
   private final ConcurrentTimeInterpolatableBuffer<Pose2d> poseBuffer =
       ConcurrentTimeInterpolatableBuffer.createBuffer(DrivebaseConstants.kPoseBufferHistorySecs);
@@ -242,7 +244,7 @@ public class Drive extends RBSISubsystem {
     // Usage reporting for swerve template
     HAL.reportUsage("RobotDrive", "Swerve_AdvantageKit");
 
-    // Commands V3 deferred: PathPlanner AutoBuilder and drive SysId setup
+    // Commands V3 deferred: PathPlanner AutoBuilder
     //     // Configure Autonomous Path Building for PathPlanner based on `AutoType`
     //     switch (Constants.getAutoType()) {
     //       case PATHPLANNER:
@@ -291,17 +293,20 @@ public class Drive extends RBSISubsystem {
     //       default:
     //     }
     //
-    //     // Configure SysId for drivebase characterization
-    //     sysId =
-    //         new SysIdRoutine(
-    //             new SysIdRoutine.Config(
-    //                 null,
-    //                 null,
-    //                 null,
-    //                 (state) -> Logger.recordOutput("Drive/SysIdState", state.toString())),
-    //             new SysIdRoutine.Mechanism(
-    //                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
     // End deferred integration.
+
+    sysId =
+        new SysIdRoutine(
+            new SysIdRoutine.Config(
+                SysIdRoutine.Config.DEFAULT_RAMP_RATE,
+                SysIdRoutine.Config.DEFAULT_STEP_VOLTAGE,
+                SysIdRoutine.Config.DEFAULT_TIMEOUT,
+                state -> {
+                  Logger.recordOutput("SysIdTestState", state.toString());
+                  Logger.recordOutput("Drive/SysIdState", state.toString());
+                }),
+            new SysIdRoutine.SysIdMechanism(
+                voltage -> runCharacterization(voltage.in(Volts)), null, this, "Drive"));
   }
 
   /************************************************************************* */
@@ -552,24 +557,28 @@ public class Drive extends RBSISubsystem {
   }
 
   /************************************************************************* */
-  // Commands V3 deferred: drive SysId commands
-  //   /************************************************************************* */
-  //   /** SysId Characterization Routines ************************************** */
-  //
-  //   /** Returns a command to run a quasistatic test in the specified direction. */
-  //   public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-  //     return run(() -> runCharacterization(0.0))
-  //         .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
-  //         .andThen(sysId.quasistatic(direction));
-  //   }
-  //
-  //   /** Returns a command to run a dynamic test in the specified direction. */
-  //   public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-  //     return run(() -> runCharacterization(0.0))
-  //         .withTimeout(DrivebaseConstants.kSysIdPreRunStopSecs)
-  //         .andThen(sysId.dynamic(direction));
-  //   }
-  // End deferred integration.
+  /** Returns a drive quasistatic test after a short zero-output settling period. */
+  public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+    return runRepeatedly(() -> runCharacterization(0.0))
+        .named("Drive SysId settle")
+        .withTimeout(Seconds.of(DrivebaseConstants.kSysIdPreRunStopSecs))
+        .andThen(sysId.quasistatic(direction))
+        .named("Drive SysId " + sysIdDirectionLabel(direction) + " Quasistatic");
+  }
+
+  /** Returns a drive dynamic test after a short zero-output settling period. */
+  public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+    return runRepeatedly(() -> runCharacterization(0.0))
+        .named("Drive SysId settle")
+        .withTimeout(Seconds.of(DrivebaseConstants.kSysIdPreRunStopSecs))
+        .andThen(sysId.dynamic(direction))
+        .named("Drive SysId " + sysIdDirectionLabel(direction) + " Dynamic");
+  }
+
+  private static String sysIdDirectionLabel(SysIdRoutine.Direction direction) {
+    return direction == SysIdRoutine.Direction.FORWARD ? "Forward" : "Reverse";
+  }
+
   /** Getter Functions ***************************************************** */
 
   /** Returns the module array */
