@@ -20,7 +20,6 @@ import java.util.Queue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.DoubleSupplier;
-import org.littletonrobotics.junction.Logger;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.system.Timer;
 import org.wpilib.units.measure.Angle;
@@ -48,14 +47,17 @@ public class PhoenixOdometryThread extends Thread {
 
   private static PhoenixOdometryThread instance = null;
 
-  private long droppedSamples = 0;
-  private long loopCount = 0;
+  private volatile long droppedSamples = 0;
 
   public static PhoenixOdometryThread getInstance() {
     if (instance == null) {
       instance = new PhoenixOdometryThread();
     }
     return instance;
+  }
+
+  long getDroppedSamples() {
+    return droppedSamples;
   }
 
   private PhoenixOdometryThread() {
@@ -178,11 +180,6 @@ public class PhoenixOdometryThread extends Thread {
         }
       } finally {
         Drive.odometryLock.unlock();
-      }
-
-      // every ~1s
-      if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
-        Logger.recordOutput("Drive/OdomThread/DroppedSamples", droppedSamples);
       }
     }
   }

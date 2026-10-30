@@ -18,6 +18,7 @@
 package frc.robot.subsystems.imu;
 
 import frc.robot.util.VirtualSubsystem;
+import org.littletonrobotics.junction.Logger;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.geometry.Translation3d;
 
@@ -25,7 +26,7 @@ public class Imu extends VirtualSubsystem {
 
   // Declare the io and inputs
   private final ImuIO io;
-  private final ImuIO.ImuIOInputs inputs = new ImuIO.ImuIOInputs();
+  private final ImuIOInputsAutoLogged inputs = new ImuIOInputsAutoLogged();
 
   // Per-cycle cached objects (to avoid repeated allocations)
   private long cacheStampNs = -1L;
@@ -52,6 +53,7 @@ public class Imu extends VirtualSubsystem {
   /** Periodic function to read inputs */
   public void rbsiPeriodic() {
     io.updateInputs(inputs);
+    Logger.processInputs("IMU", inputs);
   }
 
   public boolean isConnected() {

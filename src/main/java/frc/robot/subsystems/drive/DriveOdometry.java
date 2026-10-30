@@ -349,6 +349,14 @@ public final class DriveOdometry extends VirtualSubsystem {
       Logger.recordOutput("Odometry/SamplesProcessed", sampleCount);
       Logger.recordOutput("Odometry/VisionMeasurementsProcessed", visionMeasurementsProcessed);
       Logger.recordOutput("Odometry/BulkRefreshStatus", bulkRefreshStatus.toString());
+      if (Constants.getMode() == Mode.REAL) {
+        Logger.recordOutput(
+            "Drive/OdomThread/DroppedSamples",
+            PhoenixOdometryThread.getInstance().getDroppedSamples());
+        Logger.recordOutput(
+            "Drive/SparkOdomThread/DroppedSamples",
+            SparkOdometryThread.getInstance().getDroppedSamples());
+      }
     }
   }
 }

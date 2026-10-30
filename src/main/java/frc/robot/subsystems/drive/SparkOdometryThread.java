@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
-import org.littletonrobotics.junction.Logger;
 import org.wpilib.system.Notifier;
 import org.wpilib.system.Timer;
 
@@ -37,14 +36,17 @@ public class SparkOdometryThread {
 
   private static SparkOdometryThread instance = null;
   private final Notifier notifier = new Notifier(this::run);
-  private long droppedSamples = 0;
-  private long loopCount = 0;
+  private volatile long droppedSamples = 0;
 
   public static SparkOdometryThread getInstance() {
     if (instance == null) {
       instance = new SparkOdometryThread();
     }
     return instance;
+  }
+
+  long getDroppedSamples() {
+    return droppedSamples;
   }
 
   private SparkOdometryThread() {
@@ -127,10 +129,6 @@ public class SparkOdometryThread {
       }
     } finally {
       Drive.odometryLock.unlock();
-    }
-
-    if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
-      Logger.recordOutput("Drive/SparkOdomThread/DroppedSamples", droppedSamples);
     }
   }
 
