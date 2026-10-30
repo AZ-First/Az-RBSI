@@ -19,6 +19,9 @@
 
 package frc.robot;
 
+import choreo.auto.AutoFactory;
+import choreo.auto.AutoRoutine;
+import choreo.auto.AutoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
 import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.Cameras;
@@ -117,9 +120,8 @@ public class RobotContainer {
   // AutoChoosers for both supported path planning types
   private final LoggedNetworkChooser<Command> autoChooserPathPlanner;
 
-  // TODO(2027): Re-enable Choreo chooser/factory when ChoreoLib supports 2027 WPILib.
-  // private final LoggedNetworkChooser<Command> autoChooserChoreo;
-  // private final AutoFactory autoFactoryChoreo;
+  private final LoggedNetworkChooser<Command> autoChooserChoreo;
+  private final AutoFactory autoFactoryChoreo;
 
   private final LoggedNetworkChooser<DriveStyle> driveStyle =
       new LoggedNetworkChooser<>("Drive Style");
@@ -234,32 +236,29 @@ public class RobotContainer {
         // ...
         // Set the others to null
         autoChooserPathPlanner = null;
-        // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
-        // autoChooserChoreo = null;
-        // autoFactoryChoreo = null;
+        autoChooserChoreo = null;
+        autoFactoryChoreo = null;
         break;
 
       case PATHPLANNER:
         autoChooserPathPlanner =
             new LoggedNetworkChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
         // Set the others to null
-        // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
-        // autoChooserChoreo = null;
-        // autoFactoryChoreo = null;
+        autoChooserChoreo = null;
+        autoFactoryChoreo = null;
         break;
 
       case CHOREO:
-        // TODO(2027): Re-enable this Choreo AutoFactory setup when ChoreoLib supports 2027 WPILib.
-        // autoFactoryChoreo =
-        //     new AutoFactory(
-        //         m_drivebase::getPose,
-        //         m_drivebase::resetPose,
-        //         m_drivebase::followTrajectory,
-        //         true,
-        //         m_drivebase);
-        // autoChooserChoreo = new LoggedNetworkChooser<>("Choreo Auto Choices");
-        // autoChooserChoreo.addDefault("Nothing", Commands.none());
-        // autoChooserChoreo.add("twoPieceAuto", twoPieceAuto().cmd());
+        autoFactoryChoreo =
+            new AutoFactory(
+                m_drivebase::getPose,
+                m_drivebase::resetPose,
+                m_drivebase::followTrajectory,
+                true,
+                m_drivebase);
+        autoChooserChoreo = new LoggedNetworkChooser<>("Choreo Auto Choices");
+        autoChooserChoreo.addDefault("Nothing", Commands.none());
+        autoChooserChoreo.add("twoPieceAuto", twoPieceAuto().cmd());
         autoChooserPathPlanner = null;
         break;
 
@@ -436,8 +435,7 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommandChoreo() {
-    // TODO(2027): Return autoChooserChoreo.get() when ChoreoLib supports 2027 WPILib.
-    return Commands.none();
+    return autoChooserChoreo.get();
   }
 
   /** Updates the alerts. */
@@ -576,15 +574,14 @@ public class RobotContainer {
     return ios;
   }
 
-  // TODO(2027): Re-enable this example Choreo auto when ChoreoLib supports 2027 WPILib.
-  // private AutoRoutine twoPieceAuto() {
-  //   AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
-  //   AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
-  //   AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
-  //   routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
-  //   pickupTraj.done().onTrue(scoreTraj.cmd());
-  //   return routine;
-  // }
+  private AutoRoutine twoPieceAuto() {
+    AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
+    AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
+    AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
+    routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
+    pickupTraj.done().onTrue(scoreTraj.cmd());
+    return routine;
+  }
 
   private DriveStyle getSelectedDriveStyle() {
     DriveStyle selected = driveStyle.get();

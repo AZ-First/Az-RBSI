@@ -20,6 +20,7 @@ package frc.robot.subsystems.drive;
 import static frc.robot.subsystems.drive.SwerveConstants.*;
 import static org.wpilib.units.Units.Volts;
 
+import choreo.trajectory.SwerveSample;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
@@ -1115,26 +1116,24 @@ public class Drive extends RBSISubsystem {
           AutoConstants.kChoreoSteerPID.kI,
           AutoConstants.kChoreoSteerPID.kD);
 
-  // TODO(2027): Re-enable these Choreo trajectory followers when ChoreoLib supports 2027 WPILib.
-  // public void choreoController(Pose2d pose, SwerveSample sample) {
-  //   var targetSpeeds = sample.getChassisVelocities();
-  //   targetSpeeds.vx += m_pathXController.calculate(pose.getX(), sample.x);
-  //   targetSpeeds.vy += m_pathYController.calculate(pose.getY(), sample.y);
-  //   targetSpeeds.omega +=
-  //       m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading);
-  //
-  //   runVelocity(targetSpeeds.toRobotRelative(getHeading()));
-  // }
-  //
-  // public void followTrajectory(SwerveSample sample) {
-  //   Pose2d pose = getPose();
-  //   ChassisVelocities fieldRelativeSpeeds =
-  //       new ChassisVelocities(
-  //           sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
-  //           sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
-  //           sample.omega
-  //               + m_pathThetaController.calculate(pose.getRotation().getRadians(),
-  // sample.heading));
-  //   runVelocity(fieldRelativeSpeeds.toRobotRelative(pose.getRotation()));
-  // }
+  public void choreoController(Pose2d pose, SwerveSample sample) {
+    ChassisVelocities targetSpeeds = sample.getChassisSpeeds();
+    targetSpeeds.vx += m_pathXController.calculate(pose.getX(), sample.x);
+    targetSpeeds.vy += m_pathYController.calculate(pose.getY(), sample.y);
+    targetSpeeds.omega +=
+        m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading);
+
+    runVelocity(targetSpeeds.toRobotRelative(getHeading()));
+  }
+
+  public void followTrajectory(SwerveSample sample) {
+    Pose2d pose = getPose();
+    ChassisVelocities fieldRelativeSpeeds =
+        new ChassisVelocities(
+            sample.vx + m_pathXController.calculate(pose.getX(), sample.x),
+            sample.vy + m_pathYController.calculate(pose.getY(), sample.y),
+            sample.omega
+                + m_pathThetaController.calculate(pose.getRotation().getRadians(), sample.heading));
+    runVelocity(fieldRelativeSpeeds.toRobotRelative(pose.getRotation()));
+  }
 }
