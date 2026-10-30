@@ -349,14 +349,8 @@ public final class Constants {
     // Hold time on motor brakes when disabled
     public static final double kWheelLockTimeSecs = 10;
 
-    // Commands V3 deferred: SysId drive constants
-    //     // SysID characterization constants
-    //     public static final double kSysIdMaxVoltage = 12.0;
-    //     public static final double kSysIdDelaySecs = 3.0;
-    //     public static final double kSysIdQuasistaticTimeoutSecs = 5.0;
-    //     public static final double kSysIdDynamicTimeoutSecs = 3.0;
-    //     public static final double kSysIdPreRunStopSecs = 1.0;
-    // End deferred integration.
+    // Let the drive settle before each SysId test starts ramping or stepping voltage.
+    public static final double kSysIdPreRunStopSecs = 1.0;
     public static final double kFeedforwardCharacterizationStartDelaySecs = 2.0;
     public static final double kFeedforwardCharacterizationRampRateVoltsPerSec = 0.1;
     public static final double kWheelRadiusCharacterizationStartDelaySecs = 1.0;
@@ -427,12 +421,10 @@ public final class Constants {
     public static final double kClosedLoopRampPeriodSecs = 0.15;
     public static final double kOpenLoopRampPeriodSecs = 0.25;
 
-    // Commands V3 deferred: SysId flywheel constants
-    //     // SysId characterization settings
-    //     public static final double kSysIdQuasistaticRampRateVoltsPerSec = 1.0;
-    //     public static final double kSysIdDynamicStepVoltageVolts = 7.0;
-    //     public static final double kSysIdTimeoutSecs = 10.0;
-    // End deferred integration.
+    // SysId characterization settings
+    public static final double kSysIdQuasistaticRampRateVoltsPerSec = 1.0;
+    public static final double kSysIdDynamicStepVoltageVolts = 7.0;
+    public static final double kSysIdTimeoutSecs = 10.0;
     // CTRE Motion Magic Velocity settings
     public static final double kMotionMagicAccelerationRotPerSecSq = 400.0;
     public static final double kMotionMagicJerkRotPerSecCubed = 4000.0;

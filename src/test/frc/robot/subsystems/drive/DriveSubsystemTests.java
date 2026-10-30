@@ -9,6 +9,7 @@ import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIOSim;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.command3.sysid.SysIdRoutine;
 import org.wpilib.hardware.hal.HAL;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
@@ -48,6 +49,19 @@ class DriveSubsystemTests {
     assertEquals(1.0, drive.getPoseBufferOldestTime(), EPSILON);
     assertEquals(2.0, drive.getPoseBufferNewestTime(), EPSILON);
     assertEquals(2.0, drive.getPoseAtTime(1.5).orElseThrow().getX(), EPSILON);
+  }
+
+  @Test
+  void sysIdCommandsRequireTheDriveMechanism() {
+    Drive drive = new Drive(new Imu(new ImuIOSim()));
+
+    var quasistatic = drive.sysIdQuasistatic(SysIdRoutine.Direction.FORWARD);
+    var dynamic = drive.sysIdDynamic(SysIdRoutine.Direction.REVERSE);
+
+    assertTrue(quasistatic.requires(drive));
+    assertTrue(dynamic.requires(drive));
+    assertEquals("Drive SysId Forward Quasistatic", quasistatic.name());
+    assertEquals("Drive SysId Reverse Dynamic", dynamic.name());
   }
 
   @Test

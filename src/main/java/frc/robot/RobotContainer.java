@@ -60,6 +60,7 @@ import org.photonvision.simulation.VisionSystemSim;
 import org.wpilib.command3.Command;
 import org.wpilib.command3.Trigger;
 import org.wpilib.command3.button.CommandJoystick;
+import org.wpilib.command3.sysid.SysIdRoutine;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.GenericHID;
 import org.wpilib.driverstation.NiDsXboxController;
@@ -281,6 +282,7 @@ public class RobotContainer {
         DriveCommands.wheelRadiusCharacterization(m_drivebase));
     autoChooser.add(
         "Drive Simple FF Characterization", DriveCommands.feedforwardCharacterization(m_drivebase));
+    registerSysIdRoutines();
 
     // Get drive style from the Dashboard Chooser. The constant controls the boot default, and the
     // dashboard chooser lets teams swap stick layouts between drivers without recompiling.
@@ -291,10 +293,6 @@ public class RobotContainer {
       }
     }
 
-    // Commands V3 deferred: SysId chooser registration call
-    //     // Define SysIs Routines
-    //     definesysIdRoutines();
-    // End deferred integration.
     // Configure the button and trigger bindings
     configureBindings();
   }
@@ -488,62 +486,46 @@ public class RobotContainer {
     return m_vision;
   }
 
-  // Commands V3 deferred: drive and flywheel SysId chooser options
-  //   /**
-  //    * Set up the SysID routines from AdvantageKit
-  //    *
-  //    * <p>NOTE: These are currently only accessible with Constants.AutoType.PATHPLANNER
-  //    */
-  //   private void definesysIdRoutines() {
-  //     if (Constants.getAutoType() == AutoType.PATHPLANNER) {
-  //       // Drivebase characterization
-  //       autoChooserPathPlanner.addOption(
-  //           "Drive Wheel Radius Characterization",
-  //           DriveCommands.wheelRadiusCharacterization(m_drivebase));
-  //       autoChooserPathPlanner.addOption(
-  //           "Drive Simple FF Characterization",
-  //           DriveCommands.feedforwardCharacterization(m_drivebase));
-  //       autoChooserPathPlanner.addOption(
-  //           "Drive SysId (Quasistatic Forward)",
-  //           m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-  //       autoChooserPathPlanner.addOption(
-  //           "Drive SysId (Quasistatic Reverse)",
-  //           m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-  //       autoChooserPathPlanner.addOption(
-  //           "Drive SysId (Dynamic Forward)",
-  //           m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kForward));
-  //       autoChooserPathPlanner.addOption(
-  //           "Drive SysId (Dynamic Reverse)",
-  //           m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-  //
-  //       // Example Flywheel SysId Characterization
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Voltage (Quasistatic Forward)",
-  //           m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Voltage (Quasistatic Reverse)",
-  //           m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kReverse));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Voltage (Dynamic Forward)",
-  //           m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kForward));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Voltage (Dynamic Reverse)",
-  //           m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Duty Cycle (Quasistatic Forward)",
-  //           m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
-  //           m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kReverse));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Duty Cycle (Dynamic Forward)",
-  //           m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kForward));
-  //       autoChooserPathPlanner.addOption(
-  //           "Flywheel SysId Duty Cycle (Dynamic Reverse)",
-  //           m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse));
-  //     }
-  //   }
-  // End deferred integration.
+  /** Adds drive and flywheel SysId tests to the manual autonomous chooser. */
+  private void registerSysIdRoutines() {
+    autoChooser.add(
+        "Drive SysId (Quasistatic Forward)",
+        m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.FORWARD));
+    autoChooser.add(
+        "Drive SysId (Quasistatic Reverse)",
+        m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.REVERSE));
+    autoChooser.add(
+        "Drive SysId (Dynamic Forward)", m_drivebase.sysIdDynamic(SysIdRoutine.Direction.FORWARD));
+    autoChooser.add(
+        "Drive SysId (Dynamic Reverse)", m_drivebase.sysIdDynamic(SysIdRoutine.Direction.REVERSE));
+
+    autoChooser.add(
+        "Flywheel SysId Voltage (Quasistatic Forward)",
+        m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.FORWARD));
+    autoChooser.add(
+        "Flywheel SysId Voltage (Quasistatic Reverse)",
+        m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.REVERSE));
+    autoChooser.add(
+        "Flywheel SysId Voltage (Dynamic Forward)",
+        m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.FORWARD));
+    autoChooser.add(
+        "Flywheel SysId Voltage (Dynamic Reverse)",
+        m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.REVERSE));
+
+    autoChooser.add(
+        "Flywheel SysId Duty Cycle (Quasistatic Forward)",
+        m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.FORWARD));
+    autoChooser.add(
+        "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
+        m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.REVERSE));
+    autoChooser.add(
+        "Flywheel SysId Duty Cycle (Dynamic Forward)",
+        m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.FORWARD));
+    autoChooser.add(
+        "Flywheel SysId Duty Cycle (Dynamic Reverse)",
+        m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.REVERSE));
+  }
+
   // Vision Factories
   // Vision Factories (REAL)
   private VisionIO[] buildVisionIOsReal(Drive drive) {
