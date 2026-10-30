@@ -11,9 +11,9 @@ Az-RBSI is a robot-code template for teams that want a reliable swerve,
 odometry, vision, logging, and tuning baseline without starting from an empty
 project. This branch includes a manual autonomous scaffold.
 
-This `sc2027_cv3` branch uses WPILib Commands V3. See the
-[V3 branch notes](doc/Commands-V3-Branch.md) before using the autonomous or
-SysId guides below; those guides still describe the V2 branch.
+This `commands_v3` branch uses WPILib Commands V3. See the
+[V3 branch notes](doc/Commands-V3-Branch.md) before using the autonomous guide;
+the SysId guide covers the restored V3 routines.
 
 ## 2027 CANOPY/BIOCORE
 
