@@ -1,4 +1,5 @@
 {
+  "workbench.colorTheme": "FRC BIOCORE High Contrast",
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.server.launchMode": "Standard",
   "files.exclude": {
