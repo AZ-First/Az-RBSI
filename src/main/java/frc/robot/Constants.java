@@ -127,10 +127,10 @@ public final class Constants {
     // Kraken X60 stall torque ~7.09 Nm; MK4i L3 gear ratio 6.12:1
     public static final double kMaxWheelTorqueNm = 43.4;
 
-    // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
+    // Insert here the orientation (CCW == +) of the Systemcore and drive IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
     //   frame.
-    public static final Rotation3d kRioOrientation =
+    public static final Rotation3d kSystemcoreOrientation =
         switch (getRobot()) {
           case COMPBOT -> new Rotation3d(0, 0, Units.degreesToRadians(-90));
           case DEVBOT1, DEVBOT2 -> Rotation3d.ZERO;
@@ -259,14 +259,6 @@ public final class Constants {
     // are defined
     // Example:
     // public static final int INTAKE_SERVO = 0;
-  }
-
-  /************************************************************************* */
-  /** Sensor Constants ***************************************************** */
-  public static final class SensorConstants {
-
-    // RoboRIO accelerometer sampler rate.
-    public static final double kRioAccelerometerSampleRateHz = 200.0;
   }
 
   /************************************************************************* */

@@ -110,7 +110,6 @@ class RobotConstantsTest {
   @Test
   void selectedTunableConstantsAreInUsableRanges() {
     assertPositive(Constants.OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec);
-    assertPositive(Constants.SensorConstants.kRioAccelerometerSampleRateHz);
 
     assertPositive(Constants.DrivebaseConstants.kSysIdPreRunStopSecs);
     assertPositive(Constants.DrivebaseConstants.kFeedforwardCharacterizationStartDelaySecs);

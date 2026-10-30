@@ -13,9 +13,7 @@
 
 package frc.robot.subsystems.accelerometer;
 
-import frc.robot.Constants;
 import frc.robot.Constants.RobotConstants;
-import frc.robot.Constants.SensorConstants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.VirtualSubsystem;
 import org.littletonrobotics.junction.Logger;
@@ -25,36 +23,31 @@ import org.wpilib.system.Timer;
 /**
  * Accelerometer subsystem (VirtualSubsystem)
  *
- * <p>This virtual subsystem pulls the acceleration values from both the RoboRIO and the swerve's
- * IMU (either Pigeon2 or NavX) and logs them to both AdvantageKitd. In addition to the
- * accelerations, the jerk (a-dot or x-tripple-dot) is computed from the delta accelerations.
+ * <p>Reads the Systemcore's onboard accelerometer and the swerve IMU, rotates both into the robot
+ * frame, and logs acceleration and jerk through AdvantageKit.
  */
 public class Accelerometer extends VirtualSubsystem {
 
   // Define hardware interfaces
-  private final RioAccelIO rio;
-  private final RioAccelIO.Inputs rioInputs = new RioAccelIO.Inputs();
+  private final ControllerAccelIO controller;
+  private final ControllerAccelIOInputsAutoLogged controllerInputs =
+      new ControllerAccelIOInputsAutoLogged();
   private final Imu imu;
 
-  // Variables needed during the periodic
-  private Translation3d rawRio, rioAcc, rioJerk, imuAcc, imuJerk;
-  private Translation3d prevRioAcc = null;
+  private Translation3d prevControllerAcc;
+  private long prevControllerTimestampNs = Long.MIN_VALUE;
 
   // Log decimation
   private int loopCount = 0;
   private static final int LOG_EVERY_N = 5; // 10Hz for heavier logs
 
-  // Profiling decimation
-  private int profileCount = 0;
-  private static final int PROFILE_EVERY_N = 50; // 1Hz profiling
-
   public Accelerometer(Imu imu) {
-    this(imu, new RioAccelIORoboRIO(SensorConstants.kRioAccelerometerSampleRateHz));
+    this(imu, new ControllerAccelIOOnboard());
   }
 
-  public Accelerometer(Imu imu, RioAccelIO rio) {
+  public Accelerometer(Imu imu, ControllerAccelIO controller) {
     this.imu = imu;
-    this.rio = rio;
+    this.controller = controller;
   }
 
   // Priority value for this virtual subsystem
@@ -65,41 +58,41 @@ public class Accelerometer extends VirtualSubsystem {
 
   @Override
   public void rbsiPeriodic() {
-    final boolean doProfile = (++profileCount >= PROFILE_EVERY_N);
-    if (doProfile) profileCount = 0;
+    final var imuInputs = imu.getInputs();
+    controller.updateInputs(controllerInputs);
+    Logger.processInputs("Accel/Systemcore", controllerInputs);
 
-    // Fetch the values from the IMU and the RIO
-    final var imuInputs = imu.getInputs(); // should be primitive ImuIOInputs
-    rio.updateInputs(rioInputs);
-
-    // Compute RIO accelerations and jerks
-    rawRio =
+    // OnboardIMU returns m/s^2; only rotate the raw sensor axes into the robot frame.
+    Translation3d controllerAcc =
         new Translation3d(
-            rioInputs.xG * Constants.kGravityMetersPerSecSq,
-            rioInputs.yG * Constants.kGravityMetersPerSecSq,
-            rioInputs.zG * Constants.kGravityMetersPerSecSq);
-    rioAcc = rawRio.rotateBy(RobotConstants.kRioOrientation);
+                controllerInputs.xMetersPerSecondSq,
+                controllerInputs.yMetersPerSecondSq,
+                controllerInputs.zMetersPerSecondSq)
+            .rotateBy(RobotConstants.kSystemcoreOrientation);
 
-    Translation3d rioJerkThisLoop =
-        prevRioAcc == null
-            ? Translation3d.ZERO
-            : rioAcc.minus(prevRioAcc).div(Constants.kLoopPeriodSecs);
-    prevRioAcc = rioAcc;
+    Translation3d controllerJerk = Translation3d.ZERO;
+    if (controllerInputs.connected
+        && prevControllerAcc != null
+        && controllerInputs.timestampNs > prevControllerTimestampNs) {
+      double dtSecs = (controllerInputs.timestampNs - prevControllerTimestampNs) * 1e-9;
+      controllerJerk = controllerAcc.minus(prevControllerAcc).div(dtSecs);
+    }
+    prevControllerAcc = controllerInputs.connected ? controllerAcc : null;
+    prevControllerTimestampNs = controllerInputs.timestampNs;
 
     // IMU accelerations and jerks
-    imuAcc = imuInputs.linearAccel.rotateBy(RobotConstants.kIMUOrientation);
+    Translation3d imuAcc = imuInputs.linearAccel.rotateBy(RobotConstants.kIMUOrientation);
 
     // Logging
-    Logger.recordOutput("Accel/Rio/Accel_mps2", rioAcc);
+    Logger.recordOutput("Accel/Systemcore/Accel_mps2", controllerAcc);
     Logger.recordOutput("Accel/IMU/Accel_mps2", imuAcc);
 
     // Every N loops, compute and log the Jerk
     final boolean doHeavyLogs = (++loopCount >= LOG_EVERY_N);
     if (doHeavyLogs) {
       loopCount = 0;
-      rioJerk = rioJerkThisLoop;
-      imuJerk = imuInputs.linearJerk.rotateBy(RobotConstants.kIMUOrientation);
-      Logger.recordOutput("Accel/Rio/Jerk_mps3", rioJerk);
+      Translation3d imuJerk = imuInputs.linearJerk.rotateBy(RobotConstants.kIMUOrientation);
+      Logger.recordOutput("Accel/Systemcore/Jerk_mps3", controllerJerk);
       Logger.recordOutput("Accel/IMU/Jerk_mps3", imuJerk);
 
       final double[] ts = imuInputs.odometryYawTimestamps;

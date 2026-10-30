@@ -47,7 +47,8 @@ General constants are robot-wide support values:
 
 - `kLoopPeriodSecs`: main robot loop period.
 - `kTuningMode`: enables live tunable-number behavior.
-- `kGravityMetersPerSecSq`: conversion from g to meters per second squared.
+- `kGravityMetersPerSecSq`: conversion for vendor IMU readings reported in g. WPILib's
+  Systemcore `OnboardIMU` already reports m/s² and is not converted again.
 
 Most teams should leave these alone unless they have a specific framework-level reason.
 
@@ -61,7 +62,7 @@ models:
 - `kMomentOfInertiaKgMetersSq`
 - `kWheelCoefficientOfFriction`
 - `kMaxWheelTorqueNm`
-- `kRioOrientation`
+- `kSystemcoreOrientation`
 - `kIMUOrientation`
 
 Tune these carefully:
@@ -69,7 +70,8 @@ Tune these carefully:
 - `kMass`: measured robot weight including battery and bumpers.
 - `kMomentOfInertiaKgMetersSq`: estimate from CAD or measurement.
 - `kWheelCoefficientOfFriction`: carpet/wheel traction estimate.
-- `kRioOrientation` and `kIMUOrientation`: must match the physical mounting orientation.
+- `kSystemcoreOrientation` and `kIMUOrientation`: must match the physical mounting orientation.
+  The former rotates raw onboard acceleration into the robot frame.
 
 Incorrect orientation constants can corrupt acceleration logging, heading interpretation, and any
 logic that rotates sensor values into robot coordinates.
@@ -153,16 +155,6 @@ Teams should tune this section carefully:
   CANcoders.
 
 Bad entries here cause misleading power logs and can make CAN health debugging much harder.
-
-## SensorConstants
-
-`SensorConstants` holds configuration values for robot-wide sensors that do not naturally belong to
-one mechanism:
-
-- `kRioAccelerometerSampleRateHz`
-
-Most teams can leave this alone. Increase it only if you have a specific acceleration or jerk
-logging need and have verified that the extra sampling work is worth it.
 
 ## OperatorConstants
 
@@ -424,7 +416,7 @@ Most teams should not change these unless they intentionally reorganize deploy f
 1. Select `robotType`, `swerveType`, `autoType`, `visionType`, and `phoenixPro`.
 2. Configure `CANBuses` and `RobotDevices`.
 3. Set `RobotConstants` mass, moment of inertia, wheel friction, and sensor orientations.
-4. Set `SensorConstants` and `PowerConstants`.
+4. Set `PowerConstants` and verify the Systemcore accelerometer orientation.
 5. Tune `OperatorConstants` with driver feedback.
 6. Characterize and tune `DrivebaseConstants`.
 7. Configure and validate cameras in `Cameras`.

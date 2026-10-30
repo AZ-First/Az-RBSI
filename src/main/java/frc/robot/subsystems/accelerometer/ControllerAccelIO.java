@@ -13,27 +13,28 @@
 
 package frc.robot.subsystems.accelerometer;
 
-public interface RioAccelIO {
-  final class Inputs {
+import org.littletonrobotics.junction.AutoLog;
+
+/** Acceleration readings from the robot controller, in SI units. */
+public interface ControllerAccelIO {
+  @AutoLog
+  class ControllerAccelIOInputs {
     public boolean connected;
     public long timestampNs;
-    public double xG, yG, zG; // raw in g
+    public double xMetersPerSecondSq;
+    public double yMetersPerSecondSq;
+    public double zMetersPerSecondSq;
   }
 
-  default void updateInputs(Inputs inputs) {}
+  void updateInputs(ControllerAccelIOInputs inputs);
 
-  default void close() {}
-
-  static RioAccelIO noop() {
-    return new RioAccelIO() {
-      @Override
-      public void updateInputs(Inputs inputs) {
-        inputs.connected = false;
-        inputs.timestampNs = 0L;
-        inputs.xG = 0.0;
-        inputs.yG = 0.0;
-        inputs.zG = 0.0;
-      }
+  static ControllerAccelIO noop() {
+    return inputs -> {
+      inputs.connected = false;
+      inputs.timestampNs = 0L;
+      inputs.xMetersPerSecondSq = 0.0;
+      inputs.yMetersPerSecondSq = 0.0;
+      inputs.zMetersPerSecondSq = 0.0;
     };
   }
 }
