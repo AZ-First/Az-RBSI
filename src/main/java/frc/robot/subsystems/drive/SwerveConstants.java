@@ -190,11 +190,10 @@ public class SwerveConstants {
         break;
 
       case YAGSL:
-        // TODO(2027): Re-enable the YagslConstants-backed mapping when YAGSL and its
-        // required vendordeps publish 2027/SystemCore-compatible releases. Restore
-        // the previous assignments for IMU type, gear ratios, CAN bus, module IDs,
-        // encoder offsets, inversion flags, and module positions.
-        throw new UnsupportedOperationException("YAGSL is disabled pending 2027-compatible deps");
+        // TODO(2027): Regenerate the deploy/swerve JSON for 2027 YAGSL, select a
+        // Systemcore-compatible gyro, then restore the YagslConstants-backed mapping.
+        throw new UnsupportedOperationException(
+            "YAGSL runtime awaits 2027 config and gyro migration");
 
       default:
         throw new RuntimeException("Invalid Swerve Drive Type");
