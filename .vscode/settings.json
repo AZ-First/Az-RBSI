@@ -74,5 +74,6 @@
   "[java]": {
     "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle"
   },
+  "java.debug.settings.enableRunDebugCodeLens": false,
   "java.dependency.enableDependencyCheckup": false
 }

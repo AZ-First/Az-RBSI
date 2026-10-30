@@ -15,10 +15,11 @@ package frc.robot.util;
 
 import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
-import frc.robot.util.Alert.AlertType;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.system.RobotController;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each
@@ -56,11 +57,12 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   };
 
   private final Alert totalCurrentAlert =
-      new Alert("Total current draw exceeds limit!", AlertType.WARNING);
+      new Alert("totalCurrentHigh", "Total current draw exceeds limit!", Level.MEDIUM);
   private final Alert[] portAlerts = new Alert[24]; // or pdh.getNumChannels() after construct
-  private final Alert lowVoltageAlert = new Alert("Low battery voltage!", AlertType.WARNING);
+  private final Alert lowVoltageAlert =
+      new Alert("lowBatteryVoltage", "Low battery voltage!", Level.MEDIUM);
   private final Alert criticalVoltageAlert =
-      new Alert("Critical battery voltage!", AlertType.ERROR);
+      new Alert("criticalBatteryVoltage", "Critical battery voltage!", Level.HIGH);
   private final double[] channelCurrents = new double[24];
 
   private long loops = 0;
@@ -71,7 +73,11 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     this.subsystems = subsystems;
 
     for (int i = 0; i < portAlerts.length; i++) {
-      portAlerts[i] = new Alert("Port " + i + " current exceeds limit!", AlertType.WARNING);
+      portAlerts[i] =
+          new Alert(
+              "powerPort" + i + "CurrentHigh",
+              "Port " + i + " current exceeds limit!",
+              Level.MEDIUM);
     }
   }
 

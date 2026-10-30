@@ -20,18 +20,18 @@ class DriveCommandsTests {
 
   @BeforeEach
   void setupHal() {
-    HAL.initialize(500, 0);
+    HAL.initialize();
     DriverStationSim.setEnabled(false);
     DriverStationSim.notifyNewData();
   }
 
   @Test
   void linearVelocityAppliesDeadbandAndSquaresMagnitudeWithoutChangingDirection() {
-    assertEquals(Translation2d.kZero, DriveCommands.getLinearVelocity(0.01, 0.01));
+    assertEquals(Translation2d.ZERO, DriveCommands.getLinearVelocity(0.01, 0.01));
 
     Translation2d velocity = DriveCommands.getLinearVelocity(0.6, 0.8);
-    assertEquals(1.0, velocity.getAngle().getCos() / 0.6, 1e-6);
-    assertEquals(1.0, velocity.getAngle().getSin() / 0.8, 1e-6);
+    assertEquals(1.0, velocity.getAngle().orElseThrow().getCos() / 0.6, 1e-6);
+    assertEquals(1.0, velocity.getAngle().orElseThrow().getSin() / 0.8, 1e-6);
     assertEquals(1.0, velocity.getNorm(), EPSILON);
   }
 

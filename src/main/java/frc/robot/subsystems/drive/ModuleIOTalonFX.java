@@ -98,11 +98,11 @@ public class ModuleIOTalonFX implements ModuleIO {
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
   private final Debouncer turnConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
   private final Debouncer turnEncoderConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
 
   // Config
   private final TalonFXConfiguration driveConfig = new TalonFXConfiguration();

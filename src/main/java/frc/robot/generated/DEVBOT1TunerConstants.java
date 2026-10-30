@@ -75,7 +75,7 @@ public class DEVBOT1TunerConstants {
   private static final Pigeon2Configuration pigeonConfigs = null;
 
   // Phoenix Tuner generation bus. Runtime wiring is selected in Constants.DrivebaseConstants.
-  public static final CANBus kCANBus = new CANBus("can_s2", "./logs/example.hoot");
+  public static final CANBus kCANBus = new CANBus("can_s2");
 
   // Theoretical free speed (m/s) at 12 V applied output;
   // This needs to be tuned to your individual robot
@@ -103,7 +103,7 @@ public class DEVBOT1TunerConstants {
 
   public static final SwerveDrivetrainConstants DrivetrainConstants =
       new SwerveDrivetrainConstants()
-          .withCANBusName(kCANBus.getName())
+          .withNetwork(kCANBus)
           .withPigeon2Id(kPigeonId)
           .withPigeon2Configs(pigeonConfigs);
 

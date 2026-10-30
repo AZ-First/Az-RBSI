@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import frc.robot.subsystems.drive.SwerveConstants;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.wpilib.hardware.bus.CANPort;
 
 class RobotConstantsTest {
   @Test
@@ -70,9 +71,9 @@ class RobotConstantsTest {
   @Test
   void systemcorePortsAreExplicit() {
     assertEquals("can_s1", Constants.CANBuses.RIO);
-    assertEquals(0, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_0));
-    assertEquals(4, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_4));
-    assertEquals(1, Constants.CANBuses.revPort(Constants.CANBuses.RIO));
+    assertEquals(CANPort.CAN_S0, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_0));
+    assertEquals(CANPort.CAN_S4, Constants.CANBuses.revPort(Constants.CANBuses.SYSTEMCORE_4));
+    assertEquals(CANPort.CAN_S1, Constants.CANBuses.revPort(Constants.CANBuses.RIO));
     assertThrows(IllegalArgumentException.class, () -> Constants.CANBuses.revPort("DriveTrain"));
   }
 

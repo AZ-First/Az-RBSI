@@ -27,7 +27,6 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
-import frc.robot.util.MathUtil;
 import frc.robot.util.SparkUtil;
 import java.util.Arrays;
 import java.util.Queue;
@@ -63,9 +62,9 @@ public class ModuleIOSpark implements ModuleIO {
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
   private final Debouncer turnConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
 
   // Values used for calculating feedforward from kS, kV, and kA
   private double lastVelocityRotPerSec = 0.0;
@@ -81,7 +80,7 @@ public class ModuleIOSpark implements ModuleIO {
           case 1 -> new Rotation2d(SwerveConstants.kFREncoderOffset);
           case 2 -> new Rotation2d(SwerveConstants.kBLEncoderOffset);
           case 3 -> new Rotation2d(SwerveConstants.kBREncoderOffset);
-          default -> Rotation2d.kZero;
+          default -> Rotation2d.ZERO;
         };
     driveSpark =
         new SparkFlex(
@@ -133,17 +132,14 @@ public class ModuleIOSpark implements ModuleIO {
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
         .voltageCompensation(DrivebaseConstants.kNominalVoltage);
     driveConfig
-        .encoder
-        .positionConversionFactor(SwerveConstants.driveEncoderPositionFactor)
-        .velocityConversionFactor(SwerveConstants.driveEncoderVelocityFactor)
-        .uvwMeasurementPeriod(10)
-        .uvwAverageDepth(2);
-    driveConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(DrivebaseConstants.kDriveP, 0.0, DrivebaseConstants.kDriveD)
+        .pid(
+            SparkSwerveUnits.driveVelocityGain(DrivebaseConstants.kDriveP),
+            0.0,
+            SparkSwerveUnits.driveVelocityGain(DrivebaseConstants.kDriveD))
         .feedForward
-        .kV(DrivebaseConstants.kDriveV)
+        .kV(SparkSwerveUnits.driveVelocityGain(DrivebaseConstants.kDriveV))
         .kS(DrivebaseConstants.kDriveS);
     driveConfig
         .signals
@@ -172,19 +168,15 @@ public class ModuleIOSpark implements ModuleIO {
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
         .voltageCompensation(DrivebaseConstants.kNominalVoltage);
-    turnConfig
-        .absoluteEncoder
-        .inverted(turnEncoderInverted)
-        .positionConversionFactor(SwerveConstants.turnEncoderPositionFactor)
-        .velocityConversionFactor(SwerveConstants.turnEncoderVelocityFactor)
-        .averageDepth(2);
+    turnConfig.absoluteEncoder.inverted(turnEncoderInverted).averageDepth(2);
     turnConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
-        .positionWrappingInputRange(
-            SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
-        .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
+        .pid(
+            SparkSwerveUnits.turnPositionGain(DrivebaseConstants.kSteerP),
+            0.0,
+            SparkSwerveUnits.turnPositionGain(DrivebaseConstants.kSteerD))
         .feedForward
         .kV(0.0)
         .kS(DrivebaseConstants.kSteerS);
@@ -211,10 +203,15 @@ public class ModuleIOSpark implements ModuleIO {
     timestampQueue = SparkOdometryThread.getInstance().makeTimestampQueue();
     drivePositionQueue =
         SparkOdometryThread.getInstance()
-            .registerSignal(driveSpark, () -> driveEncoder.getPosition().get(0.0));
+            .registerSignal(
+                driveSpark,
+                () -> SparkSwerveUnits.drivePositionRadians(driveEncoder.getPosition().get(0.0)));
     turnPositionQueue =
         SparkOdometryThread.getInstance()
-            .registerSignal(turnSpark, () -> turnEncoder.getPosition().get(0.0));
+            .registerSignal(
+                turnSpark,
+                () ->
+                    turnEncoder.getPosition().get(0.0) * SwerveConstants.turnEncoderPositionFactor);
   }
 
   @Override
@@ -222,9 +219,14 @@ public class ModuleIOSpark implements ModuleIO {
     // Drive inputs
     SparkUtil.sparkStickyFault = false;
     SparkUtil.ifOk(
-        driveSpark, driveEncoder::getPosition, (value) -> inputs.drivePositionRad = value);
+        driveSpark,
+        driveEncoder::getPosition,
+        (value) -> inputs.drivePositionRad = SparkSwerveUnits.drivePositionRadians(value));
     SparkUtil.ifOk(
-        driveSpark, driveEncoder::getVelocity, (value) -> inputs.driveVelocityRadPerSec = value);
+        driveSpark,
+        driveEncoder::getVelocity,
+        (value) ->
+            inputs.driveVelocityRadPerSec = SparkSwerveUnits.driveVelocityRadiansPerSecond(value));
     SparkUtil.ifOk(
         driveSpark,
         new DoubleSupplier[] {
@@ -240,9 +242,12 @@ public class ModuleIOSpark implements ModuleIO {
     SparkUtil.ifOk(
         turnSpark,
         turnEncoder::getPosition,
-        (value) -> inputs.turnPosition = new Rotation2d(value).minus(zeroRotation));
+        (value) -> inputs.turnPosition = SparkSwerveUnits.turnPosition(value, zeroRotation));
     SparkUtil.ifOk(
-        turnSpark, turnEncoder::getVelocity, (value) -> inputs.turnVelocityRadPerSec = value);
+        turnSpark,
+        turnEncoder::getVelocity,
+        (value) ->
+            inputs.turnVelocityRadPerSec = SparkSwerveUnits.turnVelocityRadiansPerSecond(value));
     SparkUtil.ifOk(
         turnSpark,
         new DoubleSupplier[] {
@@ -276,8 +281,9 @@ public class ModuleIOSpark implements ModuleIO {
 
     for (int i = 0; i < sampleCount; i++) {
       final Double t = timestampQueue.poll();
-      final Double drivePosRad = drivePositionQueue.poll(); // already rad in your existing code
-      final Double turnPosRad = turnPositionQueue.poll(); // rad in your existing code
+      final Double drivePosRad =
+          drivePositionQueue.poll(); // converted to wheel radians at sampling
+      final Double turnPosRad = turnPositionQueue.poll(); // converted to radians at sampling
 
       if (t == null || drivePosRad == null || turnPosRad == null) {
         inputs.odometryTimestamps = Arrays.copyOf(outTs, i);
@@ -348,7 +354,7 @@ public class ModuleIOSpark implements ModuleIO {
     double scaledFFVolts = nominalFFVolts * DrivebaseConstants.kNominalVoltage / busVoltage;
 
     driveController.setSetpoint(
-        velocityRadPerSec,
+        SparkSwerveUnits.driveVelocityRpm(velocityRadPerSec),
         ControlType.kVelocity,
         ClosedLoopSlot.kSlot0,
         scaledFFVolts,
@@ -368,11 +374,7 @@ public class ModuleIOSpark implements ModuleIO {
    */
   @Override
   public void setTurnPosition(Rotation2d rotation) {
-    double setpoint =
-        MathUtil.inputModulus(
-            rotation.plus(zeroRotation).getRadians(),
-            SwerveConstants.turnPIDMinInput,
-            SwerveConstants.turnPIDMaxInput);
+    double setpoint = SparkSwerveUnits.turnSetpointRotations(rotation, zeroRotation);
     turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 }

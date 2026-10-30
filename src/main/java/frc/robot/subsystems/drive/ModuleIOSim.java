@@ -10,7 +10,6 @@
 package frc.robot.subsystems.drive;
 
 import frc.robot.Constants;
-import frc.robot.util.MathUtil;
 import frc.robot.util.TimeUtil;
 import org.wpilib.math.controller.PIDController;
 import org.wpilib.math.geometry.Rotation2d;
@@ -81,8 +80,8 @@ public class ModuleIOSim implements ModuleIO {
     }
 
     // Apply voltages
-    driveSim.setInputVoltage(MathUtil.clamp(driveAppliedVolts, -12.0, 12.0));
-    turnSim.setInputVoltage(MathUtil.clamp(turnAppliedVolts, -12.0, 12.0));
+    driveSim.setInputVoltage(Math.clamp(driveAppliedVolts, -12.0, 12.0));
+    turnSim.setInputVoltage(Math.clamp(turnAppliedVolts, -12.0, 12.0));
 
     // Advance physics
     driveSim.update(Constants.kLoopPeriodSecs);

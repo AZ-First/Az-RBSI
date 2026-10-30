@@ -178,7 +178,7 @@ public final class AutopilotCommands {
 
     return Commands.run(
             () -> {
-              ChassisVelocities robotRelativeSpeeds = drive.getChassisSpeeds();
+              ChassisVelocities robotRelativeSpeeds = drive.getChassisVelocities();
               Pose2d pose = drive.getPose();
               boolean atTarget = AutoConstants.kAutopilot.atTarget(pose, target);
 

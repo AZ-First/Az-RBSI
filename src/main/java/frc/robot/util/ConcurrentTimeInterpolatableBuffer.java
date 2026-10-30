@@ -144,7 +144,7 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
     if (Math.abs(timeSpan) < 1e-9) return Optional.of(bottomBound.getValue());
 
     double ratio = (timeSeconds - t0) / timeSpan;
-    ratio = MathUtil.clamp(ratio, 0.0, 1.0);
+    ratio = Math.clamp(ratio, 0.0, 1.0);
 
     return Optional.of(
         m_interpolatingFunc.interpolate(bottomBound.getValue(), topBound.getValue(), ratio));

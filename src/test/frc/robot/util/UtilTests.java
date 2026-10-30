@@ -16,7 +16,7 @@ class UtilTests {
 
   @Test
   void timeUtilReturnsSecondsFromAdvantageKitMicrosecondTimestamp() {
-    assertTrue(HAL.initialize(500, 0));
+    assertTrue(HAL.initialize());
 
     double expectedSeconds = RobotController.getTime() * 1.0e-6;
     double actualSeconds = TimeUtil.now();

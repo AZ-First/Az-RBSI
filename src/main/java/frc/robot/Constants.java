@@ -28,7 +28,6 @@ import com.therekrab.autopilot.Autopilot;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
-import frc.robot.util.Alert;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.RBSIEnum.DriveStyle;
@@ -49,6 +48,8 @@ import org.wpilib.math.geometry.Transform3d;
 import org.wpilib.math.system.DCMotor;
 import org.wpilib.math.util.Units;
 import org.wpilib.units.measure.Mass;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -132,15 +133,15 @@ public final class Constants {
     public static final Rotation3d kRioOrientation =
         switch (getRobot()) {
           case COMPBOT -> new Rotation3d(0, 0, Units.degreesToRadians(-90));
-          case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
-          default -> Rotation3d.kZero;
+          case DEVBOT1, DEVBOT2 -> Rotation3d.ZERO;
+          default -> Rotation3d.ZERO;
         };
     // IMU can be one of Pigeon2 or NavX
     public static final Rotation3d kIMUOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation3d.kZero;
-          case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
-          default -> Rotation3d.kZero;
+          case COMPBOT -> Rotation3d.ZERO;
+          case DEVBOT1, DEVBOT2 -> Rotation3d.ZERO;
+          default -> Rotation3d.ZERO;
         };
   }
 
@@ -189,13 +190,13 @@ public final class Constants {
             .toArray(String[]::new);
 
     /** REV's 2027 constructors use a numbered SystemCore port rather than a Phoenix bus name. */
-    public static int revPort(String bus) {
+    public static org.wpilib.hardware.bus.CANPort revPort(String bus) {
       return switch (bus) {
-        case SYSTEMCORE_0 -> 0;
-        case SYSTEMCORE_1 -> 1;
-        case SYSTEMCORE_2 -> 2;
-        case SYSTEMCORE_3 -> 3;
-        case SYSTEMCORE_4 -> 4;
+        case SYSTEMCORE_0 -> org.wpilib.hardware.bus.CANPort.CAN_S0;
+        case SYSTEMCORE_1 -> org.wpilib.hardware.bus.CANPort.CAN_S1;
+        case SYSTEMCORE_2 -> org.wpilib.hardware.bus.CANPort.CAN_S2;
+        case SYSTEMCORE_3 -> org.wpilib.hardware.bus.CANPort.CAN_S3;
+        case SYSTEMCORE_4 -> org.wpilib.hardware.bus.CANPort.CAN_S4;
         default ->
             throw new IllegalArgumentException("REV device requires a SystemCore CAN bus: " + bus);
       };
@@ -615,7 +616,9 @@ public final class Constants {
   public static RobotType getRobot() {
     if (!disableHAL && RobotBase.isReal() && robotType == RobotType.SIMBOT) {
       new Alert(
-              "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
+              "invalidRobotSelected",
+              "Invalid robot selected, using competition robot as default.",
+              Level.HIGH)
           .set(true);
       robotType = RobotType.COMPBOT;
     }

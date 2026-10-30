@@ -189,7 +189,7 @@ public final class DriveCommands {
     double linearMagnitude =
         MathUtil.applyDeadband(Math.hypot(x, y), OperatorConstants.kJoystickDeadband);
     if (linearMagnitude <= 0.0) {
-      return Translation2d.kZero;
+      return Translation2d.ZERO;
     }
 
     // Square magnitude for more precise control
@@ -391,7 +391,7 @@ public final class DriveCommands {
 
   private static class WheelRadiusCharacterizationState {
     double[] positions = new double[4];
-    Rotation2d lastAngle = Rotation2d.kZero;
+    Rotation2d lastAngle = Rotation2d.ZERO;
     double gyroDelta = 0.0;
   }
 }

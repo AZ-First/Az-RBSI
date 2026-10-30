@@ -43,8 +43,6 @@ import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
-import frc.robot.util.Alert;
-import frc.robot.util.Alert.AlertType;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSICANBusRegistry;
@@ -57,7 +55,7 @@ import frc.robot.util.RBSIPowerMonitor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
+import org.littletonrobotics.junction.networktables.LoggedNetworkChooser;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.VisionSystemSim;
@@ -72,6 +70,8 @@ import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.geometry.Transform2d;
 import org.wpilib.system.Filesystem;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
 public class RobotContainer {
@@ -114,14 +114,14 @@ public class RobotContainer {
 
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
-  private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+  private final LoggedNetworkChooser<Command> autoChooserPathPlanner;
 
   // TODO(2027): Re-enable Choreo chooser/factory when ChoreoLib supports 2027 WPILib.
-  // private final LoggedDashboardChooser<Command> autoChooserChoreo;
+  // private final LoggedNetworkChooser<Command> autoChooserChoreo;
   // private final AutoFactory autoFactoryChoreo;
 
-  private final LoggedDashboardChooser<DriveStyle> driveStyle =
-      new LoggedDashboardChooser<>("Drive Style");
+  private final LoggedNetworkChooser<DriveStyle> driveStyle =
+      new LoggedNetworkChooser<>("Drive Style");
 
   // Input estimated battery capacity (if full, use printed value)
   private final LoggedTunableNumber batteryCapacity =
@@ -131,7 +131,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Flywheel Speed", 1500.0);
 
   // Alerts
-  private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
+  private final Alert aprilTagLayoutAlert = new Alert("aprilTagLayout", "", Level.LOW);
 
   /**
    * Constructor for the Robot Container. This container holds subsystems, operator interface
@@ -235,7 +235,7 @@ public class RobotContainer {
 
       case PATHPLANNER:
         autoChooserPathPlanner =
-            new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+            new LoggedNetworkChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
         // Set the others to null
         // TODO(2027): Restore Choreo fields when ChoreoLib supports 2027 WPILib.
         // autoChooserChoreo = null;
@@ -251,9 +251,9 @@ public class RobotContainer {
         //         m_drivebase::followTrajectory,
         //         true,
         //         m_drivebase);
-        // autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
-        // autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
-        // autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
+        // autoChooserChoreo = new LoggedNetworkChooser<>("Choreo Auto Choices");
+        // autoChooserChoreo.addDefault("Nothing", Commands.none());
+        // autoChooserChoreo.add("twoPieceAuto", twoPieceAuto().cmd());
         autoChooserPathPlanner = null;
         break;
 
@@ -265,11 +265,10 @@ public class RobotContainer {
 
     // Get drive style from the Dashboard Chooser. The constant controls the boot default, and the
     // dashboard chooser lets teams swap stick layouts between drivers without recompiling.
-    driveStyle.addDefaultOption(
-        OperatorConstants.kDriveStyle.name(), OperatorConstants.kDriveStyle);
+    driveStyle.addDefault(OperatorConstants.kDriveStyle.name(), OperatorConstants.kDriveStyle);
     for (DriveStyle style : DriveStyle.values()) {
       if (style != OperatorConstants.kDriveStyle) {
-        driveStyle.addOption(style.name(), style);
+        driveStyle.add(style.name(), style);
       }
     }
 
@@ -341,7 +340,7 @@ public class RobotContainer {
                               new Transform2d(
                                   OperatorConstants.kAutopilotDemoXOffsetMeters,
                                   0.0,
-                                  Rotation2d.kZero));
+                                  Rotation2d.ZERO));
 
                   // Alternatively, you could define a pose in a separate module and call it here.
                   //
@@ -380,6 +379,7 @@ public class RobotContainer {
       // Double-press the A button on Joystick3 to run the CameraSweepEvaluator
       // Use WPILib's built-in double-press binding
       joystick3
+          .getHID()
           .button(1)
           .multiPress(2, 0.2)
           .onTrue(
@@ -466,50 +466,50 @@ public class RobotContainer {
   private void definesysIdRoutines() {
     if (Constants.getAutoType() == AutoType.PATHPLANNER) {
       // Drivebase characterization
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Drive Wheel Radius Characterization",
           DriveCommands.wheelRadiusCharacterization(m_drivebase));
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Drive Simple FF Characterization",
           DriveCommands.feedforwardCharacterization(m_drivebase));
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Drive SysId (Quasistatic Forward)",
-          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Drive SysId (Quasistatic Reverse)",
-          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
+          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.REVERSE));
+      autoChooserPathPlanner.add(
           "Drive SysId (Dynamic Forward)",
-          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Drive SysId (Dynamic Reverse)",
-          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.REVERSE));
 
       // Example Flywheel SysId Characterization
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Flywheel SysId Voltage (Quasistatic Forward)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Voltage (Quasistatic Reverse)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.REVERSE));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Voltage (Dynamic Forward)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Voltage (Dynamic Reverse)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.REVERSE));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Duty Cycle (Quasistatic Forward)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.REVERSE));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Duty Cycle (Dynamic Forward)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Flywheel SysId Duty Cycle (Dynamic Reverse)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse));
+          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.REVERSE));
     }
   }
 

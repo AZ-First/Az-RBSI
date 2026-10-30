@@ -40,7 +40,6 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import frc.robot.Constants;
 import frc.robot.Constants.DrivebaseConstants;
-import frc.robot.util.MathUtil;
 import frc.robot.util.PhoenixUtil;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSIEnum.CTREPro;
@@ -109,11 +108,11 @@ public class ModuleIOBlended implements ModuleIO {
 
   // Connection debouncers
   private final Debouncer driveConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
   private final Debouncer turnConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
   private final Debouncer turnEncoderConnectedDebounce =
-      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+      new Debouncer(0.5, Debouncer.DebounceType.FALLING);
 
   // Config
   private final TalonFXConfiguration driveConfig = new TalonFXConfiguration();
@@ -229,19 +228,15 @@ public class ModuleIOBlended implements ModuleIO {
         .idleMode(IdleMode.kBrake)
         .smartCurrentLimit((int) SwerveConstants.kSteerCurrentLimit)
         .voltageCompensation(DrivebaseConstants.kNominalVoltage);
-    turnConfig
-        .absoluteEncoder
-        .inverted(constants.EncoderInverted)
-        .positionConversionFactor(SwerveConstants.turnEncoderPositionFactor)
-        .velocityConversionFactor(SwerveConstants.turnEncoderVelocityFactor)
-        .averageDepth(2);
+    turnConfig.absoluteEncoder.inverted(constants.EncoderInverted).averageDepth(2);
     turnConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
         .positionWrappingEnabled(true)
-        .positionWrappingInputRange(
-            SwerveConstants.turnPIDMinInput, SwerveConstants.turnPIDMaxInput)
-        .pid(DrivebaseConstants.kSteerP, 0.0, DrivebaseConstants.kSteerD)
+        .pid(
+            SparkSwerveUnits.turnPositionGain(DrivebaseConstants.kSteerP),
+            0.0,
+            SparkSwerveUnits.turnPositionGain(DrivebaseConstants.kSteerD))
         .feedForward
         .kV(0.0)
         .kS(DrivebaseConstants.kSteerS);
@@ -480,10 +475,8 @@ public class ModuleIOBlended implements ModuleIO {
   @Override
   public void setTurnPosition(Rotation2d rotation) {
     double setpoint =
-        MathUtil.inputModulus(
-            rotation.plus(Rotation2d.fromRotations(constants.EncoderOffset)).getRadians(),
-            SwerveConstants.turnPIDMinInput,
-            SwerveConstants.turnPIDMaxInput);
+        SparkSwerveUnits.turnSetpointRotations(
+            rotation, Rotation2d.fromRotations(constants.EncoderOffset));
     turnController.setSetpoint(setpoint, ControlType.kPosition);
   }
 

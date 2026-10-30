@@ -29,9 +29,9 @@ public class Imu extends VirtualSubsystem {
 
   // Per-cycle cached objects (to avoid repeated allocations)
   private long cacheStampNs = -1L;
-  private Rotation2d cachedYaw = Rotation2d.kZero;
-  private Translation3d cachedAccel = Translation3d.kZero;
-  private Translation3d cachedJerk = Translation3d.kZero;
+  private Rotation2d cachedYaw = Rotation2d.ZERO;
+  private Translation3d cachedAccel = Translation3d.ZERO;
+  private Translation3d cachedJerk = Translation3d.ZERO;
 
   /** Constructor */
   public Imu(ImuIO io) {

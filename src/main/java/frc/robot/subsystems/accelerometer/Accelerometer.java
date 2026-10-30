@@ -82,7 +82,7 @@ public class Accelerometer extends VirtualSubsystem {
 
     Translation3d rioJerkThisLoop =
         prevRioAcc == null
-            ? Translation3d.kZero
+            ? Translation3d.ZERO
             : rioAcc.minus(prevRioAcc).div(Constants.kLoopPeriodSecs);
     prevRioAcc = rioAcc;
 
