@@ -12,8 +12,8 @@
 package frc.robot.util;
 
 /**
- * TODO(2027): Restore the YAGSL JSON parser constants when YAGSL and its required vendordeps
- * publish 2027/SystemCore-compatible releases.
+ * TODO(2027): Restore this adapter after regenerating the 2026 deploy/swerve JSON for the 2027
+ * YAGSL parser and selecting a Systemcore-compatible gyro. The V3 vendordeps are installed.
  */
 public final class YagslConstants {
   private YagslConstants() {}

@@ -11,11 +11,19 @@ PathPlanner autos and WPILib SysId routines are temporarily disabled on this
 branch. The pinned PathPlanner library returns V2 commands and requires V2
 subsystems; Commands V3 alpha-8 has no `SysIdRoutine`. ChoreoLib 2027 alpha-3
 also imports Commands V2, so its vendordep and `ChoreoAutoController.java` are
-preserved with `.disabled` suffixes. The YAGSL and YAMS vendordeps are likewise
-disabled because they require Commands V2. The previous PathPlanner, Choreo,
-and SysId integration remains in `Commands V3 deferred` comments for later
-ports. Re-enable each dependency only when a V3-compatible release is available,
-then adapt its command and mechanism interfaces and restore its tests.
+preserved with `.disabled` suffixes. The previous PathPlanner, Choreo, and
+SysId integration remains in `Commands V3 deferred` comments for later ports.
+Re-enable those dependencies only when V3-compatible releases are available,
+then adapt their command and mechanism interfaces and restore their tests.
+
+YAGSL and YAMS now have Commands V3 vendordeps, and the project builds with
+both installed. The YAGSL runtime path is still disabled in `SwerveConstants`:
+the checked-in `src/main/deploy/swerve` files use the old JSON format, and
+`swervedrive.json` selects a roboRIO `navx_spi` gyro. The 2027 YAGSL parser
+requires regenerated JSON; the gyro choice must also be updated for the
+Systemcore hardware before restoring `YagslConstants` and its mapping into
+`SwerveConstants`. Until then, `SwerveType.PHOENIX6` remains the configured
+drive type.
 
 `AutoType.MANUAL` is the supported setting. The `LoggedNetworkChooser` currently
 offers a do-nothing default and the two custom drive characterization commands.
