@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -122,11 +122,11 @@
 
 //   // Connection debouncers
 //   private final Debouncer driveConnectedDebounce =
-//       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+//       new Debouncer(0.5, Debouncer.DebounceType.FALLING);
 //   private final Debouncer turnConnectedDebounce =
-//       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+//       new Debouncer(0.5, Debouncer.DebounceType.FALLING);
 //   private final Debouncer turnEncoderConnectedDebounce =
-//       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+//       new Debouncer(0.5, Debouncer.DebounceType.FALLING);
 
 //   // Config
 //   private final TalonFXSConfiguration driveConfig = new TalonFXSConfiguration();

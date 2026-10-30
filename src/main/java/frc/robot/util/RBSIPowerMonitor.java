@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -15,10 +15,12 @@ package frc.robot.util;
 
 import frc.robot.Constants.PowerConstants;
 import frc.robot.Constants.RobotDevices;
-import frc.robot.util.Alert.AlertType;
+import java.util.function.DoubleSupplier;
 import org.littletonrobotics.conduit.ConduitApi;
 import org.littletonrobotics.junction.Logger;
-import org.wpilib.system.RobotController;
+import org.wpilib.system.Timer;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /**
  * Power monitoring virtual subsystem that periodically polls the Power Distribution Module. Each
@@ -29,13 +31,15 @@ import org.wpilib.system.RobotController;
 public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private final RBSISubsystem[] subsystems;
+  // Shares the snapshot already collected by AdvantageKit's LoggedPowerDistribution.
+  // WPILib PowerDistribution reports zero for total power/energy on a REV PDH.
   private final ConduitApi conduit = ConduitApi.getInstance();
 
   // Define local variables
-  private final LoggedTunableNumber batteryCapacityAh;
+  private final DoubleSupplier batteryCapacityAh;
   private double totalAmpHours = 0.0;
   private double totalEnergyJoules = 0.0;
-  private long lastTimestampUs = RobotController.getTime(); // In microseconds
+  private double lastTimestampSeconds = Timer.getTimestamp();
   private double lastVoltage = 0.0;
   private double lastTotalCurrent = 0.0;
   private boolean totalCurrentOverLimit = false;
@@ -56,22 +60,27 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
   };
 
   private final Alert totalCurrentAlert =
-      new Alert("Total current draw exceeds limit!", AlertType.WARNING);
-  private final Alert[] portAlerts = new Alert[24]; // or pdh.getNumChannels() after construct
-  private final Alert lowVoltageAlert = new Alert("Low battery voltage!", AlertType.WARNING);
+      new Alert("totalCurrentHigh", "Total current draw exceeds limit!", Level.MEDIUM);
+  private final Alert[] portAlerts = new Alert[24];
+  private final Alert lowVoltageAlert =
+      new Alert("lowBatteryVoltage", "Low battery voltage!", Level.MEDIUM);
   private final Alert criticalVoltageAlert =
-      new Alert("Critical battery voltage!", AlertType.ERROR);
+      new Alert("criticalBatteryVoltage", "Critical battery voltage!", Level.HIGH);
   private final double[] channelCurrents = new double[24];
 
   private long loops = 0;
 
   // Constructor, including inputs of optional subsystems
-  public RBSIPowerMonitor(LoggedTunableNumber batteryCapacityAh, RBSISubsystem... subsystems) {
+  public RBSIPowerMonitor(DoubleSupplier batteryCapacityAh, RBSISubsystem... subsystems) {
     this.batteryCapacityAh = batteryCapacityAh;
     this.subsystems = subsystems;
 
     for (int i = 0; i < portAlerts.length; i++) {
-      portAlerts[i] = new Alert("Port " + i + " current exceeds limit!", AlertType.WARNING);
+      portAlerts[i] =
+          new Alert(
+              "powerPort" + i + "CurrentHigh",
+              "Port " + i + " current exceeds limit!",
+              Level.MEDIUM);
     }
   }
 
@@ -108,9 +117,9 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     }
 
     // --- Battery estimation ---
-    long nowUs = RobotController.getTime();
-    double dtSec = (nowUs - lastTimestampUs) / 1e6;
-    lastTimestampUs = nowUs;
+    double nowSeconds = Timer.getTimestamp();
+    double dtSec = Math.max(0.0, nowSeconds - lastTimestampSeconds);
+    lastTimestampSeconds = nowSeconds;
 
     totalAmpHours += totalCurrent * dtSec / 3600.0; // accumulate amp-hours
     double capacityAh = batteryCapacityAh.getAsDouble();

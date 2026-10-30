@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -12,13 +12,14 @@ package frc.robot.subsystems.drive;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusCode;
 import frc.robot.Constants.DrivebaseConstants;
-import frc.robot.util.Alert;
-import frc.robot.util.Alert.AlertType;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.kinematics.SwerveModulePosition;
 import org.wpilib.math.kinematics.SwerveModuleVelocity;
 import org.wpilib.math.util.Units;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /**
  * Module API Class
@@ -27,6 +28,7 @@ import org.wpilib.math.util.Units;
  * the robot. This is not a true subsystem, but an abstraction layer.
  */
 public class Module {
+  private static final AtomicInteger nextAlertInstance = new AtomicInteger();
   private static final SwerveModulePosition[] EMPTY_ODOMETRY_POSITIONS =
       new SwerveModulePosition[0];
 
@@ -45,16 +47,22 @@ public class Module {
   public Module(ModuleIO io, int index) {
     this.io = io;
     this.index = index;
+    int alertInstance = nextAlertInstance.getAndIncrement();
     driveDisconnectedAlert =
         new Alert(
-            "Disconnected drive motor on module " + Integer.toString(index) + ".", AlertType.ERROR);
+            "module" + index + "DriveDisconnected" + alertInstance,
+            "Disconnected drive motor on module " + index + ".",
+            Level.HIGH);
     turnDisconnectedAlert =
         new Alert(
-            "Disconnected turn motor on module " + Integer.toString(index) + ".", AlertType.ERROR);
+            "module" + index + "TurnDisconnected" + alertInstance,
+            "Disconnected turn motor on module " + index + ".",
+            Level.HIGH);
     turnEncoderDisconnectedAlert =
         new Alert(
-            "Disconnected turn encoder on module " + Integer.toString(index) + ".",
-            AlertType.ERROR);
+            "module" + index + "TurnEncoderDisconnected" + alertInstance,
+            "Disconnected turn encoder on module " + index + ".",
+            Level.HIGH);
   }
 
   /************************************************************************* */
@@ -125,7 +133,7 @@ public class Module {
   /** Runs the module with the specified output while controlling to zero degrees. */
   public void runCharacterization(double output) {
     io.setDriveOpenLoop(output);
-    io.setTurnPosition(Rotation2d.kZero);
+    io.setTurnPosition(Rotation2d.ZERO);
   }
 
   /** Disables all outputs to motors. */

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -39,9 +39,9 @@ public interface ImuIO extends RBSIIO {
     // Yaw angular rate in radians/sec
     public double yawRateRadPerSec = 0.0;
     // Linear acceleration in robot frame (m/s^2)
-    public Translation3d linearAccel = Translation3d.kZero;
+    public Translation3d linearAccel = Translation3d.ZERO;
     // Linear jerk in robot frame (m/s^3)
-    public Translation3d linearJerk = Translation3d.kZero;
+    public Translation3d linearJerk = Translation3d.ZERO;
     // Time spent in the IO update call (seconds)
     public double latencySeconds = 0.0;
     // Odometry samples (timestamps in seconds)

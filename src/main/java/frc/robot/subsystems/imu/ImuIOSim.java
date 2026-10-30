@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,10 +17,10 @@
 
 package frc.robot.subsystems.imu;
 
-import frc.robot.util.TimeUtil;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.math.geometry.Translation3d;
 import org.wpilib.math.util.Units;
+import org.wpilib.system.Timer;
 
 /** Simulated IMU for full robot simulation & replay logging */
 public class ImuIOSim implements ImuIO {
@@ -70,10 +70,10 @@ public class ImuIOSim implements ImuIO {
 
     // Jerk: SIM doesn't have a prior accel here unless you want it; set to 0 by default.
     // If you do want jerk, you can add prevAx/prevAy/prevAz + dt just like the real IO.
-    inputs.linearJerk = Translation3d.kZero;
+    inputs.linearJerk = Translation3d.ZERO;
 
     // Maintain odometry history
-    pushOdomSample(TimeUtil.now(), yawRad);
+    pushOdomSample(Timer.getTimestamp(), yawRad);
 
     // Export odometry arrays (copy out in chronological order)
     final int n = odomSize;

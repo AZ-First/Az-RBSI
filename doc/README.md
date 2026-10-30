@@ -10,6 +10,7 @@ project front door; this page is the working table of contents.
 
 | Page | Use It For |
 | --- | --- |
+| [SUPPORTED-CONFIGURATIONS.md](SUPPORTED-CONFIGURATIONS.md) | Current 2027 branch support, deferred paths, and example hardware activation. |
 | [INSTALL.md](INSTALL.md) | Creating a project, setting team number, generating Phoenix Tuner X constants, and first setup tasks. |
 | [RBSI-GSG.md](RBSI-GSG.md) | First robot-code changes after installation. |
 | [RBSI-Constants.md](RBSI-Constants.md) | Understanding `Constants.java` and the tuning order for a new robot. |
@@ -29,7 +30,7 @@ project front door; this page is the working table of contents.
 
 ## New User Bring-Up Path
 
-1. [Install the project](INSTALL.md).
+1. [Check the supported configuration](SUPPORTED-CONFIGURATIONS.md), then [install the project](INSTALL.md).
 2. [Make first code changes](RBSI-GSG.md).
 3. [Select robot, swerve, vision, and auto modes](RBSI-Constants.md).
 4. [Generate or configure drivetrain constants](RBSI-Drive.md).

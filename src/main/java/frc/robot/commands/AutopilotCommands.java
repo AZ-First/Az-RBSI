@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -178,7 +178,7 @@ public final class AutopilotCommands {
 
     return Commands.run(
             () -> {
-              ChassisVelocities robotRelativeSpeeds = drive.getChassisSpeeds();
+              ChassisVelocities robotRelativeSpeeds = drive.getChassisVelocities();
               Pose2d pose = drive.getPose();
               boolean atTarget = AutoConstants.kAutopilot.atTarget(pose, target);
 

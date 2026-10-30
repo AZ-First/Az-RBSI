@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Az-FIRST
+// Copyright (c) 2026-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
 
 package frc.robot.subsystems.drive;
 
-import frc.robot.util.MathUtil;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.geometry.Translation2d;
@@ -33,7 +32,7 @@ import org.wpilib.math.kinematics.SwerveModuleVelocity;
 public class DriveSimPhysics {
 
   /* ---------------- Physical state ---------------- */
-  private Pose2d pose = Pose2d.kZero;
+  private Pose2d pose = Pose2d.ZERO;
   private double omegaRadPerSec = 0.0;
   private Translation2d linearAccel = new Translation2d(0, 0);
   private Translation2d prevVelocity = new Translation2d(0, 0);
@@ -82,7 +81,7 @@ public class DriveSimPhysics {
 
     // Simple torque model with damping
     double torque =
-        MathUtil.clamp(commandedOmega * moiKgMetersSq / dtSeconds, -maxTorqueNm, maxTorqueNm);
+        Math.clamp(commandedOmega * moiKgMetersSq / dtSeconds, -maxTorqueNm, maxTorqueNm);
 
     // Stronger angular damping to simulate motor friction
     torque -= omegaRadPerSec * ANGULAR_DAMPING;

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -210,10 +210,10 @@ public abstract class RBSIController {
         case RIGHT_BUMPER -> controller.rightBumper();
         case LEFT_STICK -> controller.leftStick();
         case RIGHT_STICK -> controller.rightStick();
-        case POV_LEFT -> controller.povLeft();
-        case POV_RIGHT -> controller.povRight();
-        case POV_UP -> controller.povUp();
-        case POV_DOWN -> controller.povDown();
+        case POV_LEFT -> controller.getHID().povLeft();
+        case POV_RIGHT -> controller.getHID().povRight();
+        case POV_UP -> controller.getHID().povUp();
+        case POV_DOWN -> controller.getHID().povDown();
       };
     }
 
@@ -273,10 +273,10 @@ public abstract class RBSIController {
         case RIGHT_BUMPER -> controller.R1();
         case LEFT_STICK -> controller.L3();
         case RIGHT_STICK -> controller.R3();
-        case POV_LEFT -> controller.povLeft();
-        case POV_RIGHT -> controller.povRight();
-        case POV_UP -> controller.povUp();
-        case POV_DOWN -> controller.povDown();
+        case POV_LEFT -> controller.getHID().povLeft();
+        case POV_RIGHT -> controller.getHID().povRight();
+        case POV_UP -> controller.getHID().povUp();
+        case POV_DOWN -> controller.getHID().povDown();
       };
     }
 
@@ -328,10 +328,10 @@ public abstract class RBSIController {
         case RIGHT_BUMPER -> controller.R1();
         case LEFT_STICK -> controller.L3();
         case RIGHT_STICK -> controller.R3();
-        case POV_LEFT -> controller.povLeft();
-        case POV_RIGHT -> controller.povRight();
-        case POV_UP -> controller.povUp();
-        case POV_DOWN -> controller.povDown();
+        case POV_LEFT -> controller.getHID().povLeft();
+        case POV_RIGHT -> controller.getHID().povRight();
+        case POV_UP -> controller.getHID().povUp();
+        case POV_DOWN -> controller.getHID().povDown();
       };
     }
 

@@ -1,4 +1,5 @@
 {
+  "workbench.colorTheme": "FRC BIOCORE High Contrast",
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.server.launchMode": "Standard",
   "files.exclude": {
@@ -74,5 +75,6 @@
   "[java]": {
     "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle"
   },
+  "java.debug.settings.enableRunDebugCodeLens": false,
   "java.dependency.enableDependencyCheckup": false
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Az-FIRST
+// Copyright (c) 2026-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2024 FRC 254
 // https://github.com/team254
@@ -28,10 +28,14 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.wpilib.math.interpolation.Interpolatable;
 import org.wpilib.math.interpolation.Interpolator;
+import org.wpilib.math.util.MathUtil;
 
 /**
- * A concurrent version of WPIlib's TimeInterpolatableBuffer class to avoid the need for explicit
+ * A concurrent version of WPILib's TimeInterpolatableBuffer class to avoid the need for explicit
  * synchronization in our robot code.
+ *
+ * <p>TODO: Revisit whether this wrapper is still needed when WPILib provides safe concurrent access
+ * and the oldest/newest/range queries used by Drive.
  *
  * @param <T> The type stored in this buffer.
  */
@@ -80,7 +84,7 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    */
   public static ConcurrentTimeInterpolatableBuffer<Double> createDoubleBuffer(
       double historySizeSeconds) {
-    return new ConcurrentTimeInterpolatableBuffer<>(MathUtil::interpolate, historySizeSeconds);
+    return new ConcurrentTimeInterpolatableBuffer<>(MathUtil::lerp, historySizeSeconds);
   }
 
   /**
@@ -144,7 +148,7 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
     if (Math.abs(timeSpan) < 1e-9) return Optional.of(bottomBound.getValue());
 
     double ratio = (timeSeconds - t0) / timeSpan;
-    ratio = MathUtil.clamp(ratio, 0.0, 1.0);
+    ratio = Math.clamp(ratio, 0.0, 1.0);
 
     return Optional.of(
         m_interpolatingFunc.interpolate(bottomBound.getValue(), topBound.getValue(), ratio));

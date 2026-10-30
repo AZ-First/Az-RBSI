@@ -11,15 +11,9 @@
           "expanded": [
             "/RealOutputs",
             "/RealOutputs/Drive/OdomThread",
-            "/RealOutputs/CAN/DriveTrain",
-            "/RealOutputs/CAN/Module0",
             "/AdvantageKit",
             "/RealOutputs/Odometry/Yaw",
             "/RealOutputs/Vision/Camera0",
-            "/RealOutputs/Vision/Camera0/TagPoses",
-            "/RealOutputs/Vision/Summary/TagPoses",
-            "/RealOutputs/Vision/Camera1/RobotPosesAccepted",
-            "/RealOutputs/Vision/Camera0/RobotPosesAccepted",
             "/RealOutputs/Power",
             "/RealOutputs/Power/Subsystems",
             "/NetworkInputs/SmartDashboard",
@@ -27,11 +21,15 @@
             "/RealOutputs/LogPeriodic/CodeLoop",
             "/RealOutputs/LogPeriodic/Subsystem",
             "/RealOutputs/LogPeriodic/VirtualSubsystem",
-            "/RealOutputs/CAN/rio",
             "/RealOutputs/Odometry/Coast",
             "/RealOutputs/Drive/SparkOdomThread",
             "/RealOutputs/Vision/Debug",
-            "/RealOutputs/Swerve/Drive"
+            "/RealOutputs/Swerve/Drive",
+            "/RealOutputs/CAN/can_s1",
+            "/RealOutputs/CAN/can_s2",
+            "/RealOutputs/CAN/can_s3",
+            "/RealOutputs/CAN/can_s4",
+            "/RealOutputs/Vision/TagsSeenThisLoop"
           ]
         },
         "tabs": {
@@ -84,7 +82,7 @@
                   },
                   {
                     "type": "arrow",
-                    "logKey": "/RealOutputs/Vision/Summary/TagPoses",
+                    "logKey": "/RealOutputs/Vision/TagsSeenThisLoop",
                     "logType": "Pose3d[]",
                     "visible": true,
                     "options": {
@@ -93,8 +91,8 @@
                   },
                   {
                     "type": "ghost",
-                    "logKey": "/RealOutputs/Vision/Camera0/RobotPosesAccepted",
-                    "logType": "Pose3d[]",
+                    "logKey": "/RealOutputs/Vision/Camera0/InjectedPose2d",
+                    "logType": "Pose2d",
                     "visible": true,
                     "options": {
                       "color": "#00ff00"
@@ -102,8 +100,8 @@
                   },
                   {
                     "type": "ghost",
-                    "logKey": "/RealOutputs/Vision/Camera1/RobotPosesAccepted",
-                    "logType": "Pose3d[]",
+                    "logKey": "/RealOutputs/Vision/Camera1/InjectedPose2d",
+                    "logType": "Pose2d",
                     "visible": true,
                     "options": {
                       "color": "#ffff00"
@@ -321,7 +319,7 @@
                   },
                   {
                     "type": "arrow",
-                    "logKey": "/ReplayOutputs/Vision/Summary/TagPoses",
+                    "logKey": "/ReplayOutputs/Vision/TagsSeenThisLoop",
                     "logType": "Pose3d[]",
                     "visible": true,
                     "options": {
@@ -330,8 +328,8 @@
                   },
                   {
                     "type": "ghost",
-                    "logKey": "/ReplayOutputs/Vision/Camera0/RobotPosesAccepted",
-                    "logType": "Pose3d[]",
+                    "logKey": "/ReplayOutputs/Vision/Camera0/InjectedPose2d",
+                    "logType": "Pose2d",
                     "visible": true,
                     "options": {
                       "color": "#00ff00"
@@ -491,26 +489,6 @@
                       "color": "#e5b31b",
                       "size": "normal"
                     }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Vision/Debug/dTransFromLastVision",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#af2437",
-                      "size": "normal"
-                    }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Vision/Debug/dRotFromLastVision",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#80588e",
-                      "size": "normal"
-                    }
                   }
                 ],
                 "rightSources": [
@@ -531,16 +509,6 @@
                     "visible": true,
                     "options": {
                       "color": "#c0b487",
-                      "size": "normal"
-                    }
-                  },
-                  {
-                    "type": "stepped",
-                    "logKey": "/RealOutputs/Vision/Debug/disabledCoastAge",
-                    "logType": "Number",
-                    "visible": true,
-                    "options": {
-                      "color": "#858584",
                       "size": "normal"
                     }
                   }
@@ -571,15 +539,6 @@
                     "visible": true,
                     "options": {
                       "color": "#80588e"
-                    }
-                  },
-                  {
-                    "type": "stripes",
-                    "logKey": "/RealOutputs/Vision/Debug/disabledCoast",
-                    "logType": "Boolean",
-                    "visible": true,
-                    "options": {
-                      "color": "#e48b32"
                     }
                   },
                   {
@@ -617,7 +576,7 @@
                   {
                     "type": "states",
                     "logKey": "/RealOutputs/SwerveStates/Measured",
-                    "logType": "SwerveModuleState[]",
+                    "logType": "SwerveModuleVelocity[]",
                     "visible": true,
                     "options": {
                       "color": "#ff0000",
@@ -627,7 +586,7 @@
                   {
                     "type": "states",
                     "logKey": "/RealOutputs/SwerveStates/SetpointsOptimized",
-                    "logType": "SwerveModuleState[]",
+                    "logType": "SwerveModuleVelocity[]",
                     "visible": true,
                     "options": {
                       "color": "#00ffff",
@@ -643,8 +602,8 @@
                   },
                   {
                     "type": "chassisSpeeds",
-                    "logKey": "/RealOutputs/SwerveChassisSpeeds/Measured",
-                    "logType": "ChassisSpeeds",
+                    "logKey": "/RealOutputs/SwerveChassisVelocities/Measured",
+                    "logType": "ChassisVelocities",
                     "visible": true,
                     "options": {
                       "color": "#ff0000"
@@ -709,7 +668,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/Swerve/Drive/FeedForwardVolts",
+                    "logKey": "/RealOutputs/Swerve/Drive/EstimatedSlotFeedForwardVolts",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -977,12 +936,12 @@
             },
             {
               "type": 1,
-              "title": "CAN Health (utilization / counts)",
+              "title": "Systemcore CAN Health (utilization / counts)",
               "controller": {
                 "leftSources": [
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/rio/Utilization",
+                    "logKey": "/RealOutputs/CAN/can_s1/Utilization",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -992,11 +951,31 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/Utilization",
+                    "logKey": "/RealOutputs/CAN/can_s2/Utilization",
                     "logType": "Number",
                     "visible": true,
                     "options": {
                       "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s3/Utilization",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#3b875a",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s4/Utilization",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#80588e",
                       "size": "normal"
                     }
                   }
@@ -1004,7 +983,27 @@
                 "rightSources": [
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/rio/RxErrorCount",
+                    "logKey": "/RealOutputs/CAN/can_s1/RxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2b66a2",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s1/TxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e5b31b",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s1/BusOffCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -1014,7 +1013,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/rio/TxErrorCount",
+                    "logKey": "/RealOutputs/CAN/can_s1/TxFullCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -1024,7 +1023,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/rio/BusOffCount",
+                    "logKey": "/RealOutputs/CAN/can_s2/RxErrorCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -1034,7 +1033,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/RxErrorCount",
+                    "logKey": "/RealOutputs/CAN/can_s2/TxErrorCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -1044,7 +1043,7 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/TxErrorCount",
+                    "logKey": "/RealOutputs/CAN/can_s2/BusOffCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
@@ -1054,11 +1053,91 @@
                   },
                   {
                     "type": "stepped",
-                    "logKey": "/RealOutputs/CAN/DriveTrain/TxFullCount",
+                    "logKey": "/RealOutputs/CAN/can_s2/TxFullCount",
                     "logType": "Number",
                     "visible": true,
                     "options": {
                       "color": "#3b875a",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s3/RxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#18a999",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s3/TxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#e36414",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s3/BusOffCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#6d597a",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s3/TxFullCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#457b9d",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s4/RxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#fb8500",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s4/TxErrorCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#8d99ae",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s4/BusOffCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#b56576",
+                      "size": "normal"
+                    }
+                  },
+                  {
+                    "type": "stepped",
+                    "logKey": "/RealOutputs/CAN/can_s4/TxFullCount",
+                    "logType": "Number",
+                    "visible": true,
+                    "options": {
+                      "color": "#2a9d8f",
                       "size": "normal"
                     }
                   }
@@ -1369,7 +1448,7 @@
                 "sources": [
                   {
                     "type": "robot",
-                    "logKey": "/RealOutputs/Vision/Summary/TagPoses",
+                    "logKey": "/RealOutputs/Vision/TagsSeenThisLoop",
                     "logType": "Pose3d[]",
                     "visible": true,
                     "options": {

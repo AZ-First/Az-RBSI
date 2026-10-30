@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -22,7 +22,7 @@ import org.littletonrobotics.junction.LogTable;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.inputs.LoggableInputs;
 import org.wpilib.math.geometry.Translation2d;
-import org.wpilib.math.util.Pair;
+import org.wpilib.util.Pair;
 
 // PathPlannerLib pathfinder compatible with AdvantageKit log replay
 // NOTE: This file is available at

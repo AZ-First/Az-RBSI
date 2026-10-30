@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -20,9 +20,8 @@ import java.util.Queue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.DoubleSupplier;
-import org.littletonrobotics.junction.Logger;
 import org.wpilib.driverstation.DriverStationErrors;
-import org.wpilib.system.RobotController;
+import org.wpilib.system.Timer;
 import org.wpilib.units.measure.Angle;
 
 /**
@@ -48,14 +47,17 @@ public class PhoenixOdometryThread extends Thread {
 
   private static PhoenixOdometryThread instance = null;
 
-  private long droppedSamples = 0;
-  private long loopCount = 0;
+  private volatile long droppedSamples = 0;
 
   public static PhoenixOdometryThread getInstance() {
     if (instance == null) {
       instance = new PhoenixOdometryThread();
     }
     return instance;
+  }
+
+  long getDroppedSamples() {
+    return droppedSamples;
   }
 
   private PhoenixOdometryThread() {
@@ -157,7 +159,7 @@ public class PhoenixOdometryThread extends Thread {
         // Sample timestamp is current FPGA time minus average CAN latency
         //     Default timestamps from Phoenix are NOT compatible with
         //     FPGA timestamps, this solution is imperfect but close
-        double timestamp = RobotController.getTime() / 1e6;
+        double timestamp = Timer.getTimestamp();
         double totalLatency = 0.0;
         for (BaseStatusSignal signal : phoenixSignals) {
           totalLatency += signal.getTimestamp().getLatency();
@@ -178,11 +180,6 @@ public class PhoenixOdometryThread extends Thread {
         }
       } finally {
         Drive.odometryLock.unlock();
-      }
-
-      // every ~1s
-      if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
-        Logger.recordOutput("Drive/OdomThread/DroppedSamples", droppedSamples);
       }
     }
   }

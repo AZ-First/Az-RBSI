@@ -64,7 +64,9 @@ controllers.
 ## Chooser Entries
 
 The routines are published in the PathPlanner auto chooser when `Constants.getAutoType()` is
-`PATHPLANNER`.
+`PATHPLANNER` and the example flywheel is enabled for simulation or real hardware. Real hardware
+defaults to `DISABLED` in `Constants.kExampleFlywheelHardware`; see
+`SUPPORTED-CONFIGURATIONS.md` before selecting a physical IO.
 
 Run all four voltage routines:
 
@@ -86,7 +88,7 @@ Optional comparison routines:
    mechanism that is not safe in reverse.
 2. Put the robot in a safe open area, with the flywheel pointed away from people and loose objects.
 3. Use a charged battery.
-4. Confirm the example flywheel IO selected in `RobotContainer` matches the hardware being tested.
+4. Confirm the example flywheel hardware selected in `Constants` matches the hardware being tested.
 5. Confirm gear ratio and encoder units in `Constants.FlywheelConstants.kGearRatio`.
 6. Confirm the follower motor is physically and logically correct. A missing or inverted follower
    will poison the characterization data.

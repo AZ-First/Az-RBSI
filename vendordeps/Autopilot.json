@@ -4,7 +4,7 @@
   "fileName": "Autopilot.json",
   "version": "1.7.0-alpha-6",
   "frcYear": "2027",
-  "wpilibYear": "2027_alpha5",
+  "wpilibYear": "2027_alpha7",
   "jsonUrl": "https://raw.githubusercontent.com/AZ-First/autopilot/refs/heads/sc2027/vendordep.json",
   "mavenUrls": [
     "https://raw.githubusercontent.com/AZ-First/autopilot/refs/heads/sc2027/maven"

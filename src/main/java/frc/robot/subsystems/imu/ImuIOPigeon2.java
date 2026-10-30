@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -54,7 +54,7 @@ public class ImuIOPigeon2 implements ImuIO {
   private final Queue<Double> odomYawsDeg;
 
   // Previous accel for jerk calculation (m/s/s)
-  private Translation3d prevAcc = Translation3d.kZero;
+  private Translation3d prevAcc = Translation3d.ZERO;
   private long prevTimestampNs = 0L;
 
   // Reusable buffers for queue-drain (to avoid using streams)

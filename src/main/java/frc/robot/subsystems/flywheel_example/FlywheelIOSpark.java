@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -46,9 +46,15 @@ public class FlywheelIOSpark implements FlywheelIO {
 
   // Define the leader / follower motors from the RobotDevices section of RobotContainer
   private final SparkMax leader =
-      new SparkMax(0, FLYWHEEL_LEADER.getDeviceNumber(), MotorType.kBrushless);
+      new SparkMax(
+          Constants.CANBuses.revPort(FLYWHEEL_LEADER.getBus()),
+          FLYWHEEL_LEADER.getDeviceNumber(),
+          MotorType.kBrushless);
   private final SparkMax follower =
-      new SparkMax(0, FLYWHEEL_FOLLOWER.getDeviceNumber(), MotorType.kBrushless);
+      new SparkMax(
+          Constants.CANBuses.revPort(FLYWHEEL_FOLLOWER.getBus()),
+          FLYWHEEL_FOLLOWER.getDeviceNumber(),
+          MotorType.kBrushless);
   private final RelativeEncoder encoder = leader.getEncoder();
   private final SparkClosedLoopController pid = leader.getClosedLoopController();
   // IMPORTANT: Include here all devices listed above that are part of this mechanism!
@@ -74,7 +80,6 @@ public class FlywheelIOSpark implements FlywheelIO {
             })
         .smartCurrentLimit((int) SwerveConstants.kDriveCurrentLimit)
         .voltageCompensation(DrivebaseConstants.kNominalVoltage);
-    leaderConfig.encoder.uvwMeasurementPeriod(10).uvwAverageDepth(2);
     leaderConfig
         .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
