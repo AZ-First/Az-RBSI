@@ -20,6 +20,8 @@ package frc.robot;
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -30,6 +32,7 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
 import org.wpilib.command3.Command;
 import org.wpilib.command3.Scheduler;
+import org.wpilib.command3.SchedulerEvent;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.MatchState;
@@ -49,6 +52,9 @@ public class Robot extends LoggedRobot {
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
   private int timingLogLoops = 0;
+  private final ArrayList<String> commandEvents = new ArrayList<>();
+  private final IdentityHashMap<Command, Integer> commandIds = new IdentityHashMap<>();
+  private int nextCommandId = 1;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -102,6 +108,7 @@ public class Robot extends LoggedRobot {
 
     // Start AdvantageKit logger
     Logger.start();
+    Scheduler.getDefault().addEventListener(this::recordCommandEvent);
 
     // Instantiate our RobotContainer. This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
@@ -138,6 +145,14 @@ public class Robot extends LoggedRobot {
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
     Scheduler.getDefault().run();
+    Logger.recordOutput("Commands/Scheduler", Scheduler.getDefault());
+    Logger.recordOutput(
+        "Commands/Active",
+        Scheduler.getDefault().getRunningCommands().stream()
+            .map(this::commandLabel)
+            .toArray(String[]::new));
+    Logger.recordOutput("Commands/Events", commandEvents.toArray(String[]::new));
+    commandEvents.clear();
     final long t3 = System.nanoTime();
 
     if (isReal()) {
@@ -152,6 +167,36 @@ public class Robot extends LoggedRobot {
       Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
       Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
     }
+  }
+
+  private void recordCommandEvent(SchedulerEvent event) {
+    // Mounted and Yielded occur for every running command each cycle; the scheduler snapshot
+    // records that ongoing state. Keep transitions, including one-shot commands, in the event log.
+    if (event instanceof SchedulerEvent.Mounted || event instanceof SchedulerEvent.Yielded) {
+      return;
+    }
+    if (event instanceof SchedulerEvent.Scheduled scheduled) {
+      commandEvents.add("Scheduled " + commandLabel(scheduled.command()));
+    } else if (event instanceof SchedulerEvent.Completed completed) {
+      commandEvents.add("Completed " + commandLabel(completed.command()));
+    } else if (event instanceof SchedulerEvent.CompletedWithError failed) {
+      commandEvents.add("Failed " + commandLabel(failed.command()) + ": " + failed.error());
+    } else if (event instanceof SchedulerEvent.Interrupted interrupted) {
+      commandEvents.add(
+          "Interrupted "
+              + commandLabel(interrupted.command())
+              + " by "
+              + commandLabel(interrupted.interrupter()));
+    } else if (event instanceof SchedulerEvent.Canceled canceled) {
+      commandEvents.add("Canceled " + commandLabel(canceled.command()));
+    } else if (event instanceof SchedulerEvent.ForkFailure failure) {
+      commandEvents.add(
+          "Fork failed " + commandLabel(failure.command()) + ": " + failure.failures());
+    }
+  }
+
+  private String commandLabel(Command command) {
+    return command.name() + "#" + commandIds.computeIfAbsent(command, ignored -> nextCommandId++);
   }
 
   /** This function is called once when the robot is disabled. */
