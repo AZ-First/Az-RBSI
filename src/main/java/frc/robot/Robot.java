@@ -23,6 +23,9 @@ import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -51,6 +54,10 @@ public class Robot extends LoggedRobot {
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
   private int timingLogLoops = 0;
+  private final ArrayList<String> commandEvents = new ArrayList<>();
+  private final LinkedHashSet<Command> activeCommands = new LinkedHashSet<>();
+  private final IdentityHashMap<Command, Integer> commandIds = new IdentityHashMap<>();
+  private int nextCommandId = 1;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -104,6 +111,7 @@ public class Robot extends LoggedRobot {
 
     // Start AdvantageKit logger
     Logger.start();
+    configureCommandLogging();
 
     // Instantiate our RobotContainer. This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
@@ -129,6 +137,10 @@ public class Robot extends LoggedRobot {
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    Logger.recordOutput(
+        "Commands/Active", activeCommands.stream().map(this::commandLabel).toArray(String[]::new));
+    Logger.recordOutput("Commands/Events", commandEvents.toArray(String[]::new));
+    commandEvents.clear();
     final long t3 = System.nanoTime();
 
     if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
@@ -137,6 +149,34 @@ public class Robot extends LoggedRobot {
       Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t0) / 1e6);
       Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
     }
+  }
+
+  private void configureCommandLogging() {
+    CommandScheduler scheduler = CommandScheduler.getInstance();
+    scheduler.onCommandInitialize(
+        command -> {
+          activeCommands.add(command);
+          commandEvents.add("Initialize " + commandLabel(command));
+        });
+    scheduler.onCommandFinish(
+        command -> {
+          activeCommands.remove(command);
+          commandEvents.add("Finish " + commandLabel(command));
+        });
+    scheduler.onCommandInterrupt(
+        (command, interruptor) -> {
+          activeCommands.remove(command);
+          commandEvents.add(
+              "Interrupt "
+                  + commandLabel(command)
+                  + interruptor.map(value -> " by " + commandLabel(value)).orElse(""));
+        });
+  }
+
+  private String commandLabel(Command command) {
+    return command.getName()
+        + "#"
+        + commandIds.computeIfAbsent(command, ignored -> nextCommandId++);
   }
 
   /** This function is called once when the robot is disabled. */
