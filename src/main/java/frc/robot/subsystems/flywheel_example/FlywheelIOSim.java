@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -11,7 +11,6 @@ package frc.robot.subsystems.flywheel_example;
 
 import frc.robot.Constants;
 import frc.robot.Constants.FlywheelConstants;
-import frc.robot.util.MathUtil;
 import org.wpilib.math.controller.PIDController;
 import org.wpilib.math.controller.SimpleMotorFeedforward;
 import org.wpilib.math.numbers.N1;
@@ -41,7 +40,7 @@ public class FlywheelIOSim implements FlywheelIO {
   public void updateInputs(FlywheelIOInputs inputs) {
     if (closedLoop) {
       appliedVolts =
-          MathUtil.clamp(
+          Math.clamp(
               pid.calculate(sim.getAngularVelocity()) + ffVolts,
               -FlywheelConstants.kMaxVoltage,
               FlywheelConstants.kMaxVoltage);

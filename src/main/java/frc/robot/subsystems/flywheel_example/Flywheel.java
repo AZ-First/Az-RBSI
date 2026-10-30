@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -15,7 +15,6 @@ import static org.wpilib.units.Units.Seconds;
 import static org.wpilib.units.Units.Volts;
 
 import frc.robot.Constants;
-import frc.robot.util.MathUtil;
 import frc.robot.util.RBSISubsystem;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -72,7 +71,7 @@ public class Flywheel extends RBSISubsystem {
    */
   public void runDutyCycleForSysIdVolts(double volts) {
     double batteryVoltage = RobotController.getBatteryVoltage();
-    io.setPercent(batteryVoltage > 0.0 ? MathUtil.clamp(volts / batteryVoltage, -1.0, 1.0) : 0.0);
+    io.setPercent(batteryVoltage > 0.0 ? Math.clamp(volts / batteryVoltage, -1.0, 1.0) : 0.0);
   }
 
   /** Run closed loop at the specified velocity. */
@@ -171,6 +170,6 @@ public class Flywheel extends RBSISubsystem {
   }
 
   private static String directionLabel(SysIdRoutine.Direction direction) {
-    return direction == SysIdRoutine.Direction.kForward ? "Forward" : "Reverse";
+    return direction == SysIdRoutine.Direction.FORWARD ? "Forward" : "Reverse";
   }
 }

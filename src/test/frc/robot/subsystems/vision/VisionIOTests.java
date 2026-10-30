@@ -63,7 +63,16 @@ class VisionIOTests {
   void limelightTimestampSubtractsTotalLatencyMilliseconds() {
     double[] sample = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 1.0, 0.0, 1.0, 0.0};
 
-    assertEquals(9.965, VisionIOLimelight.timestampSeconds(10_000_000L, sample), EPSILON);
+    assertEquals(9.965, VisionIOLimelight.timestampSeconds(10_000_000_000L, sample), EPSILON);
+  }
+
+  @Test
+  void limelightHeartbeatUsesNanosecondTimeout() {
+    long lastChangeNs = 10_000_000_000L;
+    assertFalse(VisionIOLimelight.isHeartbeatRecent(lastChangeNs, 0));
+    assertFalse(VisionIOLimelight.isHeartbeatRecent(lastChangeNs - 1, lastChangeNs));
+    assertTrue(VisionIOLimelight.isHeartbeatRecent(lastChangeNs + 249_999_999, lastChangeNs));
+    assertFalse(VisionIOLimelight.isHeartbeatRecent(lastChangeNs + 250_000_000, lastChangeNs));
   }
 
   @Test

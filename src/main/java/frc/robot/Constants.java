@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -28,7 +28,6 @@ import com.therekrab.autopilot.Autopilot;
 import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.SwerveConstants;
-import frc.robot.util.Alert;
 import frc.robot.util.RBSIEnum.AutoType;
 import frc.robot.util.RBSIEnum.CTREPro;
 import frc.robot.util.RBSIEnum.DriveStyle;
@@ -49,6 +48,8 @@ import org.wpilib.math.geometry.Transform3d;
 import org.wpilib.math.system.DCMotor;
 import org.wpilib.math.util.Units;
 import org.wpilib.units.measure.Mass;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
@@ -68,14 +69,22 @@ public final class Constants {
   private static RobotType robotType = RobotType.COMPBOT;
 
   // Define swerve, auto, and vision types being used
-  // NOTE: Only PHOENIX6 swerve base has been tested at this point!!!
-  //       If you have a swerve base with non-CTRE components, use YAGSL
-  //       under strict caveat emptor -- and submit any error and bugfixes
-  //       via GitHub issues.
+  // 2027: PHOENIX6 is the configured path. YAGSL runtime is deferred; see
+  // doc/SUPPORTED-CONFIGURATIONS.md before selecting another value.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
   private static CTREPro phoenixPro = CTREPro.LICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
   private static VisionType visionType = VisionType.PHOTON; // PHOTON, LIMELIGHT, NONE
+
+  /** Example mechanism only. DISABLED leaves real CAN devices untouched. */
+  public static final ExampleFlywheelHardware kExampleFlywheelHardware =
+      ExampleFlywheelHardware.DISABLED;
+
+  public enum ExampleFlywheelHardware {
+    DISABLED,
+    TALON_FX,
+    SPARK_MAX
+  }
 
   /** Enumerate the robot types (name your robots here) */
   public static enum RobotType {
@@ -126,21 +135,21 @@ public final class Constants {
     // Kraken X60 stall torque ~7.09 Nm; MK4i L3 gear ratio 6.12:1
     public static final double kMaxWheelTorqueNm = 43.4;
 
-    // Insert here the orientation (CCW == +) of the Rio and IMU from the robot
+    // Insert here the orientation (CCW == +) of the Systemcore and drive IMU from the robot
     // An angle of "0." means the x-y-z markings on the device match the robot's intrinsic reference
     //   frame.
-    public static final Rotation3d kRioOrientation =
+    public static final Rotation3d kSystemcoreOrientation =
         switch (getRobot()) {
           case COMPBOT -> new Rotation3d(0, 0, Units.degreesToRadians(-90));
-          case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
-          default -> Rotation3d.kZero;
+          case DEVBOT1, DEVBOT2 -> Rotation3d.ZERO;
+          default -> Rotation3d.ZERO;
         };
     // IMU can be one of Pigeon2 or NavX
     public static final Rotation3d kIMUOrientation =
         switch (getRobot()) {
-          case COMPBOT -> Rotation3d.kZero;
-          case DEVBOT1, DEVBOT2 -> Rotation3d.kZero;
-          default -> Rotation3d.kZero;
+          case COMPBOT -> Rotation3d.ZERO;
+          case DEVBOT1, DEVBOT2 -> Rotation3d.ZERO;
+          default -> Rotation3d.ZERO;
         };
   }
 
@@ -189,13 +198,13 @@ public final class Constants {
             .toArray(String[]::new);
 
     /** REV's 2027 constructors use a numbered SystemCore port rather than a Phoenix bus name. */
-    public static int revPort(String bus) {
+    public static org.wpilib.hardware.bus.CANPort revPort(String bus) {
       return switch (bus) {
-        case SYSTEMCORE_0 -> 0;
-        case SYSTEMCORE_1 -> 1;
-        case SYSTEMCORE_2 -> 2;
-        case SYSTEMCORE_3 -> 3;
-        case SYSTEMCORE_4 -> 4;
+        case SYSTEMCORE_0 -> org.wpilib.hardware.bus.CANPort.CAN_S0;
+        case SYSTEMCORE_1 -> org.wpilib.hardware.bus.CANPort.CAN_S1;
+        case SYSTEMCORE_2 -> org.wpilib.hardware.bus.CANPort.CAN_S2;
+        case SYSTEMCORE_3 -> org.wpilib.hardware.bus.CANPort.CAN_S3;
+        case SYSTEMCORE_4 -> org.wpilib.hardware.bus.CANPort.CAN_S4;
         default ->
             throw new IllegalArgumentException("REV device requires a SystemCore CAN bus: " + bus);
       };
@@ -244,7 +253,7 @@ public final class Constants {
 
     /* SUBSYSTEM CAN DEVICE IDS */
     // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
-    // Example:
+    // Example only: these IDs are not active unless kExampleFlywheelHardware is selected.
     public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, CANBuses.RIO, 8);
     public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, CANBuses.RIO, 9);
 
@@ -258,14 +267,6 @@ public final class Constants {
     // are defined
     // Example:
     // public static final int INTAKE_SERVO = 0;
-  }
-
-  /************************************************************************* */
-  /** Sensor Constants ***************************************************** */
-  public static final class SensorConstants {
-
-    // RoboRIO accelerometer sampler rate.
-    public static final double kRioAccelerometerSampleRateHz = 200.0;
   }
 
   /************************************************************************* */
@@ -615,7 +616,9 @@ public final class Constants {
   public static RobotType getRobot() {
     if (!disableHAL && RobotBase.isReal() && robotType == RobotType.SIMBOT) {
       new Alert(
-              "Invalid robot selected, using competition robot as default.", Alert.AlertType.ERROR)
+              "invalidRobotSelected",
+              "Invalid robot selected, using competition robot as default.",
+              Level.HIGH)
           .set(true);
       robotType = RobotType.COMPBOT;
     }

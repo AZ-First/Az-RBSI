@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2024-2025 Cross The Road Electronics
 // https://github.com/CrossTheRoadElec/Phoenix6-Examples
@@ -36,7 +36,7 @@ public class FusedCANcoderTests {
 
   @BeforeEach
   public void constructDevices() {
-    assert HAL.initialize(500, 0);
+    assert HAL.initialize();
 
     talon = new TalonFX(0, new CANBus(""));
     cancoder = new CANcoder(0, new CANBus(""));

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -45,8 +45,8 @@ public class VisionIOPhotonVision implements VisionIO {
     final ArrayList<PoseObservation> poseObservations = new ArrayList<>(1);
 
     double newestTargetTs = Double.NEGATIVE_INFINITY;
-    Rotation2d bestYaw = Rotation2d.kZero;
-    Rotation2d bestPitch = Rotation2d.kZero;
+    Rotation2d bestYaw = Rotation2d.ZERO;
+    Rotation2d bestPitch = Rotation2d.ZERO;
 
     List<org.photonvision.targeting.PhotonPipelineResult> unreadResults =
         camera.getAllUnreadResults();
@@ -134,7 +134,7 @@ public class VisionIOPhotonVision implements VisionIO {
     inputs.latestTargetObservation =
         (newestTargetTs > Double.NEGATIVE_INFINITY)
             ? new TargetObservation(bestYaw, bestPitch)
-            : new TargetObservation(Rotation2d.kZero, Rotation2d.kZero);
+            : new TargetObservation(Rotation2d.ZERO, Rotation2d.ZERO);
 
     inputs.poseObservations = poseObservations.toArray(new PoseObservation[0]);
 

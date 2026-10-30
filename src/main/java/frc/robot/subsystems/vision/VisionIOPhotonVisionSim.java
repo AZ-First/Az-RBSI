@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -21,8 +21,8 @@ import org.wpilib.system.RobotController;
 /** IO implementation for physics sim using PhotonVision simulator. */
 public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   private static VisionSystemSim visionSim;
-  private static long lastUpdateUs = Long.MIN_VALUE;
-  private static final long MIN_UPDATE_PERIOD_US = 1_000;
+  private static long lastUpdateNs = Long.MIN_VALUE;
+  private static final long MIN_UPDATE_PERIOD_NS = 1_000_000;
 
   private final Supplier<Pose2d> poseSupplier;
 
@@ -73,10 +73,12 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
   }
 
   private void updateVisionSimOncePerLoop() {
-    long nowUs = RobotController.getTime();
-    if (nowUs - lastUpdateUs < MIN_UPDATE_PERIOD_US) return;
+    long nowNs = RobotController.getTime();
+    if (lastUpdateNs != Long.MIN_VALUE
+        && nowNs >= lastUpdateNs
+        && nowNs - lastUpdateNs < MIN_UPDATE_PERIOD_NS) return;
 
     visionSim.update(poseSupplier.get());
-    lastUpdateUs = nowUs;
+    lastUpdateNs = nowNs;
   }
 }

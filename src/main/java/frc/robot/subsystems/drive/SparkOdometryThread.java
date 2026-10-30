@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -15,9 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.DoubleSupplier;
-import org.littletonrobotics.junction.Logger;
 import org.wpilib.system.Notifier;
-import org.wpilib.system.RobotController;
+import org.wpilib.system.Timer;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -37,14 +36,17 @@ public class SparkOdometryThread {
 
   private static SparkOdometryThread instance = null;
   private final Notifier notifier = new Notifier(this::run);
-  private long droppedSamples = 0;
-  private long loopCount = 0;
+  private volatile long droppedSamples = 0;
 
   public static SparkOdometryThread getInstance() {
     if (instance == null) {
       instance = new SparkOdometryThread();
     }
     return instance;
+  }
+
+  long getDroppedSamples() {
+    return droppedSamples;
   }
 
   private SparkOdometryThread() {
@@ -101,7 +103,7 @@ public class SparkOdometryThread {
     Drive.odometryLock.lock();
     try {
       // Get sample timestamp
-      double timestamp = RobotController.getTime() / 1e6;
+      double timestamp = Timer.getTimestamp();
 
       // Read Spark values, mark invalid in case of error
       double[] sparkValues = new double[sparkSignals.size()];
@@ -127,10 +129,6 @@ public class SparkOdometryThread {
       }
     } finally {
       Drive.odometryLock.unlock();
-    }
-
-    if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
-      Logger.recordOutput("Drive/SparkOdomThread/DroppedSamples", droppedSamples);
     }
   }
 

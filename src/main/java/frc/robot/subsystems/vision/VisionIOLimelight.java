@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -35,8 +35,9 @@ public class VisionIOLimelight implements VisionIO {
   private static final int BOTPOSE_FIRST_TAG_ID_INDEX = 11;
   private static final int BOTPOSE_FIRST_TAG_AMBIGUITY_INDEX = 17;
   private static final int BOTPOSE_TAG_STRIDE = 7;
-  private static final long ORIENTATION_FLUSH_PERIOD_US = 20_000;
-  private static long lastOrientationFlushUs = 0;
+  private static final long ORIENTATION_FLUSH_PERIOD_NS = 20_000_000;
+  private static final long HEARTBEAT_TIMEOUT_NS = 250_000_000;
+  private static long lastOrientationFlushNs = 0;
 
   private final Supplier<Rotation2d> rotationSupplier;
   private final DoubleArrayPublisher orientationPublisher;
@@ -69,7 +70,7 @@ public class VisionIOLimelight implements VisionIO {
   public void updateInputs(VisionIOInputs inputs) {
     // Update connection status based on whether an update has been seen in the last 250ms
     inputs.connected =
-        ((RobotController.getTime() - heartbeatSubscriber.getLastChange()) / 1000) < 250;
+        isHeartbeatRecent(RobotController.getTime(), heartbeatSubscriber.getLastChange());
 
     // Update target observation
     inputs.latestTargetObservation =
@@ -207,8 +208,12 @@ public class VisionIOLimelight implements VisionIO {
     return timestampSeconds(rawSample.timestamp, rawSample.value);
   }
 
-  static double timestampSeconds(long ntTimestampMicros, double[] rawLLArray) {
-    return ntTimestampMicros * 1.0e-6 - rawLLArray[BOTPOSE_LATENCY_INDEX] * 1.0e-3;
+  static double timestampSeconds(long ntTimestampNanos, double[] rawLLArray) {
+    return ntTimestampNanos * 1.0e-9 - rawLLArray[BOTPOSE_LATENCY_INDEX] * 1.0e-3;
+  }
+
+  static boolean isHeartbeatRecent(long nowNs, long lastChangeNs) {
+    return lastChangeNs > 0 && nowNs >= lastChangeNs && nowNs - lastChangeNs < HEARTBEAT_TIMEOUT_NS;
   }
 
   private static int getTagCount(double[] rawLLArray) {
@@ -216,10 +221,11 @@ public class VisionIOLimelight implements VisionIO {
   }
 
   private static void flushOrientationIfDue() {
-    long nowUs = RobotController.getTime();
-    if (nowUs - lastOrientationFlushUs < ORIENTATION_FLUSH_PERIOD_US) return;
+    long nowNs = RobotController.getTime();
+    if (nowNs >= lastOrientationFlushNs
+        && nowNs - lastOrientationFlushNs < ORIENTATION_FLUSH_PERIOD_NS) return;
 
     NetworkTableInstance.getDefault().flush();
-    lastOrientationFlushUs = nowUs;
+    lastOrientationFlushNs = nowNs;
   }
 }

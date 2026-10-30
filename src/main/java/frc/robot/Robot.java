@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -23,6 +23,9 @@ import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
 import frc.robot.Constants.PowerConstants;
 import frc.robot.util.VirtualSubsystem;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -36,7 +39,6 @@ import org.wpilib.command2.CommandScheduler;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.math.geometry.Pose2d;
-import org.wpilib.system.Threads;
 import org.wpilib.system.Timer;
 
 /**
@@ -52,6 +54,10 @@ public class Robot extends LoggedRobot {
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
   private int timingLogLoops = 0;
+  private final ArrayList<String> commandEvents = new ArrayList<>();
+  private final LinkedHashSet<Command> activeCommands = new LinkedHashSet<>();
+  private final IdentityHashMap<Command, Integer> commandIds = new IdentityHashMap<>();
+  private int nextCommandId = 1;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -105,6 +111,7 @@ public class Robot extends LoggedRobot {
 
     // Start AdvantageKit logger
     Logger.start();
+    configureCommandLogging();
 
     // Instantiate our RobotContainer. This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
@@ -113,23 +120,12 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
-
-    // Switch thread to high priority to improve loop timing
-    if (isReal()) {
-      setCurrentThreadPriorityFor2027Migration(99);
-    }
   }
 
   // /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
     final long t0 = System.nanoTime();
-
-    if (isReal()) {
-      // Switch thread to high priority to improve loop timing
-      setCurrentThreadPriorityFor2027Migration(99);
-    }
-    final long t1 = System.nanoTime();
 
     // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
@@ -141,20 +137,46 @@ public class Robot extends LoggedRobot {
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    Logger.recordOutput(
+        "Commands/Active", activeCommands.stream().map(this::commandLabel).toArray(String[]::new));
+    Logger.recordOutput("Commands/Events", commandEvents.toArray(String[]::new));
+    commandEvents.clear();
     final long t3 = System.nanoTime();
-
-    if (isReal()) {
-      // Return thread to normal priority
-      setCurrentThreadPriorityFor2027Migration(10);
-    }
-    final long t4 = System.nanoTime();
 
     if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
       timingLogLoops = 0;
-      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
-      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t3 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t0) / 1e6);
       Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
     }
+  }
+
+  private void configureCommandLogging() {
+    CommandScheduler scheduler = CommandScheduler.getInstance();
+    scheduler.onCommandInitialize(
+        command -> {
+          activeCommands.add(command);
+          commandEvents.add("Initialize " + commandLabel(command));
+        });
+    scheduler.onCommandFinish(
+        command -> {
+          activeCommands.remove(command);
+          commandEvents.add("Finish " + commandLabel(command));
+        });
+    scheduler.onCommandInterrupt(
+        (command, interruptor) -> {
+          activeCommands.remove(command);
+          commandEvents.add(
+              "Interrupt "
+                  + commandLabel(command)
+                  + interruptor.map(value -> " by " + commandLabel(value)).orElse(""));
+        });
+  }
+
+  private String commandLabel(Command command) {
+    return command.getName()
+        + "#"
+        + commandIds.computeIfAbsent(command, ignored -> nextCommandId++);
   }
 
   /** This function is called once when the robot is disabled. */
@@ -275,12 +297,4 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during utility mode. */
   @Override
   public void utilityPeriodic() {}
-
-  @SuppressWarnings("deprecation")
-  private static void setCurrentThreadPriorityFor2027Migration(int priority) {
-    // TODO(2027): Revisit this as WPILib 2027 moves through beta and release. The current
-    // Threads API still works in alpha-6, but is deprecated because real-time priority misuse can
-    // lock up the system. Replace with the final WPILib guidance or remove the priority adjustment.
-    Threads.setCurrentThreadPriority(priority);
-  }
 }

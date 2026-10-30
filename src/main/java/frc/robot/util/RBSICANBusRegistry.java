@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,10 +17,9 @@ import com.ctre.phoenix6.CANBus;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Centralized CAN bus singleton registry */
+/** Centralized CAN bus singleton registry for Phoenix device constructors. */
 public final class RBSICANBusRegistry {
   private static final Map<String, CANBus> realBuses = new ConcurrentHashMap<>();
-  private static final Map<String, CANBusLike> likeBuses = new ConcurrentHashMap<>();
   private static volatile boolean initialized = false;
   private static volatile boolean sim = false;
 
@@ -32,22 +31,14 @@ public final class RBSICANBusRegistry {
   public static void initReal(String... busNames) {
     sim = false;
     for (String name : busNames) {
-      CANBus bus = realBuses.computeIfAbsent(name, CANBus::new);
-      likeBuses.computeIfAbsent(name, n -> new RealCANBusAdapter(bus));
+      realBuses.computeIfAbsent(name, CANBus::new);
     }
     initialized = true;
   }
 
-  /**
-   * Initialize the SIM CANBusses
-   *
-   * @param busNames The list of bus names to initialize
-   */
-  public static void initSim(String... busNames) {
+  /** Initialize the registry for simulation or replay. */
+  public static void initSim() {
     sim = true;
-    for (String name : busNames) {
-      likeBuses.computeIfAbsent(name, SimCANBusStub::new);
-    }
     initialized = true;
   }
 
@@ -60,20 +51,9 @@ public final class RBSICANBusRegistry {
   public static CANBus getBus(String name) {
     checkInit();
     if (sim) {
-      throw new IllegalStateException("No real CANBus in SIM. Use getLike() or skip CTRE devices.");
+      throw new IllegalStateException("No real CANBus in SIM. Skip CTRE devices.");
     }
     return getRegisteredBus(name, realBuses);
-  }
-
-  /**
-   * Get a CANBus-like object for health logging
-   *
-   * @param name Name of the bus to health log
-   * @return CANBusLike object
-   */
-  public static CANBusLike getLike(String name) {
-    checkInit();
-    return getRegisteredBus(name, likeBuses);
   }
 
   /** Check that the Registry is initialized */
@@ -88,58 +68,5 @@ public final class RBSICANBusRegistry {
           "Unknown CAN bus '" + name + "'. Known: " + buses.keySet());
     }
     return bus;
-  }
-
-  /** Nested types for Registry Function *********************************** */
-
-  /** CANBusLike interface */
-  public interface CANBusLike {
-    String getName();
-
-    CANBus.CANBusStatus getStatus();
-  }
-
-  /** Real CAN Bus Adapter */
-  static final class RealCANBusAdapter implements CANBusLike {
-    private final CANBus bus;
-
-    /** Constructor */
-    RealCANBusAdapter(CANBus bus) {
-      this.bus = bus;
-    }
-
-    /** Get the name of this CANBus instance */
-    @Override
-    public String getName() {
-      return bus.getName();
-    }
-
-    /** Get the status of this CANBus instance */
-    @Override
-    public CANBus.CANBusStatus getStatus() {
-      return bus.getStatus();
-    }
-  }
-
-  /** Simulated CAN Bus Stub */
-  static final class SimCANBusStub implements CANBusLike {
-    private final String name;
-
-    /** Constructor */
-    SimCANBusStub(String name) {
-      this.name = name;
-    }
-
-    /** Get the name of this simulated CANBus */
-    @Override
-    public String getName() {
-      return name;
-    }
-
-    /** Get the status of this simulated CANBus */
-    @Override
-    public CANBus.CANBusStatus getStatus() {
-      return new CANBus.CANBusStatus();
-    }
   }
 }

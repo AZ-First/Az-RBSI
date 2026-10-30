@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Az-FIRST
+// Copyright (c) 2026-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,10 +17,11 @@
 
 package frc.robot;
 
-import frc.robot.util.Alert;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.MatchState;
 import org.wpilib.driverstation.RobotState;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 public final class FieldState {
   private static final double TRANSITION_END_SECONDS = 130.0;
@@ -29,7 +30,9 @@ public final class FieldState {
 
   private static final Alert missingHubDataAlert =
       new Alert(
-          "No HUB data from FMS! HUB is listed as ACTIVE! Driver BEWARE!", Alert.AlertType.WARNING);
+          "missingHubData",
+          "No HUB data from FMS! HUB is listed as ACTIVE! Driver BEWARE!",
+          Level.MEDIUM);
 
   private FieldState() {}
 

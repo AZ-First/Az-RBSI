@@ -23,9 +23,8 @@ To use the BIOCORE VS Code theme:
 1. Open the Extensions view in VS Code.
 2. Select `...` > `Install from VSIX...`.
 3. Install
-   [`themes/frc-biocore-high-contrast-theme-1.0.1.vsix`](themes/frc-biocore-high-contrast-theme-1.0.1.vsix).
-4. Run `Preferences: Color Theme` from the command palette and select
-   `FRC BIOCORE High Contrast`.
+   [`themes/frc-biocore-high-contrast-theme-1.1.0.vsix`](themes/frc-biocore-high-contrast-theme-1.1.0.vsix).
+4. Open this project; its workspace settings select `FRC BIOCORE High Contrast`.
 
 ## Documentation
 
@@ -35,6 +34,7 @@ Start with the full documentation index:
 
 Quick links:
 
+- [2027 alpha-8 supported configurations](doc/SUPPORTED-CONFIGURATIONS.md)
 - [Install and project setup](doc/INSTALL.md)
 - [Getting started guide](doc/RBSI-GSG.md)
 - [Constants guide](doc/RBSI-Constants.md)

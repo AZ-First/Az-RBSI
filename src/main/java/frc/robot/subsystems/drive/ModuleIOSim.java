@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -10,14 +10,13 @@
 package frc.robot.subsystems.drive;
 
 import frc.robot.Constants;
-import frc.robot.util.MathUtil;
-import frc.robot.util.TimeUtil;
 import org.wpilib.math.controller.PIDController;
 import org.wpilib.math.geometry.Rotation2d;
 import org.wpilib.math.system.DCMotor;
 import org.wpilib.math.system.Models;
 import org.wpilib.math.util.Units;
 import org.wpilib.simulation.DCMotorSim;
+import org.wpilib.system.Timer;
 
 /**
  * Physics sim implementation of module IO. The sim models are configured using a set of module
@@ -81,8 +80,8 @@ public class ModuleIOSim implements ModuleIO {
     }
 
     // Apply voltages
-    driveSim.setInputVoltage(MathUtil.clamp(driveAppliedVolts, -12.0, 12.0));
-    turnSim.setInputVoltage(MathUtil.clamp(turnAppliedVolts, -12.0, 12.0));
+    driveSim.setInputVoltage(Math.clamp(driveAppliedVolts, -12.0, 12.0));
+    turnSim.setInputVoltage(Math.clamp(turnAppliedVolts, -12.0, 12.0));
 
     // Advance physics
     driveSim.update(Constants.kLoopPeriodSecs);
@@ -114,7 +113,7 @@ public class ModuleIOSim implements ModuleIO {
     inputs.turnCurrentAmps = Math.abs(turnSim.getCurrentDraw());
 
     // Odometry (single sample per loop is fine)
-    inputs.odometryTimestamps = new double[] {TimeUtil.now()};
+    inputs.odometryTimestamps = new double[] {Timer.getTimestamp()};
     inputs.odometryDrivePositionsRad = new double[] {mechanismPositionRad};
     inputs.odometryTurnPositions = new Rotation2d[] {inputs.turnPosition};
   }
