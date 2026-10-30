@@ -26,7 +26,7 @@ import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
-import frc.robot.subsystems.accelerometer.RioAccelIO;
+import frc.robot.subsystems.accelerometer.ControllerAccelIO;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveOdometry;
 import frc.robot.subsystems.drive.SwerveConstants;
@@ -216,7 +216,7 @@ public class RobotContainer {
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay(m_drivebase));
 
         m_flywheel = new Flywheel(new FlywheelIO() {});
-        m_accel = new Accelerometer(m_imu, RioAccelIO.noop());
+        m_accel = new Accelerometer(m_imu, ControllerAccelIO.noop());
         sweep = null;
         break;
     }

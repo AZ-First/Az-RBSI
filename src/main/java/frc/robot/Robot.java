@@ -36,7 +36,6 @@ import org.wpilib.command3.SchedulerEvent;
 import org.wpilib.driverstation.Alliance;
 import org.wpilib.driverstation.DriverStationErrors;
 import org.wpilib.driverstation.MatchState;
-import org.wpilib.system.Threads;
 import org.wpilib.system.Timer;
 
 /**
@@ -117,23 +116,12 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
-
-    // Switch thread to high priority to improve loop timing
-    if (isReal()) {
-      setCurrentThreadPriorityFor2027Migration(99);
-    }
   }
 
   // /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
     final long t0 = System.nanoTime();
-
-    if (isReal()) {
-      // Switch thread to high priority to improve loop timing
-      setCurrentThreadPriorityFor2027Migration(99);
-    }
-    final long t1 = System.nanoTime();
 
     // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
@@ -155,16 +143,10 @@ public class Robot extends LoggedRobot {
     commandEvents.clear();
     final long t3 = System.nanoTime();
 
-    if (isReal()) {
-      // Return thread to normal priority
-      setCurrentThreadPriorityFor2027Migration(10);
-    }
-    final long t4 = System.nanoTime();
-
     if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
       timingLogLoops = 0;
-      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
-      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t3 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t0) / 1e6);
       Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
     }
   }
@@ -335,12 +317,4 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during utility mode. */
   @Override
   public void utilityPeriodic() {}
-
-  @SuppressWarnings("deprecation")
-  private static void setCurrentThreadPriorityFor2027Migration(int priority) {
-    // TODO(2027): Revisit this as WPILib 2027 moves through beta and release. The current
-    // Threads API still works in alpha-8, but is deprecated because real-time priority misuse can
-    // lock up the system. Replace with the final WPILib guidance or remove the priority adjustment.
-    Threads.setCurrentThreadPriority(priority);
-  }
 }
