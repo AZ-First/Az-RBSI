@@ -37,6 +37,8 @@ import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
 import frc.robot.subsystems.flywheel_example.FlywheelIOSim;
+import frc.robot.subsystems.flywheel_example.FlywheelIOSpark;
+import frc.robot.subsystems.flywheel_example.FlywheelIOTalonFX;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIOSim;
@@ -97,6 +99,10 @@ public class RobotContainer {
   private final Drive m_drivebase;
 
   private final Flywheel m_flywheel;
+  private final boolean flywheelExampleEnabled =
+      Constants.getMode() == Mode.SIM
+          || (Constants.getMode() == Mode.REAL
+              && Constants.kExampleFlywheelHardware != Constants.ExampleFlywheelHardware.DISABLED);
 
   // ... Add additional subsystems here (e.g., elevator, arm, etc.)
 
@@ -164,7 +170,7 @@ public class RobotContainer {
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
-        m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
+        m_flywheel = new Flywheel(createRealExampleFlywheelIO());
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
@@ -322,14 +328,16 @@ public class RobotContainer {
     // Press Y / Triangle button --> Manually Re-Zero the Gyro
     driverController.northFaceButton().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
-    // Press RIGHT BUMPER / R1 --> Run the example flywheel
-    driverController
-        .rightBumper()
-        .whileTrue(
-            Commands.startEnd(
-                () -> m_flywheel.runVelocity(flywheelSpeedInput.getAsDouble()),
-                m_flywheel::stop,
-                m_flywheel));
+    // Example mechanism controls are available in simulation or with an explicit real IO choice.
+    if (flywheelExampleEnabled) {
+      driverController
+          .rightBumper()
+          .whileTrue(
+              Commands.startEnd(
+                  () -> m_flywheel.runVelocity(flywheelSpeedInput.getAsDouble()),
+                  m_flywheel::stop,
+                  m_flywheel));
+    }
 
     // Press LEFT BUMPER / L1 --> Drive to a demo pose offset defined in OperatorConstants
     driverController
@@ -489,32 +497,42 @@ public class RobotContainer {
           "Drive SysId (Dynamic Reverse)",
           m_drivebase.sysIdDynamic(SysIdRoutine.Direction.REVERSE));
 
-      // Example Flywheel SysId Characterization
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Voltage (Quasistatic Forward)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.FORWARD));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Voltage (Quasistatic Reverse)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.REVERSE));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Voltage (Dynamic Forward)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.FORWARD));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Voltage (Dynamic Reverse)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.REVERSE));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Duty Cycle (Quasistatic Forward)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.FORWARD));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.REVERSE));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Duty Cycle (Dynamic Forward)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.FORWARD));
-      autoChooserPathPlanner.add(
-          "Flywheel SysId Duty Cycle (Dynamic Reverse)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.REVERSE));
+      if (flywheelExampleEnabled) {
+        // Example Flywheel SysId Characterization
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Quasistatic Forward)",
+            m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Quasistatic Reverse)",
+            m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.REVERSE));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Dynamic Forward)",
+            m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Dynamic Reverse)",
+            m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.REVERSE));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Quasistatic Forward)",
+            m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
+            m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.REVERSE));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Dynamic Forward)",
+            m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Dynamic Reverse)",
+            m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.REVERSE));
+      }
     }
+  }
+
+  private static FlywheelIO createRealExampleFlywheelIO() {
+    return switch (Constants.kExampleFlywheelHardware) {
+      case DISABLED -> new FlywheelIO() {};
+      case TALON_FX -> new FlywheelIOTalonFX();
+      case SPARK_MAX -> new FlywheelIOSpark();
+    };
   }
 
   // Vision Factories

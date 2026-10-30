@@ -34,6 +34,7 @@ Start with the full documentation index:
 
 Quick links:
 
+- [2027 alpha-8 supported configurations](doc/SUPPORTED-CONFIGURATIONS.md)
 - [Install and project setup](doc/INSTALL.md)
 - [Getting started guide](doc/RBSI-GSG.md)
 - [Constants guide](doc/RBSI-Constants.md)

@@ -311,6 +311,13 @@ Drive characterization helpers also use constants here:
 - `kWheelRadiusCharacterizationRampRateRadPerSecSq`: spin-speed slew rate during wheel radius
   characterization.
 
+## Example flywheel hardware selection
+
+`Constants.kExampleFlywheelHardware` defaults to `DISABLED`. The example CAN IDs below it do not
+activate real motors by themselves. Choose `TALON_FX` or `SPARK_MAX` only after replacing and
+checking the sample device IDs, power ports, and mechanism limits. Simulation uses `FlywheelIOSim`
+regardless of this real-hardware selector. See [supported configurations](SUPPORTED-CONFIGURATIONS.md).
+
 ## FlywheelConstants
 
 `FlywheelConstants` configures the example flywheel subsystem:

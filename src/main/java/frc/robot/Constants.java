@@ -69,14 +69,22 @@ public final class Constants {
   private static RobotType robotType = RobotType.COMPBOT;
 
   // Define swerve, auto, and vision types being used
-  // NOTE: Only PHOENIX6 swerve base has been tested at this point!!!
-  //       If you have a swerve base with non-CTRE components, use YAGSL
-  //       under strict caveat emptor -- and submit any error and bugfixes
-  //       via GitHub issues.
+  // 2027: PHOENIX6 is the configured path. YAGSL runtime is deferred; see
+  // doc/SUPPORTED-CONFIGURATIONS.md before selecting another value.
   private static SwerveType swerveType = SwerveType.PHOENIX6; // PHOENIX6, YAGSL
   private static CTREPro phoenixPro = CTREPro.LICENSED; // LICENSED, UNLICENSED
   private static AutoType autoType = AutoType.MANUAL; // MANUAL, PATHPLANNER, CHOREO
   private static VisionType visionType = VisionType.PHOTON; // PHOTON, LIMELIGHT, NONE
+
+  /** Example mechanism only. DISABLED leaves real CAN devices untouched. */
+  public static final ExampleFlywheelHardware kExampleFlywheelHardware =
+      ExampleFlywheelHardware.DISABLED;
+
+  public enum ExampleFlywheelHardware {
+    DISABLED,
+    TALON_FX,
+    SPARK_MAX
+  }
 
   /** Enumerate the robot types (name your robots here) */
   public static enum RobotType {
@@ -245,7 +253,7 @@ public final class Constants {
 
     /* SUBSYSTEM CAN DEVICE IDS */
     // This is where mechanism subsystem devices are defined (Including ID, bus, and power port)
-    // Example:
+    // Example only: these IDs are not active unless kExampleFlywheelHardware is selected.
     public static final RobotDeviceId FLYWHEEL_LEADER = new RobotDeviceId(3, CANBuses.RIO, 8);
     public static final RobotDeviceId FLYWHEEL_FOLLOWER = new RobotDeviceId(4, CANBuses.RIO, 9);
 
