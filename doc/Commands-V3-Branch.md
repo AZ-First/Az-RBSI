@@ -26,11 +26,13 @@ drive type.
 
 `AutoType.MANUAL` is the supported setting. The `LoggedNetworkChooser` currently
 offers a do-nothing default, the two custom drive characterization commands,
-and the V3 SysId drive and flywheel routines. Drive SysId includes a one-second
+and the V3 SysId drive routines. Example flywheel SysId choices appear only in
+simulation or when real flywheel hardware is explicitly selected. Drive SysId includes a one-second
 zero-output settling period. SysId state and flywheel inputs remain available
 in AdvantageKit logs for the characterization workflow.
-The REAL robot container still instantiates `FlywheelIOSim` for its example
-flywheel; select the appropriate hardware IO before characterizing a physical flywheel.
+The REAL robot container leaves the example flywheel disabled by default. Select
+`Constants.kExampleFlywheelHardware` only after updating and checking its sample
+device IDs, configuration, and limits; see `SUPPORTED-CONFIGURATIONS.md`.
 Replace or extend the manual chooser options in `RobotContainer` for a
 competition autonomous routine. `RBSISubsystem` implements the alpha-8
 `Mechanism` interface and retains its timed periodic callback registration.

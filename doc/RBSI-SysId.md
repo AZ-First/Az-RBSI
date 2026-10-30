@@ -66,6 +66,8 @@ controllers.
 On the Commands V3 branch, the routines are published in the manual autonomous
 chooser when `Constants.getAutoType()` is `MANUAL`. The chooser also offers four
 drive SysId tests, with a one-second zero-output settling period before each test.
+Flywheel choices appear only in simulation or when `Constants.kExampleFlywheelHardware`
+selects real hardware; see `SUPPORTED-CONFIGURATIONS.md`.
 
 Run all four voltage routines:
 
@@ -87,7 +89,7 @@ Optional comparison routines:
    mechanism that is not safe in reverse.
 2. Put the robot in a safe open area, with the flywheel pointed away from people and loose objects.
 3. Use a charged battery.
-4. Confirm the example flywheel IO selected in `RobotContainer` matches the hardware being tested.
+4. Confirm the example flywheel hardware selected in `Constants` matches the hardware being tested.
 5. Confirm gear ratio and encoder units in `Constants.FlywheelConstants.kGearRatio`.
 6. Confirm the follower motor is physically and logically correct. A missing or inverted follower
    will poison the characterization data.
