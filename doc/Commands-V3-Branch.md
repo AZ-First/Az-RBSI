@@ -1,11 +1,16 @@
 # Commands V3 branch
 
-`commands_v3` is rebased onto `alpha8` and uses the 2027 alpha-8 Commands V3 library and the V3 `Scheduler`,
+`commands_v3` is rebased onto `develop` and uses the 2027 alpha-8 Commands V3 library and the V3 `Scheduler`,
 `Mechanism`, `Command`, and `Trigger` APIs. Teleop drive, Autopilot drive-to-pose,
 the example flywheel, and the custom drive feedforward and wheel-radius
 characterization commands use V3 coroutines. `Robot.robotPeriodic()` runs the V3
-scheduler on the robot loop thread. `RBSISubsystem` registers its periodic and
-simulation callbacks with that scheduler.
+scheduler on the robot loop thread. V3 `Mechanism` has no automatic periodic hook;
+`RBSIMechanism` explicitly registers its input and logging callback (including
+simulation updates) with `Scheduler.addPeriodic(...)`. The separate
+`VirtualSubsystem.periodicAll()` pass runs directly from `Robot.robotPeriodic()`.
+Periodic callbacks should not command actuators. The disabled-mode module stop
+runs from `Robot.disabledInit()` and `Robot.disabledPeriodic()` instead of the
+drive's registered callback.
 
 PathPlanner autos remain disabled on this branch. The pinned PathPlanner
 library returns V2 commands and requires V2 subsystems. ChoreoLib 2027 alpha-3
@@ -34,7 +39,7 @@ The REAL robot container leaves the example flywheel disabled by default. Select
 `Constants.kExampleFlywheelHardware` only after updating and checking its sample
 device IDs, configuration, and limits; see `SUPPORTED-CONFIGURATIONS.md`.
 Replace or extend the manual chooser options in `RobotContainer` for a
-competition autonomous routine. `RBSISubsystem` implements the alpha-8
+competition autonomous routine. `RBSIMechanism` implements the alpha-8
 `Mechanism` interface and retains its timed periodic callback registration.
 
 The PathPlanner deploy files are retained for a future V3-compatible integration,

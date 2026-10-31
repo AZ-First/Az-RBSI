@@ -127,9 +127,9 @@ public class Robot extends LoggedRobot {
     VirtualSubsystem.periodicAll();
     final long t2 = System.nanoTime();
 
-    // Runs the Scheduler. This is responsible for polling buttons, adding
-    // newly-scheduled commands, running already-scheduled commands, removing
-    // finished or interrupted commands, and running subsystem periodic() methods.
+    // Runs the Scheduler. It executes explicitly registered periodic callbacks,
+    // polls buttons, and advances commands. V3 Mechanism has no automatic
+    // subsystem periodic() hook; RBSIMechanism registers its own callback.
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
     Scheduler.getDefault().run();
@@ -196,6 +196,10 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically when disabled. */
   @Override
   public void disabledPeriodic() {
+    // Keep module outputs stopped while disabled; this actuator write belongs to the
+    // disabled lifecycle rather than a V3 scheduler periodic callback.
+    m_robotContainer.getDrivebase().stopForDisable();
+
     // After WHEEL_LOCK_TIME has elapsed, release the drive brakes
     if (m_disabledTimer.hasElapsed(Constants.DrivebaseConstants.kWheelLockTimeSecs)) {
       m_robotContainer.getDrivebase().setMotorBrake(false);

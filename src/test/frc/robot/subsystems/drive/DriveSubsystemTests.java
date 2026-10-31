@@ -88,6 +88,39 @@ class DriveSubsystemTests {
   }
 
   @Test
+  void disabledModuleWritesRunFromLifecycleMethodNotPeriodicCallback() {
+    Drive drive = new Drive(new Imu(new ImuIOSim()));
+    int[] driveStops = {0};
+    int[] turnStops = {0};
+    for (int i = 0; i < drive.getModules().length; i++) {
+      drive.getModules()[i] =
+          new Module(
+              new ModuleIO() {
+                @Override
+                public void setDriveOpenLoop(double output) {
+                  assertEquals(0.0, output, EPSILON);
+                  driveStops[0]++;
+                }
+
+                @Override
+                public void setTurnOpenLoop(double output) {
+                  assertEquals(0.0, output, EPSILON);
+                  turnStops[0]++;
+                }
+              },
+              i);
+    }
+
+    drive.rbsiPeriodic();
+    assertEquals(0, driveStops[0]);
+    assertEquals(0, turnStops[0]);
+
+    drive.stopForDisable();
+    assertEquals(4, driveStops[0]);
+    assertEquals(4, turnStops[0]);
+  }
+
+  @Test
   void disabledCoastDoesNotCountBaselineSampleAsStationary() {
     Drive drive = new Drive(new Imu(new ImuIOSim()));
     SwerveModulePosition[] stationaryPositions =

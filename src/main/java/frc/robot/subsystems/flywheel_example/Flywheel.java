@@ -15,7 +15,7 @@ import static org.wpilib.units.Units.Seconds;
 import static org.wpilib.units.Units.Volts;
 
 import frc.robot.Constants;
-import frc.robot.util.RBSISubsystem;
+import frc.robot.util.RBSIMechanism;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 import org.wpilib.command3.Command;
@@ -23,7 +23,7 @@ import org.wpilib.command3.sysid.SysIdRoutine;
 import org.wpilib.math.util.Units;
 import org.wpilib.system.RobotController;
 
-public class Flywheel extends RBSISubsystem {
+public class Flywheel extends RBSIMechanism {
   private final FlywheelIO io;
   private final FlywheelIOInputsAutoLogged inputs = new FlywheelIOInputsAutoLogged();
 
@@ -52,7 +52,7 @@ public class Flywheel extends RBSISubsystem {
     dutyCycleSysId = createSysIdRoutine("FlywheelDutyCycle", this::runDutyCycleForSysIdVolts);
   }
 
-  /** Periodic function -- inherits timing logic from RBSISubsystem */
+  /** Periodic function -- inherits timing logic from RBSIMechanism */
   @Override
   protected void rbsiPeriodic() {
     io.updateInputs(inputs);

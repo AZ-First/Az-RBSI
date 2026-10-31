@@ -30,7 +30,7 @@ import org.wpilib.util.Alert.Level;
  */
 public class RBSIPowerMonitor extends VirtualSubsystem {
 
-  private final RBSISubsystem[] subsystems;
+  private final RBSIMechanism[] mechanisms;
   // Shares the snapshot already collected by AdvantageKit's LoggedPowerDistribution.
   // WPILib PowerDistribution reports zero for total power/energy on a REV PDH.
   private final ConduitApi conduit = ConduitApi.getInstance();
@@ -70,10 +70,10 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
 
   private long loops = 0;
 
-  // Constructor, including inputs of optional subsystems
-  public RBSIPowerMonitor(DoubleSupplier batteryCapacityAh, RBSISubsystem... subsystems) {
+  // Constructor, including inputs of optional mechanisms
+  public RBSIPowerMonitor(DoubleSupplier batteryCapacityAh, RBSIMechanism... mechanisms) {
     this.batteryCapacityAh = batteryCapacityAh;
-    this.subsystems = subsystems;
+    this.mechanisms = mechanisms;
 
     for (int i = 0; i < portAlerts.length; i++) {
       portAlerts[i] =
@@ -133,9 +133,9 @@ public class RBSIPowerMonitor extends VirtualSubsystem {
     logGroupCurrent("Drive", m_drivePowerPorts);
     logGroupCurrent("Steer", m_steerPowerPorts);
 
-    // --- Subsystems ---
-    for (RBSISubsystem subsystem : subsystems) {
-      logGroupCurrent(subsystem.getName(), subsystem.getPowerPorts());
+    // --- Mechanisms (retain the existing Power/Subsystems log path) ---
+    for (RBSIMechanism mechanism : mechanisms) {
+      logGroupCurrent(mechanism.getName(), mechanism.getPowerPorts());
     }
 
     // --- Energy / power calculations ---
