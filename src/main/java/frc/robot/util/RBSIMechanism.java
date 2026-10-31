@@ -20,17 +20,18 @@ import org.wpilib.framework.RobotBase;
 /**
  * This class is designed to include Az-RBSI specific methods on top of the standard WPILib
  * command-based mechanism classes. Robot mechanisms (e.g., drivebases, flywheels, arms, elevators)
- * should subclass ``RBSISubsystem`` rather than ``Mechanism`` to gain access to added
- * functionality.
+ * should subclass {@code RBSIMechanism} rather than {@code Mechanism} to gain access to added
+ * functionality. V3 {@code Mechanism} has no automatic periodic hook: the constructor explicitly
+ * registers this class's input and logging callback with the scheduler.
  */
-public abstract class RBSISubsystem implements Mechanism {
+public abstract class RBSIMechanism implements Mechanism {
   private static final int TIMING_LOG_PERIOD_LOOPS = 5;
   private static final int[] NO_POWER_PORTS = {};
 
   private final String name = getClass().getSimpleName();
   private int timingLogLoops = 0;
 
-  protected RBSISubsystem() {
+  protected RBSIMechanism() {
     Scheduler.getDefault()
         .addPeriodic(
             () -> {
@@ -42,11 +43,12 @@ public abstract class RBSISubsystem implements Mechanism {
   }
 
   /**
-   * Guaranteed timing wrapper (cannot be bypassed by subclasses).
+   * Guaranteed timing wrapper for the explicitly registered callback (cannot be bypassed by
+   * subclasses).
    *
    * <p>DO NOT OVERRIDE.
    *
-   * <p>Subsystems must implement {@link #rbsiPeriodic()} instead.
+   * <p>Mechanisms must implement {@link #rbsiPeriodic()} instead.
    *
    * <p>If you see a compiler error here, remove your periodic() override and move your logic into
    * rbsiPeriodic().
@@ -68,7 +70,7 @@ public abstract class RBSISubsystem implements Mechanism {
   public void simulationPeriodic() {}
 
   /**
-   * Gets the power ports associated with this Subsystem.
+   * Gets the power ports associated with this mechanism.
    *
    * @return Array of power distribution module ports
    */

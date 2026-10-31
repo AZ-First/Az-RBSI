@@ -481,7 +481,7 @@ public class RobotContainer {
 
   /** Stops outputs when leaving an enabled mode. */
   public void stopActuators() {
-    m_drivebase.stop();
+    m_drivebase.stopForDisable();
     m_flywheel.stop();
   }
 

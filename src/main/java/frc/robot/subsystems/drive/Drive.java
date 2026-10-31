@@ -27,8 +27,8 @@ import frc.robot.Constants.RobotConstants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.ConcurrentTimeInterpolatableBuffer;
 import frc.robot.util.RBSIEnum.Mode;
+import frc.robot.util.RBSIMechanism;
 import frc.robot.util.RBSIParsing;
-import frc.robot.util.RBSISubsystem;
 import frc.robot.util.TimedPose;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -61,12 +61,12 @@ import org.wpilib.util.Alert;
 import org.wpilib.util.Alert.Level;
 
 /**
- * Drive subsystem (RBSISubsystem)
+ * Drive mechanism (RBSIMechanism)
  *
  * <p>The Drive subsystem controls the individual swerve Modules and owns the odometry of the robot.
  * The odometry is updated from both the swerve modules and (optionally) the vision subsystem.
  */
-public class Drive extends RBSISubsystem {
+public class Drive extends RBSIMechanism {
   private static final AtomicInteger nextAlertInstance = new AtomicInteger();
   private final int alertInstance = nextAlertInstance.getAndIncrement();
 
@@ -310,19 +310,10 @@ public class Drive extends RBSISubsystem {
   }
 
   /************************************************************************* */
-  /** Periodic function that is called each cycle by the command scheduler */
+  /** Called by the callback that RBSIMechanism registers with the command scheduler. */
   @Override
   public void rbsiPeriodic() {
     Telemetry.log("Field", field);
-
-    // The only function of the drive periodic() is to stop the modules if the DriverStation is
-    // disabled.
-    if (RobotState.isDisabled()) {
-      for (var module : modules) module.stop();
-      Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
-      Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleVelocity[] {});
-    }
-
     field.setRobotPose(m_PoseEstimator.getEstimatedPosition());
   }
 
@@ -392,6 +383,15 @@ public class Drive extends RBSISubsystem {
   /** Stop the drive. */
   public void stop() {
     runVelocity(new ChassisVelocities());
+  }
+
+  /** Stops every module during the robot's disabled lifecycle. */
+  public void stopForDisable() {
+    for (Module module : modules) {
+      module.stop();
+    }
+    Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleVelocity[] {});
+    Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleVelocity[] {});
   }
 
   /**

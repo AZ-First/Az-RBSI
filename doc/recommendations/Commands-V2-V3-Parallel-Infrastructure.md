@@ -67,7 +67,7 @@ frc.robot.bindings.v2/      V2 Trigger/controller bindings
 frc.robot.bindings.v3/      V3 Trigger/controller bindings
 ```
 
-The V2 facade may extend the existing `RBSISubsystem` or WPILib `SubsystemBase`. The V3 facade should extend `org.wpilib.command3.Mechanism` and build commands with `Mechanism.run(...)` or the staged-command builder. WPILib recommends mechanism factory methods for simple single-mechanism V3 commands. [WPILib V3 Command API](https://github.wpilib.org/allwpilib/docs/2027/java/org/wpilib/command3/Command.html)
+The V2 facade may extend that branch's `RBSISubsystem` or WPILib `SubsystemBase`. The V3 facade may extend `RBSIMechanism`, which implements `org.wpilib.command3.Mechanism`, and build commands with `Mechanism.run(...)` or the staged-command builder. WPILib recommends mechanism factory methods for simple single-mechanism V3 commands. [WPILib V3 Command API](https://github.wpilib.org/allwpilib/docs/2027/java/org/wpilib/command3/Command.html)
 
 Both facades delegate to the same framework-neutral control service. They must not be constructed together for a mechanism that can apply outputs.
 

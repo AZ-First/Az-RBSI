@@ -153,7 +153,7 @@ Use this first when chasing 20 ms hot-loop issues.
 
 ### Loop Time - Mechanisms (ms)
 
-Plots `RBSISubsystem` timing in milliseconds. The template includes:
+Plots `RBSIMechanism` timing in milliseconds. The template includes:
 
 - `DriveMS`,
 - `FlywheelMS`.
@@ -230,19 +230,19 @@ and is passed to `RBSIPowerMonitor`.
    /RealOutputs/Power/Subsystems/Arm_Current
    ```
 
-The subsystem name comes from `getClass().getSimpleName()`. If the class is
+The mechanism name comes from `getClass().getSimpleName()`. If the class is
 `Arm`, the power key is `Arm_Current`. If the class is `CoralIntake`, the key is
 `CoralIntake_Current`.
 
 ## Adding Mechanisms To Loop Timing
 
-Mechanism timing is automatic for classes that extend `RBSISubsystem` and put
+Mechanism timing is automatic for classes that extend `RBSIMechanism` and put
 their periodic work in `rbsiPeriodic()`.
 
-1. Make the mechanism extend `RBSISubsystem`.
+1. Make the mechanism extend `RBSIMechanism`.
 
    ```java
-   public class Arm extends RBSISubsystem {
+   public class Arm extends RBSIMechanism {
      @Override
      protected void rbsiPeriodic() {
        io.updateInputs(inputs);
@@ -274,7 +274,7 @@ Virtual subsystems use the same pattern but appear under:
 ```
 
 Only put robot-wide observer/coordination code in a `VirtualSubsystem`.
-Motor-owning mechanisms should normally be `RBSISubsystem` classes so WPILib
+Motor-owning mechanisms should normally be `RBSIMechanism` classes so WPILib
 command requirements work correctly.
 
 ## Related Pages
