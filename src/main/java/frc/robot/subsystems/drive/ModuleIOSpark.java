@@ -221,20 +221,20 @@ public class ModuleIOSpark implements ModuleIO {
     SparkUtil.ifOk(
         driveSpark,
         driveEncoder::getPosition,
-        (value) -> inputs.drivePositionRad = SparkSwerveUnits.drivePositionRadians(value));
+        value -> inputs.drivePositionRad = SparkSwerveUnits.drivePositionRadians(value));
     SparkUtil.ifOk(
         driveSpark,
         driveEncoder::getVelocity,
-        (value) ->
+        value ->
             inputs.driveVelocityRadPerSec = SparkSwerveUnits.driveVelocityRadiansPerSecond(value));
     SparkUtil.ifOk(
         driveSpark,
         new DoubleSupplier[] {
           () -> driveSpark.getAppliedOutput().get(0.0), () -> driveSpark.getBusVoltage().get(0.0)
         },
-        (values) -> inputs.driveAppliedVolts = values[0] * values[1]);
+        values -> inputs.driveAppliedVolts = values[0] * values[1]);
     SparkUtil.ifOk(
-        driveSpark, driveSpark::getOutputCurrent, (value) -> inputs.driveCurrentAmps = value);
+        driveSpark, driveSpark::getOutputCurrent, value -> inputs.driveCurrentAmps = value);
     inputs.driveConnected = driveConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
     // Turn inputs
@@ -242,20 +242,19 @@ public class ModuleIOSpark implements ModuleIO {
     SparkUtil.ifOk(
         turnSpark,
         turnEncoder::getPosition,
-        (value) -> inputs.turnPosition = SparkSwerveUnits.turnPosition(value, zeroRotation));
+        value -> inputs.turnPosition = SparkSwerveUnits.turnPosition(value, zeroRotation));
     SparkUtil.ifOk(
         turnSpark,
         turnEncoder::getVelocity,
-        (value) ->
+        value ->
             inputs.turnVelocityRadPerSec = SparkSwerveUnits.turnVelocityRadiansPerSecond(value));
     SparkUtil.ifOk(
         turnSpark,
         new DoubleSupplier[] {
           () -> turnSpark.getAppliedOutput().get(0.0), () -> turnSpark.getBusVoltage().get(0.0)
         },
-        (values) -> inputs.turnAppliedVolts = values[0] * values[1]);
-    SparkUtil.ifOk(
-        turnSpark, turnSpark::getOutputCurrent, (value) -> inputs.turnCurrentAmps = value);
+        values -> inputs.turnAppliedVolts = values[0] * values[1]);
+    SparkUtil.ifOk(turnSpark, turnSpark::getOutputCurrent, value -> inputs.turnCurrentAmps = value);
     inputs.turnConnected = turnConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
     // If you don’t have an absolute encoder on this variant, keep these consistent:
