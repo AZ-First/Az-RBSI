@@ -143,11 +143,10 @@ public final class DriveCommands {
             drive)
 
         // Reset PID controller when command starts & ends;
-        .beforeStarting(
-            () -> {
-              resetLimiters(xLimiter, yLimiter);
-              drive.resetHeadingController();
-            })
+        .beforeStarting(() -> {
+          resetLimiters(xLimiter, yLimiter);
+          drive.resetHeadingController();
+        })
         .finallyDo(() -> drive.resetHeadingController());
   }
 
@@ -241,11 +240,10 @@ public final class DriveCommands {
 
     return Commands.sequence(
             // Reset data
-            Commands.runOnce(
-                () -> {
-                  velocitySamples.clear();
-                  voltageSamples.clear();
-                }),
+            Commands.runOnce(() -> {
+              velocitySamples.clear();
+              voltageSamples.clear();
+            }),
 
             // Allow modules to orient
             Commands.run(
@@ -271,37 +269,35 @@ public final class DriveCommands {
                     drive)
 
                 // When cancelled, calculate and print results
-                .finallyDo(
-                    () -> {
-                      int n = velocitySamples.size();
-                      double sumX = 0.0;
-                      double sumY = 0.0;
-                      double sumXY = 0.0;
-                      double sumX2 = 0.0;
-                      for (int i = 0; i < n; i++) {
-                        sumX += velocitySamples.get(i);
-                        sumY += voltageSamples.get(i);
-                        sumXY += velocitySamples.get(i) * voltageSamples.get(i);
-                        sumX2 += velocitySamples.get(i) * velocitySamples.get(i);
-                      }
-                      double denominator = n * sumX2 - sumX * sumX;
-                      if (n < 2 || Math.abs(denominator) < 1e-9) {
-                        DriverStationErrors.reportWarning(
-                            "Drive FF characterization did not collect enough usable samples.",
-                            false);
-                        drive.stop();
-                        return;
-                      }
+                .finallyDo(() -> {
+                  int n = velocitySamples.size();
+                  double sumX = 0.0;
+                  double sumY = 0.0;
+                  double sumXY = 0.0;
+                  double sumX2 = 0.0;
+                  for (int i = 0; i < n; i++) {
+                    sumX += velocitySamples.get(i);
+                    sumY += voltageSamples.get(i);
+                    sumXY += velocitySamples.get(i) * voltageSamples.get(i);
+                    sumX2 += velocitySamples.get(i) * velocitySamples.get(i);
+                  }
+                  double denominator = n * sumX2 - sumX * sumX;
+                  if (n < 2 || Math.abs(denominator) < 1e-9) {
+                    DriverStationErrors.reportWarning(
+                        "Drive FF characterization did not collect enough usable samples.", false);
+                    drive.stop();
+                    return;
+                  }
 
-                      double kS = (sumY * sumX2 - sumX * sumXY) / denominator;
-                      double kV = (n * sumXY - sumX * sumY) / denominator;
+                  double kS = (sumY * sumX2 - sumX * sumXY) / denominator;
+                  double kV = (n * sumXY - sumX * sumY) / denominator;
 
-                      NumberFormat formatter = new DecimalFormat("#0.00000");
-                      System.out.println("********** Drive FF Characterization Results **********");
-                      System.out.println("\tkS: " + formatter.format(kS));
-                      System.out.println("\tkV: " + formatter.format(kV));
-                      drive.stop();
-                    }))
+                  NumberFormat formatter = new DecimalFormat("#0.00000");
+                  System.out.println("********** Drive FF Characterization Results **********");
+                  System.out.println("\tkS: " + formatter.format(kS));
+                  System.out.println("\tkV: " + formatter.format(kV));
+                  drive.stop();
+                }))
         .finallyDo(drive::stop);
   }
 
@@ -315,10 +311,9 @@ public final class DriveCommands {
             // Drive control sequence
             Commands.sequence(
                 // Reset acceleration limiter
-                Commands.runOnce(
-                    () -> {
-                      limiter.reset(0.0);
-                    }),
+                Commands.runOnce(() -> {
+                  limiter.reset(0.0);
+                }),
 
                 // Turn in place, accelerating up to full speed
                 Commands.run(
@@ -336,12 +331,11 @@ public final class DriveCommands {
                 Commands.waitSeconds(DrivebaseConstants.kWheelRadiusCharacterizationStartDelaySecs),
 
                 // Record starting measurement
-                Commands.runOnce(
-                    () -> {
-                      state.positions = drive.getWheelRadiusCharacterizationPositions();
-                      state.lastAngle = drive.getHeading();
-                      state.gyroDelta = 0.0;
-                    }),
+                Commands.runOnce(() -> {
+                  state.positions = drive.getWheelRadiusCharacterizationPositions();
+                  state.lastAngle = drive.getHeading();
+                  state.gyroDelta = 0.0;
+                }),
 
                 // Update gyro delta
                 Commands.run(
@@ -352,40 +346,37 @@ public final class DriveCommands {
                         })
 
                     // When cancelled, calculate and print results
-                    .finallyDo(
-                        () -> {
-                          double[] positions = drive.getWheelRadiusCharacterizationPositions();
-                          double wheelDelta = 0.0;
-                          for (int i = 0; i < 4; i++) {
-                            wheelDelta += Math.abs(positions[i] - state.positions[i]) / 4.0;
-                          }
-                          if (wheelDelta <= 1e-9) {
-                            DriverStationErrors.reportWarning(
-                                "Wheel radius characterization did not measure wheel movement.",
-                                false);
-                            drive.stop();
-                            return;
-                          }
+                    .finallyDo(() -> {
+                      double[] positions = drive.getWheelRadiusCharacterizationPositions();
+                      double wheelDelta = 0.0;
+                      for (int i = 0; i < 4; i++) {
+                        wheelDelta += Math.abs(positions[i] - state.positions[i]) / 4.0;
+                      }
+                      if (wheelDelta <= 1e-9) {
+                        DriverStationErrors.reportWarning(
+                            "Wheel radius characterization did not measure wheel movement.", false);
+                        drive.stop();
+                        return;
+                      }
 
-                          double wheelRadius =
-                              (state.gyroDelta * SwerveConstants.kDriveBaseRadiusMeters)
-                                  / wheelDelta;
+                      double wheelRadius =
+                          (state.gyroDelta * SwerveConstants.kDriveBaseRadiusMeters) / wheelDelta;
 
-                          NumberFormat formatter = new DecimalFormat("#0.000");
-                          System.out.println(
-                              "********** Wheel Radius Characterization Results **********");
-                          System.out.println(
-                              "\tWheel Delta: " + formatter.format(wheelDelta) + " radians");
-                          System.out.println(
-                              "\tGyro Delta: " + formatter.format(state.gyroDelta) + " radians");
-                          System.out.println(
-                              "\tWheel Radius: "
-                                  + formatter.format(wheelRadius)
-                                  + " meters, "
-                                  + formatter.format(Units.metersToInches(wheelRadius))
-                                  + " inches");
-                          drive.stop();
-                        })))
+                      NumberFormat formatter = new DecimalFormat("#0.000");
+                      System.out.println(
+                          "********** Wheel Radius Characterization Results **********");
+                      System.out.println(
+                          "\tWheel Delta: " + formatter.format(wheelDelta) + " radians");
+                      System.out.println(
+                          "\tGyro Delta: " + formatter.format(state.gyroDelta) + " radians");
+                      System.out.println(
+                          "\tWheel Radius: "
+                              + formatter.format(wheelRadius)
+                              + " meters, "
+                              + formatter.format(Units.metersToInches(wheelRadius))
+                              + " inches");
+                      drive.stop();
+                    })))
         .finallyDo(drive::stop);
   }
 

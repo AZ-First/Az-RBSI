@@ -215,10 +215,9 @@ public final class AutopilotCommands {
         // Reset PID controller when command starts & ends; run until we're at target
         .beforeStarting(() -> drive.resetHeadingController())
         .until(() -> AutoConstants.kAutopilot.atTarget(drive.getPose(), target))
-        .finallyDo(
-            () -> {
-              drive.stop();
-              drive.resetHeadingController();
-            });
+        .finallyDo(() -> {
+          drive.stop();
+          drive.resetHeadingController();
+        });
   }
 }

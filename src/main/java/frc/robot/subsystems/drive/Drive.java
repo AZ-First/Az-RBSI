@@ -265,14 +265,12 @@ public class Drive extends RBSISubsystem {
               "Failed to load PathPlanner config and configure AutoBuilder", e.getStackTrace());
         }
         Pathfinding.setPathfinder(new LocalADStarAK());
-        PathPlannerLogging.setLogActivePathCallback(
-            (activePath) -> {
-              Logger.recordOutput("Odometry/Trajectory", activePath.toArray(new Pose2d[0]));
-            });
-        PathPlannerLogging.setLogTargetPoseCallback(
-            (targetPose) -> {
-              Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
-            });
+        PathPlannerLogging.setLogActivePathCallback(activePath -> {
+          Logger.recordOutput("Odometry/Trajectory", activePath.toArray(new Pose2d[0]));
+        });
+        PathPlannerLogging.setLogTargetPoseCallback(targetPose -> {
+          Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
+        });
         break;
 
       case CHOREO:
@@ -292,9 +290,9 @@ public class Drive extends RBSISubsystem {
                 null,
                 null,
                 null,
-                (state) -> Logger.recordOutput("Drive/SysIdState", state.toString())),
+                state -> Logger.recordOutput("Drive/SysIdState", state.toString())),
             new SysIdRoutine.Mechanism(
-                (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
+                voltage -> runCharacterization(voltage.in(Volts)), null, this));
   }
 
   /************************************************************************* */

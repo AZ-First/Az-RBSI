@@ -245,11 +245,10 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
                 () -> SparkSwerveUnits.drivePositionRadians(driveEncoder.getPosition().get(0.0)));
     turnPositionQueue =
         SparkOdometryThread.getInstance()
-            .registerSignal(
-                () -> {
-                  turnPosition.refresh();
-                  return turnPosition.getValueAsDouble();
-                });
+            .registerSignal(() -> {
+              turnPosition.refresh();
+              return turnPosition.getValueAsDouble();
+            });
   }
 
   @Override
@@ -276,20 +275,20 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
     SparkUtil.ifOk(
         driveSpark,
         driveEncoder::getPosition,
-        (value) -> inputs.drivePositionRad = SparkSwerveUnits.drivePositionRadians(value));
+        value -> inputs.drivePositionRad = SparkSwerveUnits.drivePositionRadians(value));
     SparkUtil.ifOk(
         driveSpark,
         driveEncoder::getVelocity,
-        (value) ->
+        value ->
             inputs.driveVelocityRadPerSec = SparkSwerveUnits.driveVelocityRadiansPerSecond(value));
     SparkUtil.ifOk(
         driveSpark,
         new DoubleSupplier[] {
           () -> driveSpark.getAppliedOutput().get(0.0), () -> driveSpark.getBusVoltage().get(0.0)
         },
-        (values) -> inputs.driveAppliedVolts = values[0] * values[1]);
+        values -> inputs.driveAppliedVolts = values[0] * values[1]);
     SparkUtil.ifOk(
-        driveSpark, driveSpark::getOutputCurrent, (value) -> inputs.driveCurrentAmps = value);
+        driveSpark, driveSpark::getOutputCurrent, value -> inputs.driveCurrentAmps = value);
     inputs.driveConnected = driveConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
     // Turn inputs (CANcoder abs + Spark velocity/applied/current)
@@ -303,9 +302,8 @@ public class ModuleIOSparkCANcoder implements ModuleIO {
         new DoubleSupplier[] {
           () -> turnSpark.getAppliedOutput().get(0.0), () -> turnSpark.getBusVoltage().get(0.0)
         },
-        (values) -> inputs.turnAppliedVolts = values[0] * values[1]);
-    SparkUtil.ifOk(
-        turnSpark, turnSpark::getOutputCurrent, (value) -> inputs.turnCurrentAmps = value);
+        values -> inputs.turnAppliedVolts = values[0] * values[1]);
+    SparkUtil.ifOk(turnSpark, turnSpark::getOutputCurrent, value -> inputs.turnCurrentAmps = value);
     inputs.turnConnected = turnConnectedDebounce.calculate(!SparkUtil.sparkStickyFault);
 
     // Odometry queue drain (common prefix only)
