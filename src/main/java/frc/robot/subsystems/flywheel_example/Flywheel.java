@@ -158,9 +158,8 @@ public class Flywheel extends RBSISubsystem {
             Volts.of(kSysIdQuasistaticRampRateVoltsPerSec).per(Second),
             Volts.of(kSysIdDynamicStepVoltageVolts),
             Seconds.of(kSysIdTimeoutSecs),
-            (state) -> recordSysIdState(name, state)),
-        new SysIdRoutine.Mechanism(
-            (voltage) -> output.accept(voltage.in(Volts)), null, this, name));
+            state -> recordSysIdState(name, state)),
+        new SysIdRoutine.Mechanism(voltage -> output.accept(voltage.in(Volts)), null, this, name));
   }
 
   private void recordSysIdState(String routineName, SysIdRoutine.State state) {

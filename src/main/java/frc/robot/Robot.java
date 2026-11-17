@@ -153,24 +153,21 @@ public class Robot extends LoggedRobot {
 
   private void configureCommandLogging() {
     CommandScheduler scheduler = CommandScheduler.getInstance();
-    scheduler.onCommandInitialize(
-        command -> {
-          activeCommands.add(command);
-          commandEvents.add("Initialize " + commandLabel(command));
-        });
-    scheduler.onCommandFinish(
-        command -> {
-          activeCommands.remove(command);
-          commandEvents.add("Finish " + commandLabel(command));
-        });
-    scheduler.onCommandInterrupt(
-        (command, interruptor) -> {
-          activeCommands.remove(command);
-          commandEvents.add(
-              "Interrupt "
-                  + commandLabel(command)
-                  + interruptor.map(value -> " by " + commandLabel(value)).orElse(""));
-        });
+    scheduler.onCommandInitialize(command -> {
+      activeCommands.add(command);
+      commandEvents.add("Initialize " + commandLabel(command));
+    });
+    scheduler.onCommandFinish(command -> {
+      activeCommands.remove(command);
+      commandEvents.add("Finish " + commandLabel(command));
+    });
+    scheduler.onCommandInterrupt((command, interruptor) -> {
+      activeCommands.remove(command);
+      commandEvents.add(
+          "Interrupt "
+              + commandLabel(command)
+              + interruptor.map(value -> " by " + commandLabel(value)).orElse(""));
+    });
   }
 
   private String commandLabel(Command command) {
