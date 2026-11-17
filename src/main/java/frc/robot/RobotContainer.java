@@ -567,11 +567,10 @@ public class RobotContainer {
     return switch (Constants.getVisionType()) {
       case PHOTON ->
           Arrays.stream(Constants.Cameras.ALL)
-              .map(
-                  c ->
-                      (VisionIO)
-                          new VisionIOPhotonVisionSim(
-                              c.name(), c.robotToCamera(), c.simProps(), drive::getPose))
+              .map(c ->
+                  (VisionIO)
+                      new VisionIOPhotonVisionSim(
+                          c.name(), c.robotToCamera(), c.simProps(), drive::getPose))
               .toArray(VisionIO[]::new);
 
       case LIMELIGHT ->

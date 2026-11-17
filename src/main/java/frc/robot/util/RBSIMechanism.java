@@ -33,13 +33,12 @@ public abstract class RBSIMechanism implements Mechanism {
 
   protected RBSIMechanism() {
     Scheduler.getDefault()
-        .addPeriodic(
-            () -> {
-              periodic();
-              if (RobotBase.isSimulation()) {
-                simulationPeriodic();
-              }
-            });
+        .addPeriodic(() -> {
+          periodic();
+          if (RobotBase.isSimulation()) {
+            simulationPeriodic();
+          }
+        });
   }
 
   /**
