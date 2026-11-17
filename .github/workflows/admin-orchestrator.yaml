@@ -35,6 +35,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # A token with workflow-file write access is needed when rebasing
+          # admin commits that modify .github/workflows/.
+          token: ${{ secrets.ADMIN_WORKFLOW_TOKEN || github.token }}
 
       # ------------------------------------------------------------
       # Detect default branch
@@ -63,6 +66,8 @@ jobs:
       # ------------------------------------------------------------
       - name: Rebase admin onto default
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        env:
+          ADMIN_WORKFLOW_TOKEN: ${{ secrets.ADMIN_WORKFLOW_TOKEN }}
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -71,11 +76,21 @@ jobs:
           git fetch origin
           git checkout admin
 
+          # Rebasing recreates admin commits. GITHUB_TOKEN cannot push a
+          # recreated commit that changes a workflow file.
+          if [[ -z "$ADMIN_WORKFLOW_TOKEN" ]] &&
+             [[ -n "$(git log --format=%H "origin/${{ steps.default.outputs.branch }}..admin" -- .github/workflows/)" ]]; then
+            echo "::warning::Admin has workflow-file commits to rebase. Configure ADMIN_WORKFLOW_TOKEN with workflow-file write access to sync admin."
+            exit 0
+          fi
+
           # Rebase admin commits on top of default branch
           git rebase origin/${{ steps.default.outputs.branch }}
 
           # Push updated admin branch
-          git push --force-with-lease origin admin
+          if [[ "$(git rev-parse admin)" != "$(git rev-parse origin/admin)" ]]; then
+            git push --force-with-lease origin admin
+          fi
 
       # ------------------------------------------------------------
       # Guardrail: warn if non-Dependabot PR targets admin
