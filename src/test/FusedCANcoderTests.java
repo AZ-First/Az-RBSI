@@ -23,9 +23,11 @@ import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.wpilib.hardware.hal.HAL;
+import org.wpilib.system.Timer;
 
 public class FusedCANcoderTests {
   final double SET_DELTA = 0.1;
@@ -40,6 +42,12 @@ public class FusedCANcoderTests {
 
     talon = new TalonFX(0, new CANBus(""));
     cancoder = new CANcoder(0, new CANBus(""));
+  }
+
+  @AfterEach
+  public void closeDevices() {
+    talon.close();
+    cancoder.close();
   }
 
   @Test
@@ -166,10 +174,15 @@ public class FusedCANcoderTests {
 
   private void retryConfigApply(Supplier<StatusCode> toApply) {
     StatusCode finalCode = StatusCode.StatusCodeNotInitialized;
-    int triesLeftOver = CONFIG_RETRY_COUNT;
-    do {
+    for (int attempt = 0; attempt < CONFIG_RETRY_COUNT; attempt++) {
       finalCode = toApply.get();
-    } while (!finalCode.isOK() && --triesLeftOver > 0);
+      if (finalCode.isOK()) {
+        return;
+      }
+      if (attempt + 1 < CONFIG_RETRY_COUNT) {
+        Timer.delay(0.100);
+      }
+    }
     assertTrue(finalCode.isOK(), "Config apply failed: " + finalCode);
   }
 }
