@@ -1,4 +1,5 @@
 {
+  "workbench.colorTheme": "FRC BIOCORE High Contrast",
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.server.launchMode": "Standard",
   "files.exclude": {
@@ -46,7 +47,7 @@
     "org.mockito.Mockito.*",
     "org.mockito.ArgumentMatchers.*",
     "org.mockito.Answers.*",
-    "edu.wpi.first.units.Units.*"
+    "org.wpilib.units.Units.*"
   ],
   "java.completion.filteredTypes": [
     "java.awt.*",
@@ -62,9 +63,9 @@
     "javax.swing.*",
     "javax.management.*",
     "javax.smartcardio.*",
-    "edu.wpi.first.math.proto.*",
-    "edu.wpi.first.math.**.proto.*",
-    "edu.wpi.first.math.**.struct.*",
+    "org.wpilib.math.proto.*",
+    "org.wpilib.math.**.proto.*",
+    "org.wpilib.math.**.struct.*",
     null
   ],
   "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
@@ -74,5 +75,6 @@
   "[java]": {
     "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle"
   },
+  "java.debug.settings.enableRunDebugCodeLens": false,
   "java.dependency.enableDependencyCheckup": false
 }

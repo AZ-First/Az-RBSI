@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.util.Units;
 import org.junit.jupiter.api.Test;
+import org.wpilib.math.geometry.Pose3d;
+import org.wpilib.math.geometry.Rotation3d;
+import org.wpilib.math.util.Units;
 
 class VisionIOTests {
   private static final double EPSILON = 1e-9;
@@ -63,7 +63,16 @@ class VisionIOTests {
   void limelightTimestampSubtractsTotalLatencyMilliseconds() {
     double[] sample = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 35.0, 1.0, 0.0, 1.0, 0.0};
 
-    assertEquals(9.965, VisionIOLimelight.timestampSeconds(10_000_000L, sample), EPSILON);
+    assertEquals(9.965, VisionIOLimelight.timestampSeconds(10_000_000_000L, sample), EPSILON);
+  }
+
+  @Test
+  void limelightHeartbeatUsesNanosecondTimeout() {
+    long lastChangeNs = 10_000_000_000L;
+    assertFalse(VisionIOLimelight.isHeartbeatRecent(lastChangeNs, 0));
+    assertFalse(VisionIOLimelight.isHeartbeatRecent(lastChangeNs - 1, lastChangeNs));
+    assertTrue(VisionIOLimelight.isHeartbeatRecent(lastChangeNs + 249_999_999, lastChangeNs));
+    assertFalse(VisionIOLimelight.isHeartbeatRecent(lastChangeNs + 250_000_000, lastChangeNs));
   }
 
   @Test

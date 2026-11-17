@@ -21,6 +21,6 @@ jobs:
       uses: actions/setup-java@v6.0.1
       with:
         distribution: 'temurin'
-        java-version: 17
+        java-version: '25'
     - name: Generate and submit dependency graph
       uses: gradle/actions/dependency-submission@v6

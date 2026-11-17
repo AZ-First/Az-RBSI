@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Az-FIRST
+// Copyright (c) 2026-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,12 +17,6 @@
 
 package frc.robot.subsystems.vision;
 
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Quaternion;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.math.util.Units;
 import frc.robot.Constants;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -34,6 +28,12 @@ import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.VisionSystemSim;
 import org.photonvision.simulation.VisionTargetSim;
 import org.photonvision.targeting.PhotonPipelineResult;
+import org.wpilib.math.geometry.Pose3d;
+import org.wpilib.math.geometry.Quaternion;
+import org.wpilib.math.geometry.Rotation3d;
+import org.wpilib.math.geometry.Transform3d;
+import org.wpilib.math.geometry.Translation3d;
+import org.wpilib.math.util.Units;
 
 /** Sweeps two simulated cameras in a grid of poses and writes a CSV of performance. */
 public class CameraSweepEvaluator {

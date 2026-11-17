@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -18,22 +18,23 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.GenericHID;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
+import org.wpilib.command2.button.Trigger;
+import org.wpilib.driverstation.GenericHID;
+import org.wpilib.driverstation.Joystick;
+import org.wpilib.driverstation.internal.DriverStationBackend;
 
 /** Interface for physical override switches on operator console. */
 public class OverrideSwitches {
   private final GenericHID consoleSwitches;
 
   public OverrideSwitches(int port) {
-    consoleSwitches = new GenericHID(port);
+    consoleSwitches = new Joystick(port).getHID();
   }
 
   /** Returns whether the controller is connected. */
   public boolean isConnected() {
     return consoleSwitches.isConnected()
-        && !DriverStation.getJoystickIsXbox(consoleSwitches.getPort())
+        && !DriverStationBackend.getJoystickIsGamepad(consoleSwitches.getPort())
         && consoleSwitches.getName().equals("Generic   USB  Joystick");
   }
 

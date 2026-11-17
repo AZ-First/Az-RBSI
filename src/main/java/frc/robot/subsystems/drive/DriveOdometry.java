@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,22 +17,28 @@
 
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.wpilibj.DriverStation;
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
 import frc.robot.Constants;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.util.RBSIEnum.Mode;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
+import java.util.ArrayList;
 import org.littletonrobotics.junction.Logger;
+import org.wpilib.driverstation.RobotState;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.SwerveModulePosition;
+import org.wpilib.system.Timer;
 
 public final class DriveOdometry extends VirtualSubsystem {
+  private static final int MAX_VISION_MEASUREMENTS_PER_LOOP = 2;
 
   // Declare the io and inputs
   private final Drive drive;
   private final Imu imu;
   private final Module[] modules;
+  private final BaseStatusSignal[] bulkRefreshSignals;
+  private final BaseStatusSignal[][] moduleBulkRefreshSignals;
 
   // Per-cycle cached objects (to avoid repeated allocations)
   private final SwerveModulePosition[] odomPositions = new SwerveModulePosition[4];
@@ -45,6 +51,16 @@ public final class DriveOdometry extends VirtualSubsystem {
     this.drive = drive;
     this.imu = imu;
     this.modules = modules;
+    moduleBulkRefreshSignals = new BaseStatusSignal[modules.length][];
+
+    ArrayList<BaseStatusSignal> signals = new ArrayList<>();
+    for (int i = 0; i < modules.length; i++) {
+      moduleBulkRefreshSignals[i] = modules[i].getBulkRefreshSignals();
+      for (BaseStatusSignal signal : moduleBulkRefreshSignals[i]) {
+        signals.add(signal);
+      }
+    }
+    bulkRefreshSignals = signals.toArray(new BaseStatusSignal[0]);
   }
 
   /**
@@ -61,8 +77,39 @@ public final class DriveOdometry extends VirtualSubsystem {
   /** Periodic function to read inputs */
   @Override
   public void rbsiPeriodic() {
+    final long loopStartNanos = System.nanoTime();
+    final long bulkRefreshStartNanos = System.nanoTime();
+    StatusCode bulkRefreshStatus = StatusCode.OK;
+    if (SwerveConstants.kDrivebaseHasMultipleCANBuses) {
+      // Phoenix rejects refreshAll across networks; preserve each module's own connection status.
+      for (int i = 0; i < modules.length; i++) {
+        StatusCode moduleStatus = StatusCode.OK;
+        for (BaseStatusSignal signal : moduleBulkRefreshSignals[i]) {
+          StatusCode status = BaseStatusSignal.refreshAll(signal);
+          if (!status.isOK()) {
+            moduleStatus = status;
+            bulkRefreshStatus = status;
+          }
+        }
+        modules[i].setBulkRefreshStatus(moduleStatus);
+      }
+    } else {
+      bulkRefreshStatus =
+          bulkRefreshSignals.length == 0
+              ? StatusCode.OK
+              : BaseStatusSignal.refreshAll(bulkRefreshSignals);
+      for (Module module : modules) {
+        module.setBulkRefreshStatus(bulkRefreshStatus);
+      }
+    }
+    final long bulkRefreshEndNanos = System.nanoTime();
 
+    final long lockWaitStartNanos = System.nanoTime();
     Drive.odometryLock.lock();
+    final long lockAcquiredNanos = System.nanoTime();
+    long moduleInputsEndNanos = lockAcquiredNanos;
+    long estimatorStartNanos = lockAcquiredNanos;
+    int sampleCount = 0;
     try {
       final var imuInputs = imu.getInputs();
 
@@ -70,12 +117,14 @@ public final class DriveOdometry extends VirtualSubsystem {
       for (var module : modules) {
         module.periodic();
       }
+      moduleInputsEndNanos = System.nanoTime();
+      estimatorStartNanos = moduleInputsEndNanos;
 
       // ----------------------------------------------------------------------
       // Pure SIM (not replaying a log): use sim pose/yaw
       // ----------------------------------------------------------------------
       if (Constants.isPureSim()) {
-        final double now = TimeUtil.now();
+        final double now = Timer.getTimestamp();
 
         // Keep buffers alive
         drive.poseBufferAddSample(now, drive.getSimPose());
@@ -83,8 +132,8 @@ public final class DriveOdometry extends VirtualSubsystem {
 
         // Coast state uses "now" + current module positions
         drive.updateDisabledCoastState(
-            DriverStation.isEnabled(),
-            DriverStation.isDisabled(),
+            RobotState.isEnabled(),
+            RobotState.isDisabled(),
             now,
             drive.getSimYawRateRadPerSec(),
             drive.getModulePositions());
@@ -93,26 +142,31 @@ public final class DriveOdometry extends VirtualSubsystem {
       }
 
       // ----------------------------------------------------------------------
-      // DISABLED (REAL only): minimal ticking — keep buffers alive, do NOT integrate module deltas.
-      // (If you want replay integration while disabled, this branch is already !isReplayActive.)
+      // DISABLED (REAL only): keep estimator history and external buffers alive so delayed vision
+      // measurements can still be applied while the robot is carried or repositioned.
       // ----------------------------------------------------------------------
-      if (DriverStation.isDisabled() && !isReplayActive) {
-        final double now = TimeUtil.now();
+      if (RobotState.isDisabled() && !isReplayActive) {
+        final double now = Timer.getTimestamp();
 
         // keep yaw buffers alive
         if (imuInputs.connected) {
           drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
         }
 
+        SwerveModulePosition[] currentPositions = drive.getModulePositions();
+
         // Coast state from "now" + current module positions
         drive.updateDisabledCoastState(
-            DriverStation.isEnabled(),
-            DriverStation.isDisabled(),
+            RobotState.isEnabled(),
+            RobotState.isDisabled(),
             now,
             imuInputs.yawRateRadPerSec,
-            drive.getModulePositions());
+            currentPositions);
 
-        // keep pose buffer alive with the *current estimator pose*
+        drive.poseEstimatorUpdateWithTime(
+            now, Rotation2d.fromRadians(imuInputs.yawPositionRad), currentPositions);
+
+        // Keep the external vision-alignment buffer on the same timestamp and pose.
         drive.poseBufferAddSample(now, drive.getPose());
         drive.setGyroDisconnectedAlert(!imuInputs.connected);
         return;
@@ -123,17 +177,18 @@ public final class DriveOdometry extends VirtualSubsystem {
       // ----------------------------------------------------------------------
       final double[] ts = modules[0].getOdometryTimestamps();
       final int n = (ts == null) ? 0 : ts.length;
+      sampleCount = n;
 
       // Always keep yaw buffers “alive” even if no samples
       if (n == 0) {
         if (Constants.getMode() != Mode.REPLAY) {
-          final double now = TimeUtil.now();
+          final double now = Timer.getTimestamp();
           drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
 
           // Coast state update (no per-sample positions available; use current)
           drive.updateDisabledCoastState(
-              DriverStation.isEnabled(),
-              DriverStation.isDisabled(),
+              RobotState.isEnabled(),
+              RobotState.isDisabled(),
               now,
               imuInputs.yawRateRadPerSec,
               drive.getModulePositions());
@@ -178,7 +233,7 @@ public final class DriveOdometry extends VirtualSubsystem {
       if (hasYawQueue && !yawIndexAligned) {
         drive.yawBuffersFillFromQueue(yawTs, yawPos);
       } else if (!hasYawQueue) {
-        final double now = TimeUtil.now();
+        final double now = Timer.getTimestamp();
         drive.yawBuffersAddSample(now, imuInputs.yawPositionRad, imuInputs.yawRateRadPerSec);
       }
 
@@ -219,15 +274,15 @@ public final class DriveOdometry extends VirtualSubsystem {
         // Yaw rate: if you have a buffered rate, use it; otherwise imuInputs.yawRateRadPerSec is
         // ok.
         drive.updateDisabledCoastState(
-            DriverStation.isEnabled(),
-            DriverStation.isDisabled(),
+            RobotState.isEnabled(),
+            RobotState.isDisabled(),
             t,
             imuInputs.yawRateRadPerSec,
             odomPositions);
 
         if (logDebug && i == n - 1) {
           Logger.recordOutput("Odometry/Debug/timestamp", t);
-          Logger.recordOutput("Odometry/Debug/now", TimeUtil.now());
+          Logger.recordOutput("Odometry/Debug/now", Timer.getTimestamp());
           if (i > 0) {
             Logger.recordOutput("Odometry/Debug/timeNowDiff", t - ts[i - 1]);
           }
@@ -238,7 +293,7 @@ public final class DriveOdometry extends VirtualSubsystem {
         // Module distance deltas (valid within batch)
         for (int m = 0; m < 4; m++) {
           final SwerveModulePosition pos = odomPositions[m];
-          final double dist = pos.distanceMeters;
+          final double dist = pos.distance;
 
           if (logDebug && i == n - 1) {
             Logger.recordOutput("Odometry/Debug/mod" + m + "_distanceMeters", dist);
@@ -266,10 +321,42 @@ public final class DriveOdometry extends VirtualSubsystem {
       drive.setGyroDisconnectedAlert(!imuInputs.connected);
 
     } finally {
+      final long visionApplyStartNanos = System.nanoTime();
+      int visionMeasurementsProcessed = 0;
+      long visionApplyEndNanos;
+      try {
+        visionMeasurementsProcessed =
+            drive.applyQueuedVisionMeasurements(MAX_VISION_MEASUREMENTS_PER_LOOP);
+        Logger.recordOutput("Odometry/Robot", drive.getPose());
+      } finally {
+        visionApplyEndNanos = System.nanoTime();
+        Drive.odometryLock.unlock();
+      }
 
-      Logger.recordOutput("Odometry/Robot", drive.getPose());
-
-      Drive.odometryLock.unlock();
+      final long loopEndNanos = System.nanoTime();
+      Logger.recordOutput(
+          "Odometry/Timing/BulkRefreshMS", (bulkRefreshEndNanos - bulkRefreshStartNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/LockWaitMS", (lockAcquiredNanos - lockWaitStartNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/ModuleInputsAndQueueDrainMS",
+          (moduleInputsEndNanos - lockAcquiredNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/EstimatorMS", (visionApplyStartNanos - estimatorStartNanos) / 1e6);
+      Logger.recordOutput(
+          "Odometry/Timing/VisionApplyMS", (visionApplyEndNanos - visionApplyStartNanos) / 1e6);
+      Logger.recordOutput("Odometry/Timing/TotalMS", (loopEndNanos - loopStartNanos) / 1e6);
+      Logger.recordOutput("Odometry/SamplesProcessed", sampleCount);
+      Logger.recordOutput("Odometry/VisionMeasurementsProcessed", visionMeasurementsProcessed);
+      Logger.recordOutput("Odometry/BulkRefreshStatus", bulkRefreshStatus.toString());
+      if (Constants.getMode() == Mode.REAL) {
+        Logger.recordOutput(
+            "Drive/OdomThread/DroppedSamples",
+            PhoenixOdometryThread.getInstance().getDroppedSamples());
+        Logger.recordOutput(
+            "Drive/SparkOdomThread/DroppedSamples",
+            SparkOdometryThread.getInstance().getDroppedSamples());
+      }
     }
   }
 }

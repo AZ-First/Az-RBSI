@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Az-FIRST
+// Copyright (c) 2026-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,12 +17,11 @@
 
 package frc.robot.subsystems.drive;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.kinematics.SwerveDriveKinematics;
+import org.wpilib.math.kinematics.SwerveModuleVelocity;
 
 /**
  * Authoritative drivetrain physics model for SIM.
@@ -33,7 +32,7 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 public class DriveSimPhysics {
 
   /* ---------------- Physical state ---------------- */
-  private Pose2d pose = Pose2d.kZero;
+  private Pose2d pose = Pose2d.ZERO;
   private double omegaRadPerSec = 0.0;
   private Translation2d linearAccel = new Translation2d(0, 0);
   private Translation2d prevVelocity = new Translation2d(0, 0);
@@ -59,14 +58,13 @@ public class DriveSimPhysics {
    * @param moduleStates Authoritative wheel states
    * @param dtSeconds Loop period
    */
-  public void update(SwerveModuleState[] moduleStates, double dtSeconds) {
+  public void update(SwerveModuleVelocity[] moduleStates, double dtSeconds) {
 
     // ------------------ CHASSIS VELOCITY ------------------
-    var chassis = kinematics.toChassisSpeeds(moduleStates);
+    var chassis = kinematics.toChassisVelocities(moduleStates);
 
     // Robot-relative velocity
-    Translation2d robotVelocity =
-        new Translation2d(chassis.vxMetersPerSecond, chassis.vyMetersPerSecond);
+    Translation2d robotVelocity = new Translation2d(chassis.vx, chassis.vy);
 
     // Rotate into field frame
     Translation2d fieldVelocity = robotVelocity.rotateBy(pose.getRotation());
@@ -79,11 +77,11 @@ public class DriveSimPhysics {
     Translation2d newTranslation = pose.getTranslation().plus(fieldVelocity.times(dtSeconds));
 
     // ------------------ ANGULAR ------------------
-    double commandedOmega = chassis.omegaRadiansPerSecond;
+    double commandedOmega = chassis.omega;
 
     // Simple torque model with damping
     double torque =
-        MathUtil.clamp(commandedOmega * moiKgMetersSq / dtSeconds, -maxTorqueNm, maxTorqueNm);
+        Math.clamp(commandedOmega * moiKgMetersSq / dtSeconds, -maxTorqueNm, maxTorqueNm);
 
     // Stronger angular damping to simulate motor friction
     torque -= omegaRadPerSec * ANGULAR_DAMPING;

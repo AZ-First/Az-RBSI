@@ -2,9 +2,9 @@ package frc.robot.subsystems.flywheel_example;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import org.junit.jupiter.api.Test;
+import org.wpilib.command2.sysid.SysIdRoutine;
+import org.wpilib.math.util.Units;
 
 class FlywheelSysIdTests {
 
@@ -14,16 +14,16 @@ class FlywheelSysIdTests {
 
     assertEquals(
         "Flywheel SysId Voltage Forward Quasistatic",
-        flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward).getName());
+        flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.FORWARD).getName());
     assertEquals(
         "Flywheel SysId Voltage Reverse Dynamic",
-        flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse).getName());
+        flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.REVERSE).getName());
     assertEquals(
         "Flywheel SysId Duty Cycle Forward Quasistatic",
-        flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward).getName());
+        flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.FORWARD).getName());
     assertEquals(
         "Flywheel SysId Duty Cycle Reverse Dynamic",
-        flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse).getName());
+        flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.REVERSE).getName());
   }
 
   @Test

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -11,15 +11,15 @@ package frc.robot.subsystems.vision;
 
 import static frc.robot.FieldConstants.*;
 
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform3d;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.photonvision.PhotonCamera;
+import org.wpilib.math.geometry.Pose3d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Transform3d;
 
 /** IO implementation for real PhotonVision hardware. */
 public class VisionIOPhotonVision implements VisionIO {
@@ -41,21 +41,20 @@ public class VisionIOPhotonVision implements VisionIO {
   public void updateInputs(VisionIOInputs inputs) {
     inputs.connected = camera.isConnected();
 
-    // Cap the number of unread results processed per loop
-    final int kMaxUnread = 5;
-
     final Set<Integer> unionTagIds = new HashSet<>();
-    final ArrayList<PoseObservation> poseObservations = new ArrayList<>(kMaxUnread);
+    final ArrayList<PoseObservation> poseObservations = new ArrayList<>(1);
 
     double newestTargetTs = Double.NEGATIVE_INFINITY;
-    Rotation2d bestYaw = Rotation2d.kZero;
-    Rotation2d bestPitch = Rotation2d.kZero;
+    Rotation2d bestYaw = Rotation2d.ZERO;
+    Rotation2d bestPitch = Rotation2d.ZERO;
 
     List<org.photonvision.targeting.PhotonPipelineResult> unreadResults =
         camera.getAllUnreadResults();
-    int startIndex = Math.max(0, unreadResults.size() - kMaxUnread);
-
-    for (int resultIndex = startIndex; resultIndex < unreadResults.size(); resultIndex++) {
+    // PhotonVision returns unread changes in FIFO order. Drain the FIFO, but retain only the newest
+    // result so a slow robot loop cannot create a camera-processing backlog.
+    for (int resultIndex = Math.max(0, unreadResults.size() - 1);
+        resultIndex < unreadResults.size();
+        resultIndex++) {
       var result = unreadResults.get(resultIndex);
 
       final double ts = result.getTimestampSeconds();
@@ -135,7 +134,7 @@ public class VisionIOPhotonVision implements VisionIO {
     inputs.latestTargetObservation =
         (newestTargetTs > Double.NEGATIVE_INFINITY)
             ? new TargetObservation(bestYaw, bestPitch)
-            : new TargetObservation(Rotation2d.kZero, Rotation2d.kZero);
+            : new TargetObservation(Rotation2d.ZERO, Rotation2d.ZERO);
 
     inputs.poseObservations = poseObservations.toArray(new PoseObservation[0]);
 

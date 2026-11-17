@@ -193,7 +193,7 @@ When using PathPlanner mode, the auto chooser includes:
 - drive wheel radius characterization,
 - drive feedforward characterization,
 - drive SysId routines,
-- flywheel SysId routines.
+- flywheel SysId routines when the example mechanism is enabled.
 
 Run these with the robot in a safe area and the Driver Station ready to disable.
 Characterization commands intentionally command motors in ways that do not feel
