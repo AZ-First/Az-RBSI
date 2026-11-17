@@ -47,7 +47,8 @@ General constants are robot-wide support values:
 
 - `kLoopPeriodSecs`: main robot loop period.
 - `kTuningMode`: enables live tunable-number behavior.
-- `kGravityMetersPerSecSq`: conversion from g to meters per second squared.
+- `kGravityMetersPerSecSq`: conversion for vendor IMU readings reported in g. WPILib's
+  Systemcore `OnboardIMU` already reports m/s² and is not converted again.
 
 Most teams should leave these alone unless they have a specific framework-level reason.
 
@@ -61,7 +62,7 @@ models:
 - `kMomentOfInertiaKgMetersSq`
 - `kWheelCoefficientOfFriction`
 - `kMaxWheelTorqueNm`
-- `kRioOrientation`
+- `kSystemcoreOrientation`
 - `kIMUOrientation`
 
 Tune these carefully:
@@ -69,7 +70,8 @@ Tune these carefully:
 - `kMass`: measured robot weight including battery and bumpers.
 - `kMomentOfInertiaKgMetersSq`: estimate from CAD or measurement.
 - `kWheelCoefficientOfFriction`: carpet/wheel traction estimate.
-- `kRioOrientation` and `kIMUOrientation`: must match the physical mounting orientation.
+- `kSystemcoreOrientation` and `kIMUOrientation`: must match the physical mounting orientation.
+  The former rotates raw onboard acceleration into the robot frame.
 
 Incorrect orientation constants can corrupt acceleration logging, heading interpretation, and any
 logic that rotates sensor values into robot coordinates.
@@ -98,11 +100,44 @@ Tune these early for the real robot:
 `CANBuses` names the robot CAN networks:
 
 - `RIO`
-- `DRIVE`
-- `ALL`
+- `SYSTEMCORE_0` through `SYSTEMCORE_4` (`can_s0` through `can_s4`)
+- `ALL`, built from the buses actually selected for drive devices plus `RIO`
 
-These names must match CTRE, REV, and generated swerve configuration expectations. Add any
-additional CANivore or vendor buses here and include them in `ALL` so health monitoring sees them.
+The five SystemCore names are its native interfaces, ordered left to right. `RIO` is a historical
+name for the mechanism bus; it now aliases `SYSTEMCORE_1` (`can_s1`), not a roboRIO CAN network.
+The registry initializes and health-monitors every bus in `ALL`. Add other mechanism buses to
+`ALL` if you assign devices outside the drivebase to them.
+
+`DrivebaseConstants` has one CAN assignment for each complete module (`kFLCANBus`, `kFRCANBus`,
+`kBLCANBus`, and `kBRCANBus`) plus an independent `kPigeonCANBus`. A module's drive motor, steer
+motor, and encoder always use its single selected bus; they cannot be split through these
+constants. `RobotDevices` inherits these assignments through `SwerveConstants`, so CAN identity
+and power monitoring stay consistent. The default follows FRC-2026: front modules on `can_s2`, back
+modules on `can_s3`, Pigeon on `can_s4`, and mechanisms on `can_s1`. Port `can_s0` is available.
+
+Change the five `DrivebaseConstants` assignments to match your wiring. These are useful layouts;
+each row lists the front-left, front-right, back-left, back-right, and Pigeon buses in that order:
+
+| Drive buses | FL | FR | BL | BR | Pigeon |
+| --- | --- | --- | --- | --- | --- |
+| One | `can_s2` | `can_s2` | `can_s2` | `can_s2` | `can_s2` |
+| Two, front + IMU / back | `can_s2` | `can_s2` | `can_s3` | `can_s3` | `can_s2` |
+| Two, left + IMU / right | `can_s2` | `can_s3` | `can_s2` | `can_s3` | `can_s2` |
+| Three, front / back / IMU (default) | `can_s2` | `can_s2` | `can_s3` | `can_s3` | `can_s4` |
+| Three, left / right / IMU | `can_s2` | `can_s3` | `can_s2` | `can_s3` | `can_s4` |
+
+The five assignments can also use any other `SYSTEMCORE_*` port independently, up to five drive
+buses. Keep all three devices of a module together. Assign the Pigeon to the desired bus, and
+check that each assigned physical port and CAN ID match the hardware. `ALL` follows these values
+automatically; add separately assigned mechanism buses manually.
+REV's 2027 motor constructors use numbered native SystemCore CAN ports; this project maps the
+`SYSTEMCORE_*` names to those ports and rejects an external named bus for a REV motor. Generated
+Phoenix Tuner constants may still contain a single-bus name; the runtime device constructors use
+the assignments above. Keep generated files as calibration inputs and configure the bus split here.
+
+Placing modules on separate buses limits the scope of a bus failure, but does not itself implement
+three-module fault-tolerant swerve control. Validate the wiring and loss-of-device behavior on
+hardware before relying on device-out operation.
 
 ## RobotDevices
 
@@ -120,16 +155,6 @@ Teams should tune this section carefully:
   CANcoders.
 
 Bad entries here cause misleading power logs and can make CAN health debugging much harder.
-
-## SensorConstants
-
-`SensorConstants` holds configuration values for robot-wide sensors that do not naturally belong to
-one mechanism:
-
-- `kRioAccelerometerSampleRateHz`
-
-Most teams can leave this alone. Increase it only if you have a specific acceleration or jerk
-logging need and have verified that the extra sampling work is worth it.
 
 ## OperatorConstants
 
@@ -286,6 +311,13 @@ Drive characterization helpers also use constants here:
 - `kWheelRadiusCharacterizationRampRateRadPerSecSq`: spin-speed slew rate during wheel radius
   characterization.
 
+## Example flywheel hardware selection
+
+`Constants.kExampleFlywheelHardware` defaults to `DISABLED`. The example CAN IDs below it do not
+activate real motors by themselves. Choose `TALON_FX` or `SPARK_MAX` only after replacing and
+checking the sample device IDs, power ports, and mechanism limits. Simulation uses `FlywheelIOSim`
+regardless of this real-hardware selector. See [supported configurations](SUPPORTED-CONFIGURATIONS.md).
+
 ## FlywheelConstants
 
 `FlywheelConstants` configures the example flywheel subsystem:
@@ -391,7 +423,7 @@ Most teams should not change these unless they intentionally reorganize deploy f
 1. Select `robotType`, `swerveType`, `autoType`, `visionType`, and `phoenixPro`.
 2. Configure `CANBuses` and `RobotDevices`.
 3. Set `RobotConstants` mass, moment of inertia, wheel friction, and sensor orientations.
-4. Set `SensorConstants` and `PowerConstants`.
+4. Set `PowerConstants` and verify the Systemcore accelerometer orientation.
 5. Tune `OperatorConstants` with driver feedback.
 6. Characterize and tune `DrivebaseConstants`.
 7. Configure and validate cameras in `Cameras`.

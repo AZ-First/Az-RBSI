@@ -1,6 +1,6 @@
 [![CI](https://github.com/AZ-First/Az-RBSI/actions/workflows/ci.yaml/badge.svg)](https://github.com/AZ-First/Az-RBSI/actions/workflows/ci.yaml)
 
-![AzFIRST Logo](https://github.com/AZ-First/Az-RBSI/blob/main/AZ-First-logo.png?raw=true)
+![AzFIRST Logo](assets/AZ-First-logo.png)
 
 # Az-RBSI
 
@@ -11,6 +11,21 @@ Az-RBSI is a robot-code template for teams that want a reliable swerve,
 odometry, vision, autonomous, logging, and tuning baseline without starting from
 an empty project.
 
+## 2027 CANOPY/BIOCORE
+
+<p>
+  <img src="assets/season-2027/first-canopy-logo.png" alt="FIRST CANOPY logo" width="260">
+  <img src="assets/season-2027/first-biocore-frc-lockup.png" alt="FRC BIOCORE logo" width="300">
+</p>
+
+To use the BIOCORE VS Code theme:
+
+1. Open the Extensions view in VS Code.
+2. Select `...` > `Install from VSIX...`.
+3. Install
+   [`themes/frc-biocore-high-contrast-theme-1.1.0.vsix`](themes/frc-biocore-high-contrast-theme-1.1.0.vsix).
+4. Open this project; its workspace settings select `FRC BIOCORE High Contrast`.
+
 ## Documentation
 
 Start with the full documentation index:
@@ -19,6 +34,7 @@ Start with the full documentation index:
 
 Quick links:
 
+- [2027 alpha-8 supported configurations](doc/SUPPORTED-CONFIGURATIONS.md)
 - [Install and project setup](doc/INSTALL.md)
 - [Getting started guide](doc/RBSI-GSG.md)
 - [Constants guide](doc/RBSI-Constants.md)

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -11,14 +11,12 @@ package frc.robot.subsystems.drive;
 
 import com.revrobotics.REVLibError;
 import com.revrobotics.spark.SparkBase;
-import edu.wpi.first.wpilibj.Notifier;
-import edu.wpi.first.wpilibj.RobotController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.DoubleSupplier;
-import org.littletonrobotics.junction.Logger;
+import org.wpilib.system.Notifier;
+import org.wpilib.system.Timer;
 
 /**
  * Provides an interface for asynchronously reading high-frequency measurements to a set of queues.
@@ -27,17 +25,18 @@ import org.littletonrobotics.junction.Logger;
  * all measurements in the sample are valid.
  */
 public class SparkOdometryThread {
+  private static final int QUEUE_CAPACITY = 128;
+
   private final List<SparkBase> sparks = new ArrayList<>();
   private final List<DoubleSupplier> sparkSignals = new ArrayList<>();
   private final List<DoubleSupplier> genericSignals = new ArrayList<>();
-  private final List<Queue<Double>> sparkQueues = new ArrayList<>();
-  private final List<Queue<Double>> genericQueues = new ArrayList<>();
-  private final List<Queue<Double>> timestampQueues = new ArrayList<>();
+  private final List<LatestSampleQueue<Double>> sparkQueues = new ArrayList<>();
+  private final List<LatestSampleQueue<Double>> genericQueues = new ArrayList<>();
+  private final List<LatestSampleQueue<Double>> timestampQueues = new ArrayList<>();
 
   private static SparkOdometryThread instance = null;
-  private Notifier notifier = new Notifier(this::run);
-  private long droppedSamples = 0;
-  private long loopCount = 0;
+  private final Notifier notifier = new Notifier(this::run);
+  private volatile long droppedSamples = 0;
 
   public static SparkOdometryThread getInstance() {
     if (instance == null) {
@@ -46,19 +45,23 @@ public class SparkOdometryThread {
     return instance;
   }
 
+  long getDroppedSamples() {
+    return droppedSamples;
+  }
+
   private SparkOdometryThread() {
     notifier.setName("OdometryThread");
   }
 
   public void start() {
-    if (timestampQueues.size() > 0) {
+    if (!timestampQueues.isEmpty()) {
       notifier.startPeriodic(1.0 / SwerveConstants.kOdometryFrequency);
     }
   }
 
   /** Registers a Spark signal to be read from the thread. */
   public Queue<Double> registerSignal(SparkBase spark, DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
+    LatestSampleQueue<Double> queue = createQueue();
     Drive.odometryLock.lock();
     try {
       sparks.add(spark);
@@ -72,7 +75,7 @@ public class SparkOdometryThread {
 
   /** Registers a generic signal to be read from the thread. */
   public Queue<Double> registerSignal(DoubleSupplier signal) {
-    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
+    LatestSampleQueue<Double> queue = createQueue();
     Drive.odometryLock.lock();
     try {
       genericSignals.add(signal);
@@ -85,7 +88,7 @@ public class SparkOdometryThread {
 
   /** Returns a new queue that returns timestamp values for each sample. */
   public Queue<Double> makeTimestampQueue() {
-    Queue<Double> queue = new ArrayBlockingQueue<>(128); // was 20
+    LatestSampleQueue<Double> queue = createQueue();
     Drive.odometryLock.lock();
     try {
       timestampQueues.add(queue);
@@ -100,7 +103,7 @@ public class SparkOdometryThread {
     Drive.odometryLock.lock();
     try {
       // Get sample timestamp
-      double timestamp = RobotController.getFPGATime() / 1e6;
+      double timestamp = Timer.getTimestamp();
 
       // Read Spark values, mark invalid in case of error
       double[] sparkValues = new double[sparkSignals.size()];
@@ -115,21 +118,27 @@ public class SparkOdometryThread {
       // If valid, add values to queues
       if (isValid) {
         for (int i = 0; i < sparkSignals.size(); i++) {
-          if (!sparkQueues.get(i).offer(sparkValues[i])) droppedSamples++;
+          offerSample(sparkQueues.get(i), sparkValues[i]);
         }
         for (int i = 0; i < genericSignals.size(); i++) {
-          if (!genericQueues.get(i).offer(genericSignals.get(i).getAsDouble())) droppedSamples++;
+          offerSample(genericQueues.get(i), genericSignals.get(i).getAsDouble());
         }
-        for (int i = 0; i < timestampQueues.size(); i++) {
-          if (!timestampQueues.get(i).offer(timestamp)) droppedSamples++;
+        for (LatestSampleQueue<Double> timestampQueue : timestampQueues) {
+          offerSample(timestampQueue, timestamp);
         }
       }
     } finally {
       Drive.odometryLock.unlock();
     }
+  }
 
-    if ((loopCount++ % (int) SwerveConstants.kOdometryFrequency) == 0) {
-      Logger.recordOutput("Drive/SparkOdomThread/DroppedSamples", droppedSamples);
+  private static LatestSampleQueue<Double> createQueue() {
+    return new LatestSampleQueue<>(QUEUE_CAPACITY);
+  }
+
+  private void offerSample(LatestSampleQueue<Double> queue, double sample) {
+    if (queue.offerLatest(sample)) {
+      droppedSamples++;
     }
   }
 }

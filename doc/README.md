@@ -10,6 +10,7 @@ project front door; this page is the working table of contents.
 
 | Page | Use It For |
 | --- | --- |
+| [SUPPORTED-CONFIGURATIONS.md](SUPPORTED-CONFIGURATIONS.md) | Current 2027 branch support, deferred paths, and example hardware activation. |
 | [INSTALL.md](INSTALL.md) | Creating a project, setting team number, generating Phoenix Tuner X constants, and first setup tasks. |
 | [RBSI-GSG.md](RBSI-GSG.md) | First robot-code changes after installation. |
 | [RBSI-Constants.md](RBSI-Constants.md) | Understanding `Constants.java` and the tuning order for a new robot. |
@@ -19,10 +20,17 @@ project front door; this page is the working table of contents.
 | [RBSI-SysId.md](RBSI-SysId.md) | Running SysId routines and applying flywheel characterization results. |
 | [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md) | Design reference for time-aligned odometry and vision fusion. |
 | [RBSI-AdvantageScope.md](RBSI-AdvantageScope.md) | Standard AdvantageScope layout tabs and how to add mechanism power/timing plots. |
+| [recommendations/PathPlanner-Integration.md](recommendations/PathPlanner-Integration.md) | Recommended architecture for combining PathPlanner with WPILib commands, configurable autos, and dynamic routing. |
+| [recommendations/Commands-V2-V3-Parallel-Infrastructure.md](recommendations/Commands-V2-V3-Parallel-Infrastructure.md) | Migration architecture for safely supporting WPILib Commands V2 and V3. |
+| [recommendations/Robot-Decision-Automation.md](recommendations/Robot-Decision-Automation.md) | Recommended architecture for match-aware mechanism coordination and bounded robot decision-making. |
+| [recommendations/FRC-Product-Watch-2026-2027.md](recommendations/FRC-Product-Watch-2026-2027.md) | Purchasing and evaluation recommendations for notable REBUILT products and BIOCORE-era technology. |
+| [recommendations/Pose-Odometry-Vision-Integration.md](recommendations/Pose-Odometry-Vision-Integration.md) | Architecture review and migration recommendations for precise, reliable, efficient localization. |
+| [recommendations/Top-Team-Common-Practices.md](recommendations/Top-Team-Common-Practices.md) | Evidence-backed engineering, software, practice, scouting, and competition routines common to high-performing teams. |
+| [recommendations/PhotonVision-Camera-Selection.md](recommendations/PhotonVision-Camera-Selection.md) | Camera, connector, mounting, and test recommendations for reliable PhotonVision input. |
 
 ## New User Bring-Up Path
 
-1. [Install the project](INSTALL.md).
+1. [Check the supported configuration](SUPPORTED-CONFIGURATIONS.md), then [install the project](INSTALL.md).
 2. [Make first code changes](RBSI-GSG.md).
 3. [Select robot, swerve, vision, and auto modes](RBSI-Constants.md).
 4. [Generate or configure drivetrain constants](RBSI-Drive.md).
@@ -45,6 +53,20 @@ project front door; this page is the working table of contents.
   [RBSI-Vision.md](RBSI-Vision.md#troubleshooting)
 - PathPlanner/Choreo startup and reset behavior:
   [RBSI-Autonomous.md](RBSI-Autonomous.md#match-execution-flow)
+- Advanced PathPlanner/WPILib integration:
+  [recommendations/PathPlanner-Integration.md](recommendations/PathPlanner-Integration.md)
+- Commands V2/V3 migration architecture:
+  [recommendations/Commands-V2-V3-Parallel-Infrastructure.md](recommendations/Commands-V2-V3-Parallel-Infrastructure.md)
+- Robot decision and mechanism automation:
+  [recommendations/Robot-Decision-Automation.md](recommendations/Robot-Decision-Automation.md)
+- REBUILT product lessons and BIOCORE technology watch list:
+  [recommendations/FRC-Product-Watch-2026-2027.md](recommendations/FRC-Product-Watch-2026-2027.md)
+- Pose, odometry, and vision integration architecture:
+  [recommendations/Pose-Odometry-Vision-Integration.md](recommendations/Pose-Odometry-Vision-Integration.md)
+- Common practices of high-performing teams:
+  [recommendations/Top-Team-Common-Practices.md](recommendations/Top-Team-Common-Practices.md)
+- PhotonVision camera selection and connection reliability:
+  [recommendations/PhotonVision-Camera-Selection.md](recommendations/PhotonVision-Camera-Selection.md)
 - Pose buffer internals:
   [RBSI-PoseBuffer.md](RBSI-PoseBuffer.md)
 - AdvantageScope pit-debug layout:

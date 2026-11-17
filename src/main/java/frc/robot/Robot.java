@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 //
 // This program is free software; you can redistribute it and/or
@@ -17,15 +17,15 @@
 
 package frc.robot;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.commands.PathPlannerAuto;
+import com.pathplanner.lib.util.FlippingUtil;
 import com.revrobotics.util.StatusLogger;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Threads;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.PowerConstants;
-import frc.robot.util.TimeUtil;
 import frc.robot.util.VirtualSubsystem;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -34,6 +34,12 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.urcl.URCL;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.CommandScheduler;
+import org.wpilib.driverstation.Alliance;
+import org.wpilib.driverstation.MatchState;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.system.Timer;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -48,6 +54,10 @@ public class Robot extends LoggedRobot {
   private RobotContainer m_robotContainer;
   private Timer m_disabledTimer;
   private int timingLogLoops = 0;
+  private final ArrayList<String> commandEvents = new ArrayList<>();
+  private final LinkedHashSet<Command> activeCommands = new LinkedHashSet<>();
+  private final IdentityHashMap<Command, Integer> commandIds = new IdentityHashMap<>();
+  private int nextCommandId = 1;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -96,10 +106,12 @@ public class Robot extends LoggedRobot {
     // Initialize URCL
     Logger.registerURCL(URCL.startExternal());
     StatusLogger.disableAutoLogging(); // Disable REVLib's built-in logging
-    LoggedPowerDistribution.getInstance(PowerConstants.kPdmCanId, PowerConstants.kPdmType);
+    LoggedPowerDistribution.getInstance(
+        PowerConstants.kPdmCanId, PowerConstants.kPdmChannelCount, PowerConstants.kPdmType);
 
     // Start AdvantageKit logger
     Logger.start();
+    configureCommandLogging();
 
     // Instantiate our RobotContainer. This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
@@ -108,23 +120,12 @@ public class Robot extends LoggedRobot {
     // Create a timer to disable motor brake a few seconds after disable. This will let the robot
     // stop immediately when disabled, but then also let it be pushed more
     m_disabledTimer = new Timer();
-
-    // Switch thread to high priority to improve loop timing
-    if (isReal()) {
-      Threads.setCurrentThreadPriority(true, 99);
-    }
   }
 
   // /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
     final long t0 = System.nanoTime();
-
-    if (isReal()) {
-      // Switch thread to high priority to improve loop timing
-      Threads.setCurrentThreadPriority(true, 99);
-    }
-    final long t1 = System.nanoTime();
 
     // Run all virtual subsystems each time through the loop
     VirtualSubsystem.periodicAll();
@@ -136,20 +137,46 @@ public class Robot extends LoggedRobot {
     // This must be called from the robot's periodic block in order for anything in
     // the Command-based framework to work.
     CommandScheduler.getInstance().run();
+    Logger.recordOutput(
+        "Commands/Active", activeCommands.stream().map(this::commandLabel).toArray(String[]::new));
+    Logger.recordOutput("Commands/Events", commandEvents.toArray(String[]::new));
+    commandEvents.clear();
     final long t3 = System.nanoTime();
-
-    if (isReal()) {
-      // Return thread to normal priority
-      Threads.setCurrentThreadPriority(false, 10);
-    }
-    final long t4 = System.nanoTime();
 
     if (++timingLogLoops >= TIMING_LOG_PERIOD_LOOPS) {
       timingLogLoops = 0;
-      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t4 - t0) / 1e6);
-      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t1) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/RobotPeriodicMS", (t3 - t0) / 1e6);
+      Logger.recordOutput("LogPeriodic/CodeLoop/VirtualMS", (t2 - t0) / 1e6);
       Logger.recordOutput("LogPeriodic/CodeLoop/SchedulerMS", (t3 - t2) / 1e6);
     }
+  }
+
+  private void configureCommandLogging() {
+    CommandScheduler scheduler = CommandScheduler.getInstance();
+    scheduler.onCommandInitialize(
+        command -> {
+          activeCommands.add(command);
+          commandEvents.add("Initialize " + commandLabel(command));
+        });
+    scheduler.onCommandFinish(
+        command -> {
+          activeCommands.remove(command);
+          commandEvents.add("Finish " + commandLabel(command));
+        });
+    scheduler.onCommandInterrupt(
+        (command, interruptor) -> {
+          activeCommands.remove(command);
+          commandEvents.add(
+              "Interrupt "
+                  + commandLabel(command)
+                  + interruptor.map(value -> " by " + commandLabel(value)).orElse(""));
+        });
+  }
+
+  private String commandLabel(Command command) {
+    return command.getName()
+        + "#"
+        + commandIds.computeIfAbsent(command, ignored -> nextCommandId++);
   }
 
   /** This function is called once when the robot is disabled. */
@@ -180,7 +207,6 @@ public class Robot extends LoggedRobot {
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().setMotorBrake(true);
     m_robotContainer.getDrivebase().resetHeadingController();
-    m_robotContainer.getVision().resetPoseGate(TimeUtil.now());
 
     // Do not zero the gyro here. PathPlanner and Choreo reset through Drive.resetPose(...), which
     // aligns the pose estimator to the selected auto's start while preserving the gyro reference.
@@ -193,6 +219,19 @@ public class Robot extends LoggedRobot {
               throw new RuntimeException(
                   "Incorrect AUTO type selected in Constants: " + Constants.getAutoType());
         };
+
+    if (m_autonomousCommand instanceof PathPlannerAuto pathPlannerAuto) {
+      Pose2d startingPose = pathPlannerAuto.getStartingPose();
+      if (startingPose != null) {
+        if (AutoBuilder.shouldFlip()) {
+          startingPose = FlippingUtil.flipFieldPose(startingPose);
+        }
+        Logger.recordOutput("Auto/StartingPose", startingPose);
+        if (!m_robotContainer.getDrivebase().validatePathPlannerAutoStart(startingPose)) {
+          m_autonomousCommand = null;
+        }
+      }
+    }
 
     if (m_autonomousCommand != null) {
       CommandScheduler.getInstance().schedule(m_autonomousCommand);
@@ -232,37 +271,30 @@ public class Robot extends LoggedRobot {
     //
     // https://docs.wpilib.org/en/stable/docs/yearly-overview/2026-game-data.html
     if (FieldState.wonAuto == null) {
-      // Only call this code block if the signal from FMS has not yet arrived
-      String gameData = DriverStation.getGameSpecificMessage();
-      if (gameData.length() > 0) {
-        switch (gameData.charAt(0)) {
-          case 'B':
-            // Blue case code
-            FieldState.wonAuto = DriverStation.Alliance.Blue;
-            break;
-          case 'R':
-            // Red case code
-            FieldState.wonAuto = DriverStation.Alliance.Red;
-            break;
-          default:
-            // This is corrupt data, do nothing
-            break;
-        }
-      }
+      FieldState.wonAuto = parseAutoWinner(MatchState.getGameData().orElse(""));
     }
-    // Anything else for the teleopPeriodic() function
-
   }
 
-  /** This function is called once when test mode is enabled. */
+  private static Alliance parseAutoWinner(String gameData) {
+    if (gameData.isEmpty()) {
+      return null;
+    }
+    return switch (gameData.charAt(0)) {
+      case 'B' -> Alliance.BLUE;
+      case 'R' -> Alliance.RED;
+      default -> null;
+    };
+  }
+
+  /** This function is called once when utility mode is enabled. */
   @Override
-  public void testInit() {
-    // Cancels all running commands at the start of test mode.
+  public void utilityInit() {
+    // Cancels all running commands at the start of utility mode.
     CommandScheduler.getInstance().cancelAll();
     m_robotContainer.getDrivebase().resetHeadingController();
   }
 
-  /** This function is called periodically during test mode. */
+  /** This function is called periodically during utility mode. */
   @Override
-  public void testPeriodic() {}
+  public void utilityPeriodic() {}
 }

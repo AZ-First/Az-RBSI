@@ -1,12 +1,12 @@
 package frc.robot.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.wpilibj.RobotController;
+import frc.robot.Constants;
 import java.util.NavigableMap;
 import org.junit.jupiter.api.Test;
 
@@ -14,20 +14,10 @@ class UtilTests {
   private static final double EPSILON = 1e-9;
 
   @Test
-  void timeUtilReturnsSecondsFromAdvantageKitMicrosecondTimestamp() {
-    assertTrue(HAL.initialize(500, 0));
-
-    double expectedSeconds = RobotController.getFPGATime() * 1.0e-6;
-    double actualSeconds = TimeUtil.now();
-
-    assertEquals(expectedSeconds, actualSeconds, 0.050);
-  }
-
-  @Test
   void robotDeviceIdUsesValueEqualityAndHandlesMissingPowerPort() {
-    RobotDeviceId first = new RobotDeviceId(7, "rio", null);
-    RobotDeviceId second = new RobotDeviceId(7, new String("rio"), null);
-    RobotDeviceId differentBus = new RobotDeviceId(7, "DriveTrain", null);
+    RobotDeviceId first = new RobotDeviceId(7, Constants.CANBuses.RIO, null);
+    RobotDeviceId second = new RobotDeviceId(7, new String(Constants.CANBuses.RIO), null);
+    RobotDeviceId differentBus = new RobotDeviceId(7, Constants.CANBuses.SYSTEMCORE_2, null);
 
     assertEquals(first, second);
     assertEquals(first.hashCode(), second.hashCode());
@@ -38,10 +28,17 @@ class UtilTests {
 
   @Test
   void robotDeviceIdLooksUpCanBusThroughRegistry() {
-    RBSICANBusRegistry.initSim("rio");
-    RobotDeviceId device = new RobotDeviceId(1, "rio", 0);
+    RBSICANBusRegistry.initSim();
+    RobotDeviceId device = new RobotDeviceId(1, Constants.CANBuses.RIO, 0);
 
     assertThrows(IllegalStateException.class, device::getCANBus);
+  }
+
+  @Test
+  void canHealthCanPollSystemcorePortInSimulation() {
+    RBSICANHealth health = new RBSICANHealth(Constants.CANBuses.RIO);
+
+    assertDoesNotThrow(health::rbsiPeriodic);
   }
 
   @Test

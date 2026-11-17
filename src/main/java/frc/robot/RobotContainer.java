@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2026 Az-FIRST
+// Copyright (c) 2024-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2021-2026 Littleton Robotics
 // http://github.com/Mechanical-Advantage
@@ -19,23 +19,10 @@
 
 package frc.robot;
 
-import static frc.robot.Constants.ControllerButtonConstants.*;
-
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import com.pathplanner.lib.auto.AutoBuilder;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.GenericHID;
-import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.CANBuses;
 import frc.robot.Constants.Cameras;
 import frc.robot.Constants.OperatorConstants;
@@ -43,13 +30,15 @@ import frc.robot.FieldConstants.AprilTagLayoutType;
 import frc.robot.commands.AutopilotCommands;
 import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.accelerometer.Accelerometer;
-import frc.robot.subsystems.accelerometer.RioAccelIO;
+import frc.robot.subsystems.accelerometer.ControllerAccelIO;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.DriveOdometry;
 import frc.robot.subsystems.drive.SwerveConstants;
 import frc.robot.subsystems.flywheel_example.Flywheel;
 import frc.robot.subsystems.flywheel_example.FlywheelIO;
 import frc.robot.subsystems.flywheel_example.FlywheelIOSim;
+import frc.robot.subsystems.flywheel_example.FlywheelIOSpark;
+import frc.robot.subsystems.flywheel_example.FlywheelIOTalonFX;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIO;
 import frc.robot.subsystems.imu.ImuIOSim;
@@ -59,9 +48,6 @@ import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
-import frc.robot.util.Alert;
-import frc.robot.util.Alert.AlertType;
-import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.OverrideSwitches;
 import frc.robot.util.RBSICANBusRegistry;
 import frc.robot.util.RBSICANHealth;
@@ -73,10 +59,25 @@ import frc.robot.util.RBSIPowerMonitor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
+import java.util.function.DoubleSupplier;
+import org.littletonrobotics.junction.networktables.LoggedNetworkChooser;
+import org.littletonrobotics.junction.networktables.LoggedNetworkNumber;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
 import org.photonvision.simulation.VisionSystemSim;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.command2.button.CommandJoystick;
+import org.wpilib.command2.sysid.SysIdRoutine;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.driverstation.GenericHID;
+import org.wpilib.driverstation.NiDsXboxController;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Transform2d;
+import org.wpilib.system.Filesystem;
+import org.wpilib.util.Alert;
+import org.wpilib.util.Alert.Level;
 
 /** This is the location for defining robot hardware, commands, and controller button bindings. */
 public class RobotContainer {
@@ -90,7 +91,7 @@ public class RobotContainer {
   final OverrideSwitches overrides = new OverrideSwitches(2); // Console toggle switches
 
   // These two are needed for the Sweep evaluator for camera FOV simulation
-  final CommandJoystick joystick3 = new CommandJoystick(3); //  Joystick for CamersSweepEvaluator
+  final CommandJoystick joystick3 = new CommandJoystick(3); // Joystick for CameraSweepEvaluator
   private final CameraSweepEvaluator sweep;
 
   /** Declare the robot subsystems here ************************************ */
@@ -98,6 +99,10 @@ public class RobotContainer {
   private final Drive m_drivebase;
 
   private final Flywheel m_flywheel;
+  private final boolean flywheelExampleEnabled =
+      Constants.getMode() == Mode.SIM
+          || (Constants.getMode() == Mode.REAL
+              && Constants.kExampleFlywheelHardware != Constants.ExampleFlywheelHardware.DISABLED);
 
   // ... Add additional subsystems here (e.g., elevator, arm, etc.)
 
@@ -119,26 +124,31 @@ public class RobotContainer {
 
   /** Dashboard inputs ***************************************************** */
   // AutoChoosers for both supported path planning types
-  private final LoggedDashboardChooser<Command> autoChooserPathPlanner;
+  private final LoggedNetworkChooser<Command> autoChooserPathPlanner;
 
-  private final LoggedDashboardChooser<Command> autoChooserChoreo;
+  private final LoggedNetworkChooser<Command> autoChooserChoreo;
   private final AutoFactory autoFactoryChoreo;
 
-  private final LoggedDashboardChooser<DriveStyle> driveStyle =
-      new LoggedDashboardChooser<>("Drive Style");
+  private final LoggedNetworkChooser<DriveStyle> driveStyle =
+      new LoggedNetworkChooser<>("Drive Style");
 
   // Input estimated battery capacity (if full, use printed value)
-  private final LoggedTunableNumber batteryCapacity =
-      new LoggedTunableNumber("Battery Amp-Hours", 18.0);
+  // AdvantageKit's logged input preserves the selected value during replay.
+  private final DoubleSupplier batteryCapacity =
+      Constants.isTuningMode()
+          ? new LoggedNetworkNumber("/Tuning/Battery Amp-Hours", 18.0)
+          : () -> 18.0;
   // EXAMPLE TUNABLE FLYWHEEL SPEED INPUT FROM DASHBOARD
-  private final LoggedTunableNumber flywheelSpeedInput =
-      new LoggedTunableNumber("Flywheel Speed", 1500.0);
+  private final DoubleSupplier flywheelSpeedInput =
+      Constants.isTuningMode()
+          ? new LoggedNetworkNumber("/Tuning/Flywheel Speed", 1500.0)
+          : () -> 1500.0;
 
   // Alerts
-  private final Alert aprilTagLayoutAlert = new Alert("", AlertType.INFO);
+  private final Alert aprilTagLayoutAlert = new Alert("aprilTagLayout", "", Level.LOW);
 
   /**
-   * Constructor for the Robot Container. This container holds subsystems, opertator interface
+   * Constructor for the Robot Container. This container holds subsystems, operator interface
    * devices, and commands.
    */
   public RobotContainer() {
@@ -149,7 +159,7 @@ public class RobotContainer {
         // Real robot, instantiate hardware IO implementations
 
         // Register the CANBus
-        RBSICANBusRegistry.initReal(CANBuses.RIO, CANBuses.DRIVE);
+        RBSICANBusRegistry.initReal(CANBuses.ALL);
 
         // YAGSL drivebase, get config from deploy directory
         // Get the IMU instance
@@ -160,13 +170,13 @@ public class RobotContainer {
         m_vision =
             new Vision(
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReal(m_drivebase));
-        m_flywheel = new Flywheel(new FlywheelIOSim()); // new Flywheel(new FlywheelIOTalonFX());
+        m_flywheel = new Flywheel(createRealExampleFlywheelIO());
         m_accel = new Accelerometer(m_imu);
         sweep = null;
         break;
 
       case SIM:
-        RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
+        RBSICANBusRegistry.initSim();
 
         m_imu = new Imu(new ImuIOSim());
         m_drivebase = new Drive(m_imu);
@@ -200,7 +210,7 @@ public class RobotContainer {
 
       default:
         // Replayed robot, disable IO implementations
-        RBSICANBusRegistry.initSim(CANBuses.RIO, CANBuses.DRIVE);
+        RBSICANBusRegistry.initSim();
         m_imu = new Imu(new ImuIO() {});
         m_drivebase = new Drive(m_imu);
         m_driveOdometry = new DriveOdometry(m_drivebase, m_imu, m_drivebase.getModules());
@@ -209,7 +219,7 @@ public class RobotContainer {
                 m_drivebase, m_drivebase::addVisionMeasurement, buildVisionIOsReplay(m_drivebase));
 
         m_flywheel = new Flywheel(new FlywheelIO() {});
-        m_accel = new Accelerometer(m_imu, RioAccelIO.noop());
+        m_accel = new Accelerometer(m_imu, ControllerAccelIO.noop());
         sweep = null;
         break;
     }
@@ -217,7 +227,7 @@ public class RobotContainer {
     // Init all CAN busses specified in the `Constants.CANBuses` class
     canHealth = Arrays.stream(Constants.CANBuses.ALL).map(RBSICANHealth::new).toList();
 
-    // In addition to the initial battery capacity from the Dashbaord, ``RBSIPowerMonitor`` takes
+    // In addition to the initial battery capacity from the dashboard, ``RBSIPowerMonitor`` takes
     // all the non-drivebase subsystems for which you wish to have power monitoring; DO NOT
     // include ``m_drivebase``, as that is automatically monitored.
     m_power = new RBSIPowerMonitor(batteryCapacity, m_flywheel);
@@ -238,7 +248,7 @@ public class RobotContainer {
 
       case PATHPLANNER:
         autoChooserPathPlanner =
-            new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+            new LoggedNetworkChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
         // Set the others to null
         autoChooserChoreo = null;
         autoFactoryChoreo = null;
@@ -247,17 +257,14 @@ public class RobotContainer {
       case CHOREO:
         autoFactoryChoreo =
             new AutoFactory(
-                m_drivebase::getPose, // A function that returns the current robot pose
-                m_drivebase::resetPose, // A function that resets the current robot pose to the
-                // provided Pose2d
-                m_drivebase::followTrajectory, // The drive subsystem trajectory follower
-                true, // If alliance flipping should be enabled
-                m_drivebase // The drive subsystem
-                );
-        autoChooserChoreo = new LoggedDashboardChooser<>("Choreo Auto Choices");
-        autoChooserChoreo.addDefaultOption("Nothing", Commands.none());
-        autoChooserChoreo.addOption("twoPieceAuto", twoPieceAuto().cmd());
-        // Set the others to null
+                m_drivebase::getPose,
+                m_drivebase::resetPose,
+                m_drivebase::followTrajectory,
+                true,
+                m_drivebase);
+        autoChooserChoreo = new LoggedNetworkChooser<>("Choreo Auto Choices");
+        autoChooserChoreo.addDefault("Nothing", Commands.none());
+        autoChooserChoreo.add("twoPieceAuto", twoPieceAuto().cmd());
         autoChooserPathPlanner = null;
         break;
 
@@ -269,11 +276,10 @@ public class RobotContainer {
 
     // Get drive style from the Dashboard Chooser. The constant controls the boot default, and the
     // dashboard chooser lets teams swap stick layouts between drivers without recompiling.
-    driveStyle.addDefaultOption(
-        OperatorConstants.kDriveStyle.name(), OperatorConstants.kDriveStyle);
+    driveStyle.addDefault(OperatorConstants.kDriveStyle.name(), OperatorConstants.kDriveStyle);
     for (DriveStyle style : DriveStyle.values()) {
       if (style != OperatorConstants.kDriveStyle) {
-        driveStyle.addOption(style.name(), style);
+        driveStyle.add(style.name(), style);
       }
     }
 
@@ -292,8 +298,8 @@ public class RobotContainer {
   /**
    * Use this method to define your button->command mappings. Buttons can be created by
    * instantiating a {@link GenericHID} or one of its subclasses ({@link
-   * edu.wpi.first.wpilibj.Joystick} or {@link XboxController}), and then passing it to a {@link
-   * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
+   * org.wpilib.driverstation.Joystick} or {@link NiDsXboxController}), and then passing it to a
+   * {@link org.wpilib.command2.button.JoystickButton}.
    */
   private void configureBindings() {
 
@@ -305,7 +311,7 @@ public class RobotContainer {
     // ** Example Commands -- Remap, remove, or change as desired **
     // Press B / Circle button while driving --> ROBOT-CENTRIC
     driverController
-        .button(ROBOT_RELATIVE)
+        .eastFaceButton()
         .whileTrue(
             DriveCommands.robotRelativeDrive(
                 m_drivebase,
@@ -314,26 +320,28 @@ public class RobotContainer {
                 () -> -getTurnStickX()));
 
     // Press A / Cross button -> BRAKE
-    driverController.button(BRAKE).onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
+    driverController.southFaceButton().onTrue(DriveCommands.setBrakeMode(m_drivebase, true));
 
     // Press X / Square button --> Stop with wheels in X-Lock position
-    driverController.button(X_LOCK).whileTrue(DriveCommands.stopWithX(m_drivebase));
+    driverController.westFaceButton().whileTrue(DriveCommands.stopWithX(m_drivebase));
 
     // Press Y / Triangle button --> Manually Re-Zero the Gyro
-    driverController.button(ZERO_GYRO).onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
+    driverController.northFaceButton().onTrue(DriveCommands.zeroHeadingForAlliance(m_drivebase));
 
-    // Press RIGHT BUMPER / R1 --> Run the example flywheel
-    driverController
-        .button(RUN_FLYWHEEL)
-        .whileTrue(
-            Commands.startEnd(
-                () -> m_flywheel.runVelocity(flywheelSpeedInput.get()),
-                m_flywheel::stop,
-                m_flywheel));
+    // Example mechanism controls are available in simulation or with an explicit real IO choice.
+    if (flywheelExampleEnabled) {
+      driverController
+          .rightBumper()
+          .whileTrue(
+              Commands.startEnd(
+                  () -> m_flywheel.runVelocity(flywheelSpeedInput.getAsDouble()),
+                  m_flywheel::stop,
+                  m_flywheel));
+    }
 
     // Press LEFT BUMPER / L1 --> Drive to a demo pose offset defined in OperatorConstants
     driverController
-        .button(AUTOPILOT_DEMO)
+        .leftBumper()
         .whileTrue(
             Commands.defer(
                 () -> {
@@ -345,7 +353,7 @@ public class RobotContainer {
                               new Transform2d(
                                   OperatorConstants.kAutopilotDemoXOffsetMeters,
                                   0.0,
-                                  Rotation2d.kZero));
+                                  Rotation2d.ZERO));
 
                   // Alternatively, you could define a pose in a separate module and call it here.
                   //
@@ -359,22 +367,22 @@ public class RobotContainer {
 
     // Press POV LEFT to nudge the robot left
     driverController
-        .button(NUDGE_LEFT)
+        .povLeft()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
     driverController
-        .button(NUDGE_RIGHT)
+        .povRight()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, 0.0, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0));
     driverController
-        .button(NUDGE_FORWARD)
+        .povUp()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
     driverController
-        .button(NUDGE_BACK)
+        .povDown()
         .whileTrue(
             DriveCommands.robotRelativeNudge(
                 m_drivebase, -OperatorConstants.kRobotRelativeNudgeSpeedMetersPerSec, 0.0, 0.0));
@@ -384,6 +392,7 @@ public class RobotContainer {
       // Double-press the A button on Joystick3 to run the CameraSweepEvaluator
       // Use WPILib's built-in double-press binding
       joystick3
+          .getHID()
           .button(1)
           .multiPress(2, 0.2)
           .onTrue(
@@ -396,7 +405,7 @@ public class RobotContainer {
                               .resolve("camera_sweep.csv")
                               .toString());
                     } catch (Exception e) {
-                      DriverStation.reportError("Camera sweep failed", e.getStackTrace());
+                      DriverStationErrors.reportError("Camera sweep failed", e.getStackTrace());
                     }
                   }));
     }
@@ -469,51 +478,61 @@ public class RobotContainer {
   private void definesysIdRoutines() {
     if (Constants.getAutoType() == AutoType.PATHPLANNER) {
       // Drivebase characterization
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Drive Wheel Radius Characterization",
           DriveCommands.wheelRadiusCharacterization(m_drivebase));
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Drive Simple FF Characterization",
           DriveCommands.feedforwardCharacterization(m_drivebase));
-      autoChooserPathPlanner.addOption(
+      autoChooserPathPlanner.add(
           "Drive SysId (Quasistatic Forward)",
-          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Drive SysId (Quasistatic Reverse)",
-          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
+          m_drivebase.sysIdQuasistatic(SysIdRoutine.Direction.REVERSE));
+      autoChooserPathPlanner.add(
           "Drive SysId (Dynamic Forward)",
-          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
+          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.FORWARD));
+      autoChooserPathPlanner.add(
           "Drive SysId (Dynamic Reverse)",
-          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+          m_drivebase.sysIdDynamic(SysIdRoutine.Direction.REVERSE));
 
-      // Example Flywheel SysId Characterization
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Quasistatic Forward)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Quasistatic Reverse)",
-          m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Dynamic Forward)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Voltage (Dynamic Reverse)",
-          m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Quasistatic Forward)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
-          m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.kReverse));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Dynamic Forward)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kForward));
-      autoChooserPathPlanner.addOption(
-          "Flywheel SysId Duty Cycle (Dynamic Reverse)",
-          m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.kReverse));
+      if (flywheelExampleEnabled) {
+        // Example Flywheel SysId Characterization
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Quasistatic Forward)",
+            m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Quasistatic Reverse)",
+            m_flywheel.sysIdVoltageQuasistatic(SysIdRoutine.Direction.REVERSE));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Dynamic Forward)",
+            m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Voltage (Dynamic Reverse)",
+            m_flywheel.sysIdVoltageDynamic(SysIdRoutine.Direction.REVERSE));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Quasistatic Forward)",
+            m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Quasistatic Reverse)",
+            m_flywheel.sysIdDutyCycleQuasistatic(SysIdRoutine.Direction.REVERSE));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Dynamic Forward)",
+            m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.FORWARD));
+        autoChooserPathPlanner.add(
+            "Flywheel SysId Duty Cycle (Dynamic Reverse)",
+            m_flywheel.sysIdDutyCycleDynamic(SysIdRoutine.Direction.REVERSE));
+      }
     }
+  }
+
+  private static FlywheelIO createRealExampleFlywheelIO() {
+    return switch (Constants.kExampleFlywheelHardware) {
+      case DISABLED -> new FlywheelIO() {};
+      case TALON_FX -> new FlywheelIOTalonFX();
+      case SPARK_MAX -> new FlywheelIOSpark();
+    };
   }
 
   // Vision Factories
@@ -573,33 +592,12 @@ public class RobotContainer {
     return ios;
   }
 
-  /**
-   * Example Choreo auto command
-   *
-   * <p>NOTE: This would normally be in a spearate file.
-   */
   private AutoRoutine twoPieceAuto() {
     AutoRoutine routine = autoFactoryChoreo.newRoutine("twoPieceAuto");
-
-    // Load the routine's trajectories
     AutoTrajectory pickupTraj = routine.trajectory("pickupGamepiece");
     AutoTrajectory scoreTraj = routine.trajectory("scoreGamepiece");
-
-    // When the routine begins, reset odometry and start the first trajectory
     routine.active().onTrue(Commands.sequence(pickupTraj.resetOdometry(), pickupTraj.cmd()));
-
-    // Starting at the event marker named "intake", run the intake
-    // pickupTraj.atTime("intake").onTrue(intakeSubsystem.intake());
-
-    // When the trajectory is done, start the next trajectory
     pickupTraj.done().onTrue(scoreTraj.cmd());
-
-    // While the trajectory is active, prepare the scoring subsystem
-    // scoreTraj.active().whileTrue(scoringSubsystem.getReady());
-
-    // When the trajectory is done, score
-    // scoreTraj.done().onTrue(scoringSubsystem.score());
-
     return routine;
   }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Az-FIRST
+// Copyright (c) 2026-2027 Az-FIRST
 // http://github.com/AZ-First
 // Copyright (c) 2024 FRC 254
 // https://github.com/team254
@@ -19,9 +19,6 @@
 
 package frc.robot.util;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.interpolation.Interpolatable;
-import edu.wpi.first.math.interpolation.Interpolator;
 import java.util.Collections;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
@@ -29,10 +26,16 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import org.wpilib.math.interpolation.Interpolatable;
+import org.wpilib.math.interpolation.Interpolator;
+import org.wpilib.math.util.MathUtil;
 
 /**
- * A concurrent version of WPIlib's TimeInterpolatableBuffer class to avoid the need for explicit
+ * A concurrent version of WPILib's TimeInterpolatableBuffer class to avoid the need for explicit
  * synchronization in our robot code.
+ *
+ * <p>TODO: Revisit whether this wrapper is still needed when WPILib provides safe concurrent access
+ * and the oldest/newest/range queries used by Drive.
  *
  * @param <T> The type stored in this buffer.
  */
@@ -81,7 +84,7 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    */
   public static ConcurrentTimeInterpolatableBuffer<Double> createDoubleBuffer(
       double historySizeSeconds) {
-    return new ConcurrentTimeInterpolatableBuffer<>(MathUtil::interpolate, historySizeSeconds);
+    return new ConcurrentTimeInterpolatableBuffer<>(MathUtil::lerp, historySizeSeconds);
   }
 
   /**
@@ -116,22 +119,21 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
    * @return The interpolated value at that timestamp or an empty Optional.
    */
   public Optional<T> getSample(double timeSeconds) {
-    if (m_pastSnapshots.isEmpty()) {
-      return Optional.empty();
-    }
-
     // Special case for when the requested time is the same as a sample
-    var nowEntry = m_pastSnapshots.get(timeSeconds);
-    if (nowEntry != null) {
-      return Optional.of(nowEntry);
+    T exactSample = m_pastSnapshots.get(timeSeconds);
+    if (exactSample != null) {
+      return Optional.of(exactSample);
     }
 
     var bottomBound = m_pastSnapshots.floorEntry(timeSeconds);
     var topBound = m_pastSnapshots.ceilingEntry(timeSeconds);
 
-    if (topBound == null && bottomBound == null) return Optional.empty();
-    if (topBound == null) return Optional.of(bottomBound.getValue());
-    if (bottomBound == null) return Optional.of(topBound.getValue());
+    if (bottomBound == null) {
+      return topBound == null ? Optional.empty() : Optional.of(topBound.getValue());
+    }
+    if (topBound == null) {
+      return Optional.of(bottomBound.getValue());
+    }
 
     // If they are the same sample, no interpolation possible/needed
     if (topBound.getKey().doubleValue() == bottomBound.getKey().doubleValue()) {
@@ -140,13 +142,13 @@ public final class ConcurrentTimeInterpolatableBuffer<T> {
 
     double t0 = bottomBound.getKey();
     double t1 = topBound.getKey();
-    double denom = t1 - t0;
+    double timeSpan = t1 - t0;
 
     // If the samples are so close together as to be indistinguishable, they are the same
-    if (Math.abs(denom) < 1e-9) return Optional.of(bottomBound.getValue());
+    if (Math.abs(timeSpan) < 1e-9) return Optional.of(bottomBound.getValue());
 
-    double ratio = (timeSeconds - t0) / denom;
-    ratio = MathUtil.clamp(ratio, 0.0, 1.0);
+    double ratio = (timeSeconds - t0) / timeSpan;
+    ratio = Math.clamp(ratio, 0.0, 1.0);
 
     return Optional.of(
         m_interpolatingFunc.interpolate(bottomBound.getValue(), topBound.getValue(), ratio));

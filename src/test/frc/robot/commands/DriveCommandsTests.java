@@ -3,35 +3,35 @@ package frc.robot.commands;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.simulation.DriverStationSim;
-import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.imu.Imu;
 import frc.robot.subsystems.imu.ImuIOSim;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wpilib.command2.Command;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.util.MathUtil;
+import org.wpilib.simulation.DriverStationSim;
 
 class DriveCommandsTests {
   private static final double EPSILON = 1e-9;
 
   @BeforeEach
   void setupHal() {
-    HAL.initialize(500, 0);
+    HAL.initialize();
     DriverStationSim.setEnabled(false);
     DriverStationSim.notifyNewData();
   }
 
   @Test
   void linearVelocityAppliesDeadbandAndSquaresMagnitudeWithoutChangingDirection() {
-    assertEquals(Translation2d.kZero, DriveCommands.getLinearVelocity(0.01, 0.01));
+    assertEquals(Translation2d.ZERO, DriveCommands.getLinearVelocity(0.01, 0.01));
 
     Translation2d velocity = DriveCommands.getLinearVelocity(0.6, 0.8);
-    assertEquals(1.0, velocity.getAngle().getCos() / 0.6, 1e-6);
-    assertEquals(1.0, velocity.getAngle().getSin() / 0.8, 1e-6);
+    assertEquals(1.0, velocity.getAngle().orElseThrow().getCos() / 0.6, 1e-6);
+    assertEquals(1.0, velocity.getAngle().orElseThrow().getSin() / 0.8, 1e-6);
     assertEquals(1.0, velocity.getNorm(), EPSILON);
   }
 

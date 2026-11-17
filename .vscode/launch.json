@@ -5,7 +5,7 @@
       "type": "java",
       "name": "Main",
       "request": "launch",
-      "mainClass": "frc.robot.Main",
+      "mainClass": "first.Main",
       "projectName": "Az-RBSI"
     },
     {
@@ -16,7 +16,7 @@
     },
     {
       "type": "wpilib",
-      "name": "WPILib roboRIO Debug",
+      "name": "WPILib Systemcore Debug",
       "request": "launch",
       "desktop": false
     }
